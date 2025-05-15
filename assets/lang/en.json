@@ -1,0 +1,774 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "submit": "Submit",
+    "close": "Close",
+    "back": "Back",
+    "continue": "Continue",
+    "required": "Required",
+    "optional": "Optional",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "search": "Search",
+    "upload": "Upload",
+    "download": "Downloading...",
+    "refresh": "Refresh",
+    "no_selection": "No selection",
+    "no_data": "No data available",
+    "written by": "Written by {name}",
+    "you": "You",
+    "change_language": "Change language",
+    "generic": "Error",
+    "doctor_roles": {
+      "doctor": "DOCTOR",
+      "clinic": "CLINIC"
+    }
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "welcome": "Hello!",
+    "welcome_subtitle": "Welcome to Longeviva",
+    "admin_login": "Admin Login",
+    "terms_of_service": "Terms of Service",
+    "privacy_policy": "Privacy Policy",
+    "copyright": "© 2025 Longeviva. All rights reserved.",
+    "logging_in": "Logging in...",
+    "forgot_password": "Forgot Password?",
+    "remember_me": "Remember me for 24 hours",
+    "no_account": "Don't have an account?",
+    "signup": "Signup",
+    "email": "Email",
+    "password": "Password",
+    "confirm_password": "Confirm Password",
+    "reset_password": "Reset Password",
+    "send_reset_link": "Send Reset Link",
+    "back_to_login": "Back to Login",
+    "password_reset_instructions": "Enter your email address and we'll send you a link to reset your password."
+  },
+  "signup": {
+    "title": "Registration Form",
+    "disclaimer_title": "Signup Information",
+    "role": "Role",
+    "select_role": "Select Role",
+    "doctor": "Doctor",
+    "clinic": "Clinic",
+    "name": "Name",
+    "structure_name": "Structure Name",
+    "surname": "Surname",
+    "sex": "Sex",
+    "male": "Male",
+    "female": "Female",
+    "birthdate": "Birthdate",
+    "select_birthdate": "Select Birthdate",
+    "change_birthdate": "Change",
+    "specialty": "Specialty",
+    "phone_number": "Phone Number",
+    "city_of_work": "City of Work",
+    "vat_number": "VAT Number",
+    "fiscal_code": "Fiscal Code",
+    "primary_email": "Primary Email",
+    "google_email": "Google Email",
+    "google_email_tooltip": "A Google email is required to use embedded Google services like Meet.",
+    "enter_name": "Enter your name",
+    "enter_clinic_name": "Enter clinic/structure name",
+    "enter_surname": "Enter your surname",
+    "enter_specialty": "e.g., Cardiology, Pneumology",
+    "enter_phone": "Enter phone number",
+    "enter_city": "Enter city of work",
+    "enter_vat": "Enter your VAT number",
+    "enter_fiscal_code": "Enter fiscal code or social number",
+    "enter_email": "Enter your email",
+    "enter_google_email": "Enter your Google email",
+    "processing": "Processing...",
+    "checking_email": "Checking email availability...",
+    "registration_process_info": "Registration Process Information",
+    "registration_info_1": "Your application will be reviewed by Longeviva staff",
+    "registration_info_2": "Professional credentials will be verified",
+    "registration_info_3": "You will receive an email with your account details",
+    "registration_info_4": "The process typically takes 1-2 business days",
+    "registration_consent": "By continuing, you agree to provide accurate information and consent to our verification process.",
+    "registration_instructions": "The registration process for Longeviva requires verification by our staff. After submitting your information:"
+  },
+  "patient_management": {
+    "title": "Patient Management",
+    "search_placeholder": "Search patient...",
+    "add_patient": "Add Patient",
+    "no_patients": "No patients found",
+    "no_patient_selected": "No patient selected",
+    "buttons": {
+      "patient_journey": "PATIENT JOURNEY",
+      "patient_monitoring": "PATIENT MONITORING",
+      "remove_from_patients": "REMOVE \nFROM PATIENTS",
+      "this_patient": "this patient?"
+    },
+    "filter_patients": "Filter Patients",
+    "confirm_remove_patient": "Are you sure you want to remove {name}?",
+    "remove_patient_warning": "Once confirmed, the removal cannot be undone.",
+    "yes_remove": "Yes, remove",
+    "patient_removed_success": "Patient successfully removed",
+    "no_managed_patients": "You have no Managed Patients",
+    "start_using_app": "Start using the app and expand your network!",
+
+    "patient_card": {
+      "view_details": "View details"
+    },
+
+    "filters": {
+      "grid_view": "Grid view",
+      "list_view": "List view",
+      "all_patients": "All patients",
+      "recent_patients": "Recent patients"
+    },
+
+    "patient_details": {
+      "name": "Name",
+      "surname": "Surname",
+      "birthdate": "Date of birth",
+      "age": "Age",
+      "gender": "Biological sex",
+      "male": "Male",
+      "female": "Female",
+      "email": "Email",
+      "fiscal_code": "Fiscal Code",
+      "copy_fiscal_code": "Copy Fiscal Code to clipboard",
+      "fiscal_code_copied": "Fiscal Code copied to clipboard",
+      "meeting_created": "Meeting created successfully"
+    },
+
+    "patient_journey": {
+      "title": "Patient Journey",
+      "documents": "Patient Documents",
+      "upload_file": "Upload File",
+      "meeting_summaries": "Meeting Summaries",
+      "add_summary": "Add Summary",
+      "add_meeting_patient": "Schedule meeting for patient",
+      "no_summaries": "No summaries available",
+      "select_meeting": "Select a meeting",
+      "refresh": "Refresh",
+      "view_storyline": "View Storyline",
+      "patient_storyline": "Patient Storyline",
+      "recently_added_files": "Recently Added Files",
+      "recently_added_files_loading": "Loading recent files...",
+      "no_files_found": "No files found for this patient",
+      "upload_to_get_started": "Upload a file to get started",
+      "no_recent_meetings": "No recent meetings available",
+      "need_recent_meeting": "You need to have completed meetings before adding a summary",
+      "file_tree": {
+        "year": "Year",
+        "file_type": "File Type",
+        "view": "View",
+        "share": "Share",
+        "encrypted": "Encrypted",
+        "delete": "Delete",
+        "confirm_delete": "Are you sure you want to delete this file?",
+        "file_size": "Size",
+        "file_date": "Date",
+        "current_year": "Current Year",
+        "loading_files": "Loading patient files..."
+      }
+    },
+
+    "patient_info": {
+      "edit_title": "Edit Patient Information",
+      "update_success": "Patient information updated successfully",
+      "update_failure": "Failed to update patient information: {error}",
+      "basic_info": "Basic Information",
+      "lifestyle": "Lifestyle",
+      "allergies": "Allergies",
+      "medical_history": "Medical History",
+      "family_history": "Family History",
+      "save_changes": "Save Changes",
+      "weight_with_unit": "Weight (kg)",
+      "height_with_unit": "Height (cm)",
+      "weight_hint": "Weight in kg",
+      "height_hint": "Height in cm",
+      "physical_activity": "Physical Activity",
+      "frequency": "Frequency",
+      "intensity": "Intensity",
+      "diet": "Diet",
+      "type_of_diet": "Type of Diet",
+      "habits": "Habits",
+      "smoking_habits": "Smoking Habits",
+      "alcohol_consumption": "Alcohol Consumption",
+      "hours_of_sleep": "Hours of Sleep",
+      "hours": "hours",
+
+      "add_allergy": "Add New Allergy",
+      "allergy_type": "Allergy Type",
+      "allergy_name": "Allergy Name",
+      "allergy_name_required": "Please enter the allergy name",
+      "add_allergy_button": "Add Allergy",
+      "current_allergies": "Current Allergies",
+      "no_allergies": "No allergies available",
+
+      "add_medical_history": "Add Medical History",
+      "disease_condition": "Disease/Condition",
+      "disease_condition_required": "Please enter the disease or condition",
+      "year": "Year",
+      "add_medical_history_button": "Add Medical History",
+      "current_medical_history": "Current Medical History",
+      "no_medical_history": "No medical history available",
+
+      "add_family_history": "Add Family History",
+      "family_member": "Family Member",
+      "add_family_history_button": "Add Family History",
+      "current_family_history": "Current Family History",
+      "type": "Type",
+      "no_family_history": "No family history available",
+
+      "dropdown_values": {
+        "physical_activity": {
+          "frequency": {
+            "never": "Never",
+            "rarely": "Rarely",
+            "occasionally": "Occasionally",
+            "weekly": "Weekly",
+            "daily": "Daily"
+          },
+          "intensity": {
+            "none": "None",
+            "light": "Light",
+            "moderate": "Moderate",
+            "vigorous": "Vigorous",
+            "extreme": "Extreme"
+          }
+        },
+        "diet_types": {
+          "balanced": "Balanced",
+          "pescatarian": "Pescatarian",
+          "vegetarian": "Vegetarian",
+          "vegan": "Vegan",
+          "keto": "Keto",
+          "paleo": "Paleo",
+          "other": "Other"
+        },
+        "smoking": {
+          "never": "Never",
+          "former": "Former Smoker",
+          "light": "Light Smoker",
+          "heavy": "Heavy Smoker"
+        },
+        "alcohol": {
+          "never": "Never",
+          "rarely": "Rarely",
+          "occasionally": "Occasionally",
+          "weekly": "Weekly",
+          "daily": "Daily"
+        },
+        "allergy_types": {
+          "food": "Food",
+          "drug": "Drug",
+          "contrast_agent": "Contrast Agent"
+        },
+        "family_members": {
+          "father": "Father",
+          "mother": "Mother",
+          "brother": "Brother",
+          "sister": "Sister",
+          "grandfather_paternal": "Grandfather (Paternal)",
+          "grandmother_paternal": "Grandmother (Paternal)",
+          "grandfather_maternal": "Grandfather (Maternal)",
+          "grandmother_maternal": "Grandmother (Maternal)",
+          "uncle": "Uncle",
+          "aunt": "Aunt",
+          "other": "Other"
+        }
+      }
+    },
+
+    "file_upload": {
+      "title": "Upload Document",
+      "download": "Download",
+      "share_with_family_doctor": "Share with family doctor",
+      "for_patient": "For patient: {patient_name}",
+      "browse_files": "Browse Files",
+      "select_file": "Select a file to upload",
+      "supported_formats": "Supported formats: PDF, JPG, PNG, TXT",
+      "document_type": "Document Type",
+      "document_name": "Document Name",
+      "document_date": "Document Date",
+      "selected_file": "Selected File:",
+      "size": "Size: {size}",
+      "cancel": "Cancel",
+      "upload": "Upload",
+      "change_file": "Change File",
+      "document_types": {
+        "medical_recipe": "Medical Recipe",
+        "diagnosis": "Diagnosis",
+        "lab_results": "Lab Results",
+        "imaging": "Imaging",
+        "prescription": "Prescription",
+        "medical_report": "Medical Report",
+        "therapy": "Therapy",
+        "discharge_summary": "Discharge Summary",
+        "other": "Other"
+      }
+    },
+
+    "patient_monitoring": {
+      "warning": "Patient Monitoring feature coming soon"
+    },
+
+    "measurements": {
+      "body_temperature": "Body Temperature",
+      "blood_pressure": "Blood Pressure",
+      "heart_rate": "Heart Rate",
+      "systolic": "Systolic",
+      "diastolic": "Diastolic",
+      "bpm": "BPM",
+      "celsius": "°C",
+      "mmHg": "mmHg"
+    }
+  },
+  "my_equipe": {
+    "title": "My Equipe",
+    "search_placeholder": "Search equipe member...",
+    "no_doctors": "No doctors found",
+    "no_doctor_selected": "You have selected no equipe member",
+    "buttons": {
+      "remove_from_equipe": "REMOVE\nFROM EQUIPE",
+      "this_member": "this member from your equipe?",
+      "doctor_removed_success": "Doctor successfully removed from equipe",
+      "confirm_remove_doctor": "Are you sure you want \nto remove {name}?",
+      "remove_doctor_warning": "Once you confirm the removal, you \nwill not be able to restore it.",
+      "yes_remove": "Yes, remove"
+    },
+    "fetching_members": "Fetching equipe doctor members...",
+    "doctor_details": {
+      "title": "Doctor",
+      "title_f": "Dott.ssa",
+      "title_m": "Dott.",
+      "specialty": "Specialty",
+      "email": "Email",
+      "place_of_work": "Place of Work",
+      "areas_of_interest": "AREAS OF INTEREST"
+    },
+    "add_doctor": {
+      "dialog_title": "Add Doctor to Equipe",
+      "search_instruction": "Search for doctors to add to your equipe",
+      "email_label": "Email",
+      "email_hint": "doctor@example.com",
+      "specialty_label": "Specialty",
+      "specialty_hint": "Cardiology",
+      "city_label": "City",
+      "city_hint": "Rome",
+      "role_label": "Role",
+      "select_role": "Select role",
+      "search_button": "Search",
+      "no_doctors_found": "No result found matching your criteria",
+      "enter_criteria": "Enter search criteria and click Search",
+      "login_required": "You need to be logged in to add doctors to your equipe",
+      "send_request": "Send Request",
+      "no_pending_requests": "No pending requests",
+      "no_sent_requests": "No sent requests",
+      "decline": "Decline",
+      "accept": "Accept"
+    },
+    "equipe_requests": {
+      "title": "Equipe Requests",
+      "tabs": {
+        "pending": "Pending Requests",
+        "sent": "Sent Requests"
+      },
+      "status": {
+        "pending": "Pending",
+        "accepted": "Accepted",
+        "declined": "Declined",
+        "unknown": "Unknown"
+      },
+      "info": {
+        "received": "Request received",
+        "sent_to": "Sent to",
+        "date": "Date",
+        "responded": "Responded"
+      }
+    }
+  },
+  "my_consultations": {
+    "title": "My Consultations",
+    "subtitle": "Chat",
+    "search_placeholder": "Search consultation...",
+    "no_conversations": "No conversations yet",
+    "no_conversation_selected": "No conversation selected",
+    "start_conversation": "Start a conversation with a member of your equipe",
+    "new_conversation": "New Conversation",
+    "select_conversation": "Select a conversation",
+    "choose_chat": "Choose a chat from the list to start messaging",
+    "no_messages": "No messages yet. Send a message to start the conversation.",
+    "no_conversations_match": "No conversations match your search",
+    "loading_conversations": "Loading conversations...",
+    "creating_conversation": "Creating conversation...",
+    "connecting_conversation": "Connecting to conversation...",
+    "duplicate_conversation_error": "A conversation with this doctor already exists",
+    "login_required": "You need to be logged in to start a conversation",
+    "no_equipe_members": "No equipe members found",
+    "conversation_actions": {
+      "send": "Send",
+      "select_contact": "Select Contact",
+      "cancel": "Cancel"
+    },
+    "encryption": {
+      "encrypted": "Encrypted",
+      "not_encrypted": "Not encrypted"
+    },
+    "chat_details": {
+      "last_message_at": "last message at: {time}",
+      "type_message": "Type your message..."
+    },
+    "errors": {
+      "generic": "Error: {message}",
+      "try_again": "Try Again"
+    }
+  },
+  "televisit_calendar": {
+    "title": "Televisit Calendar",
+    "calendar_views": {
+      "day": "Single Day",
+      "week": "Week",
+      "month": "Month"
+    },
+    "calendar_instructions": "Tap the calendar tile to add a meeting",
+    "meeting_actions": {
+      "answer": "Answer",
+      "accept": "Accept",
+      "delete": "Delete"
+    },
+    "meeting_status": {
+      "pending": "Pending",
+      "incoming": "Incoming",
+      "recent": "Recent",
+      "available": "Available"
+    },
+    "meeting_info": {
+      "call_link": "Link to call",
+      "link": "Link",
+      "was_days_ago": "Meeting was {days} day ago",
+      "was_days_ago_plural": "Meeting was {days} days ago",
+      "today": "Today's meeting",
+      "tomorrow": "Meeting tomorrow",
+      "in_days": "Meeting in {days} days"
+    },
+    "meeting_requests": "Meeting Requests",
+    "no_meetings": {
+      "pending": "No pending meetings",
+      "incoming": "No incoming meetings",
+      "recent": "No recent meetings",
+      "category": "No meetings in this category",
+      "available": "Unavailable"
+    },
+    "meeting_delete": {
+      "confirm_title": "Are you sure you want to DELETE the confirmed appointment?",
+      "reason_placeholder": "Explain why to your patient*",
+      "reason_none": "No reason provided",
+      "send": "Send",
+      "processing": "Processing..."
+    },
+    "meeting_link": {
+      "title": "Get Google Meet Link",
+      "instructions": "Please:",
+      "step1": "1. Wait for Google Meet to open",
+      "step2": "2. Copy the meeting link",
+      "step3": "3. Paste it here",
+      "warning": "If Google Meet doesn't open, please check your popup blocker settings.",
+      "placeholder": "Paste Google Meet link here",
+      "valid_link": "Link format is valid",
+      "invalid_link": "Paste a valid meeting link",
+      "open_meet": "Open Meet",
+      "confirm": "Confirm"
+    },
+    "loading": {
+      "appointments": "Loading appointments...",
+      "meeting_update": "Processing meeting update...",
+      "calendar": "Loading your calendar...",
+      "finding_slots": "Finding available time slots...",
+      "processing": "Processing..."
+    },
+    "notifications": {
+      "meeting_created": "Meeting created successfully!",
+      "meeting_accepted": "Meeting accepted successfully!"
+    },
+    "errors": {
+      "doctor_only": "Only doctors can view and manage meetings",
+      "schedule_conflict": "Cannot accept this meeting as you already have another meeting scheduled during this time slot.\nPlease, decline it and ask for another time slot."
+    },
+    "other": {
+      "current_role": "Current Role: {role}"
+    }
+  },
+  "meeting_form": {
+    "title": "Add Meeting",
+    "your_selection": "Your Selection",
+    "steps": {
+      "patient_identification": "Find Patient",
+      "patient_details": "New Patient Details",
+      "meeting_details": "New Meeting"
+    },
+    "patient_identification": {
+      "title": "Enter Patient's Fiscal Code",
+      "fiscal_code_label": "Fiscal Code (C.F.)*",
+      "fiscal_code_hint": "e.g., RSSMRA80A01H501S",
+      "fiscal_code_required": "Fiscal code is required",
+      "search_button": "Search",
+      "searching": "Searching for patient...",
+      "patient_found_title": "Patient Found",
+      "continue_button": "Continue to Meeting Details",
+      "select_file": "Select a File"
+    },
+    "patient_details": {
+      "title": "Patient Not Found - Enter Patient Details",
+      "first_name_label": "First Name*",
+      "first_name_required": "First name is required",
+      "last_name_label": "Last Name*",
+      "last_name_required": "Last name is required",
+      "email_label": "Email*",
+      "email_required": "Email is required",
+      "email_invalid": "Please enter a valid email address",
+      "sex_label": "Sex*",
+      "male": "Male",
+      "female": "Female",
+      "birthdate_label": "Date of Birth*",
+      "change_button": "Change"
+    },
+    "meeting_details": {
+      "patient_info_title": "Patient Information",
+      "name": "Name",
+      "fiscal_code": "Fiscal Code",
+      "reason_label": "Reason for Visit*",
+      "reason_hint": "e.g., Annual checkup, Follow-up, Consultation",
+      "reason_required": "Reason for visit is required",
+      "reason_min_length": "Reason must be at least {min} characters",
+      "reason_max_length": "Reason cannot exceed {max} characters",
+      "doctor_required": "Please select a doctor",
+      "suggested_slots": "Suggested Time Slots:",
+      "loading_slots": "Finding available time slots...",
+      "appointment_time": "Appointment Time",
+      "start_time": "Start Time",
+      "end_time": "End Time",
+      "change_start": "Change Start",
+      "change_end": "Change End",
+      "duration": "Duration: {minutes} minutes",
+      "doctor_selector": "Select Doctor*"
+    },
+    "dialog_actions": {
+      "cancel": "Cancel",
+      "back": "Back",
+      "next": "Next",
+      "save": "Save"
+    },
+    "errors": {
+      "time_past": "Cannot create meetings in the past",
+      "min_duration": "Meeting duration must be at least 30 minutes",
+      "same_day": "Start and end times must be on the same day",
+      "working_hours": "Meetings must be scheduled between {start}:00 and {end}:00",
+      "weekend": "Meetings cannot be scheduled on weekends",
+      "conflict": "Selected time conflicts with an existing meeting. The doctor needs at least 15 minutes between appointments.",
+      "saving_patient": "Error saving patient: {error}"
+    }
+
+  },
+  "errors": {
+    "auth": {
+      "invalid_email": "Invalid email format",
+      "invalid_credentials": "Invalid credentials",
+      "authentication_failed": "Authentication failed. Please check your credentials.",
+      "user_not_found": "User not found",
+      "email_required": "Email is required",
+      "password_required": "Password is required",
+      "doctor_not_found": "Doctor not found",
+      "admin_not_found": "Admin not found",
+      "invalid_admin_credentials": "Invalid admin credentials",
+      "permission_denied": "You do not have permission to download files for this patient",
+      "password_change_failed": "Failed to change password",
+      "firebase_auth_user_creation_failed": "Failed to create Firebase Auth user: {error}",
+      "invalid_doctor_id": "Invalid doctor ID",
+      "logout_failed": "Logout failed: {error}",
+      "user_reload_failed": "Failed to reload user data after password change",
+      "profile_picture_store_failed": "Failed to store profile picture",
+      "profile_picture_update_failed": "Failed to update profile picture",
+      "password_reset_failed": "Failed to send password reset email"
+    },
+    "patient": {
+      "not_found": "Patient not found",
+      "invalid_fiscal_code": "Invalid fiscal code format. \nIt must be 16 characters: \n- 6 letters, \n- 2 digits, \n- 1 letter, \n- 2 digits, \n- 1 letter, \n- 3 digits, \n- 1 letter.",
+      "creation_failed": "Error creating patient",
+      "update_failed": "Failed to update patient information",
+      "no_patients_found": "No patients found",
+      "patient_id_empty": "Patient ID cannot be empty",
+      "remove_failed": "Failed to remove patient"
+    },
+    "signup": {
+      "email_exists": "A pending signup request already exists for this email or Google email",
+      "invalid_email_format": "Invalid email format",
+      "google_email_required": "Google email is required",
+      "google_email_must_be_gmail": "Google email must be a Gmail address",
+      "name_required": "Name is required",
+      "surname_required": "Surname is required for doctors",
+      "sex_required": "Sex is required for doctors",
+      "vat_required": "VAT number is required for doctors",
+      "fiscal_code_required": "Fiscal code is required for clinics",
+      "specialty_required": "Specialty is required",
+      "phone_required": "Phone number is required",
+      "city_required": "City of work is required",
+      "role_invalid": "Role must be either DOCTOR or CLINIC",
+      "request_not_found": "Signup request not found",
+      "request_not_pending": "Cannot process a request that is not pending",
+      "approval_failed": "Failed to approve signup request",
+      "rejection_failed": "Failed to reject signup request",
+      "send_request_failed": "Please fill all required fields correctly"
+    },
+    "equipe": {
+      "cannot_send_to_self": "Cannot send request to yourself",
+      "request_already_pending": "You already have a pending request to this doctor",
+      "incoming_request_exists": "This doctor has already sent you a request. Check your pending requests.",
+      "doctor_not_found": "Doctor not found",
+      "request_send_failed": "Failed to send request",
+      "request_accept_failed": "Failed to accept request",
+      "request_reject_failed": "Failed to reject request",
+      "doctor_remove_failed": "Failed to remove doctor from equipe"
+    },
+    "meetings": {
+      "invalid_time_range": "Meeting start time must be before end time",
+      "patient_fiscal_code_empty": "Patient fiscal code cannot be empty",
+      "clinic_only": "Only users with CLINIC role can create meetings",
+      "time_in_past": "Cannot create meetings in the past",
+      "min_duration": "Meeting duration must be at least 30 minutes",
+      "same_day_required": "Start and end times must be on the same day",
+      "working_hours": "Meetings must be scheduled between {start}:00 and {end}:00",
+      "weekend_not_allowed": "Meetings cannot be scheduled on weekends",
+      "schedule_conflict": "Cannot accept this meeting as you already have another meeting scheduled during this time slot.\nPlease, decline it and ask for another time slot.",
+      "update_failed": "Failed to update meeting",
+      "create_failed": "Failed to create meeting",
+      "status_update_failed": "Failed to update meeting status"
+    },
+    "files": {
+      "bytes_empty": "File bytes cannot be empty",
+      "name_empty": "File name cannot be empty",
+      "type_empty": "File type cannot be empty",
+      "patient_id_empty": "Patient ID cannot be empty",
+      "file_id_empty": "File ID cannot be empty",
+      "upload_failed": "Failed to upload encrypted file: {error}",
+      "download_failed": "Failed to download and decrypt file: {error}",
+      "delete_failed": "Failed to delete file: {error}",
+      "metadata_not_found": "File metadata not found in database",
+      "path_missing": "File path is missing in metadata",
+      "storage_delete_failed": "Failed to delete file from storage: {error}",
+      "metadata_delete_failed": "Failed to delete file metadata: {error}",
+      "file_not_found": "File not found",
+      "access_denied": "You do not have permission to access files for this patient",
+      "permission_denied": "You don't have permission to delete this file",
+      "load_failed": "Could not load files. Please try again.",
+      "share_failed": "Failed to share file: {error}"
+    },
+    "chat": {
+      "invalid_conversation_id": "Invalid conversation ID",
+      "conversation_not_found": "Conversation not found",
+      "conversation_load_failed": "Failed to load conversation: {error}",
+      "message_send_failed": "Failed to send message: {error}",
+      "equipe_doctors_load_failed": "Failed to load equipe doctors: {error}",
+      "conversations_load_failed": "Failed to load conversations: {error}",
+      "conversation_create_failed": "Failed to create conversation: {error}",
+      "conversation_already_exists": "A conversation with this doctor already exists",
+      "refresh_failed": "Failed to refresh chat: {error}"
+    },
+    "admin": {
+      "users_load_failed": "Failed to load users: {error}",
+      "user_delete_failed": "Failed to delete user",
+      "user_delete_error": "Error deleting user: {error}"
+    },
+    "general": {
+      "field_required": "{field} is required",
+      "invalid_format": "Invalid format for {field}",
+      "operation_failed": "Operation failed: {error}",
+      "no_data_found": "No data found",
+      "feature_not_implemented": "This feature will be implemented in a future update"
+    }
+  },
+  "success": {
+    "auth": {
+      "login_success": "Login successful",
+      "logout_success": "Logout successful",
+      "password_changed": "Password changed successfully",
+      "password_reset_sent": "Password reset email sent to: {email}",
+      "profile_picture_updated": "Profile picture updated successfully"
+    },
+    "patient": {
+      "created": "Patient created successfully",
+      "updated": "Patient information updated successfully",
+      "removed": "Patient removed successfully"
+    },
+    "signup": {
+      "request_created": "Signup request created successfully",
+      "request_approved": "Signup request approved successfully",
+      "request_rejected": "Signup request rejected"
+    },
+    "equipe": {
+      "request_sent": "Request sent successfully",
+      "request_accepted": "Request accepted successfully",
+      "request_rejected": "Request rejected successfully",
+      "doctor_removed": "Doctor removed from equipe successfully"
+    },
+    "meetings": {
+      "created": "Meeting created successfully",
+      "updated": "Meeting updated successfully",
+      "accepted": "Meeting status accepted successfully",
+      "deleted": "Meeting deleted successfully"
+    },
+    "files": {
+      "uploaded": "File uploaded successfully",
+      "deleted": "File deleted successfully",
+      "shared": "File shared with general doctor"
+    },
+    "admin": {
+      "user_deleted": "User deleted successfully"
+    }
+  },
+  "validation": {
+    "email": {
+      "invalid": "Please enter a valid email address",
+      "required": "Email",
+      "already_registered": "This email is already registered in our system. Please log in instead.",
+      "pending_request": "There is already a registration request with this email. Please contact support for assistance."
+    },
+    "password": {
+      "required": "Password",
+      "min_length": "Password must be at least {min} characters",
+      "mismatch": "Passwords do not match"
+    },
+    "fiscal_code": {
+      "invalid": "Invalid fiscal code format",
+      "required": "Fiscal code is required",
+      "required_for_clinics": "Fiscal code is required for clinics"
+    },
+    "required_field": "{field} is required",
+    "min_length": "{field} must be at least {min} characters",
+    "max_length": "{field} cannot exceed {max} characters",
+    "name": {
+      "required": "Name is required"
+    },
+    "surname": {
+      "required_for_doctors": "Surname is required for doctors"
+    },
+    "specialty": {
+      "required": "Specialty is required"
+    },
+    "phone": {
+      "required": "Phone number is required"
+    },
+    "city": {
+      "required": "City is required"
+    },
+    "vat": {
+      "required_for_doctors": "VAT number is required for doctors"
+    },
+    "google_email": {
+      "required": "Google email is required",
+      "invalid": "Please enter a valid email",
+      "must_be_gmail": "Must be a Gmail address",
+      "already_registered": "This Google email is already registered in our system. Please log in instead.",
+      "pending_request": "Registration request pending for this Google email"
+    }
+  }
+}

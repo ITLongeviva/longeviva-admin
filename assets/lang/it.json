@@ -1,0 +1,773 @@
+{
+  "common": {
+    "save": "Salva",
+    "cancel": "Annulla",
+    "submit": "Invia",
+    "back": "Indietro",
+    "continue": "Continua",
+    "required": "Obbligatorio",
+    "optional": "Opzionale",
+    "delete": "Elimina",
+    "edit": "Modifica",
+    "add": "Aggiungi",
+    "search": "Cerca",
+    "upload": "Carica",
+    "download": "Scaricando...",
+    "refresh": "Aggiorna",
+    "no_selection": "Nessuna selezione",
+    "close": "Chiudi",
+    "no_data": "Nessun dato disponibile",
+    "written_by": "Scritto da {name}",
+    "you": "Te",
+    "change_language": "Cambia lingua",
+    "generic": "Errore",
+    "doctor_roles": {
+      "doctor": "MEDICO",
+      "clinic": "CLINICA"
+    }
+  },
+  "auth": {
+    "login": "Accedi",
+    "logout": "Esci",
+    "welcome": "Ciao!",
+    "welcome_subtitle": "Benvenuto su Longeviva",
+    "admin_login": "Admin Login",
+    "terms_of_service": "Termini di Servizio",
+    "privacy_policy": "Privacy Policy",
+    "copyright": "© 2025 Longeviva. Tutti i diritti riservati.",
+    "logging_in": "Accesso in corso...",
+    "forgot_password": "Password dimenticata?",
+    "remember_me": "Ricordami per 24 ore",
+    "no_account": "Non hai un account?",
+    "signup": "Registrati",
+    "email": "Email",
+    "password": "Password",
+    "confirm_password": "Conferma Password",
+    "reset_password": "Reset Password",
+    "send_reset_link": "Invia Link di Reset",
+    "back_to_login": "Torna al Login",
+    "password_reset_instructions": "Inserisci il tuo indirizzo email e ti invieremo un link per reimpostare la password."
+  },
+  "signup": {
+    "title": "Modulo di Registrazione",
+    "disclaimer_title": "Informazioni Registrazione",
+    "role": "Ruolo",
+    "select_role": "Seleziona Ruolo",
+    "doctor": "Dottore",
+    "clinic": "Clinica",
+    "name": "Nome",
+    "structure_name": "Nome Struttura",
+    "surname": "Cognome",
+    "sex": "Sesso",
+    "male": "Maschio",
+    "female": "Femmina",
+    "birthdate": "Data di nascita",
+    "select_birthdate": "Seleziona Data di nascita",
+    "change_birthdate": "Cambia",
+    "specialty": "Specialità",
+    "phone_number": "Numero di Telefono",
+    "city_of_work": "Città di Lavoro",
+    "vat_number": "Partita IVA",
+    "fiscal_code": "Codice Fiscale",
+    "primary_email": "Email Principale",
+    "google_email": "Email Google",
+    "google_email_tooltip": "È richiesta un'email Google per utilizzare i servizi Google integrati come Meet.",
+    "enter_name": "Inserisci il tuo nome",
+    "enter_clinic_name": "Inserisci il nome della clinica/struttura",
+    "enter_surname": "Inserisci il tuo cognome",
+    "enter_specialty": "es., Cardiologia, Pneumologia",
+    "enter_phone": "Inserisci numero di telefono",
+    "enter_city": "Inserisci città di lavoro",
+    "enter_vat": "Inserisci la tua partita IVA",
+    "enter_fiscal_code": "Inserisci codice fiscale o codice sociale",
+    "enter_email": "Inserisci la tua email",
+    "enter_google_email": "Inserisci la tua email Google",
+    "processing": "Elaborazione in corso...",
+    "checking_email": "Verifica disponibilità email...",
+    "registration_process_info": "Informazioni sul Processo di Registrazione",
+    "registration_info_1": "La tua domanda sarà esaminata dallo staff di Longeviva",
+    "registration_info_2": "Le credenziali professionali saranno verificate",
+    "registration_info_3": "Riceverai un'email con i dettagli del tuo account",
+    "registration_info_4": "Il processo richiede generalmente 1-2 giorni lavorativi",
+    "registration_consent": "Continuando, accetti di fornire informazioni accurate e acconsenti al nostro processo di verifica.",
+    "registration_instructions": "Il processo di registrazione per Longeviva richiede la verifica da parte del nostro staff. Dopo aver inviato le tue informazioni:"
+  },
+  "patient_management": {
+    "title": "Gestione Pazienti",
+    "search_placeholder": "Cerca paziente...",
+    "add_patient": "Aggiungi Paziente",
+    "no_patients": "Nessun paziente trovato",
+    "no_patient_selected": "Nessun paziente selezionato",
+    "buttons": {
+      "patient_journey": "PERCORSO PAZIENTE",
+      "patient_monitoring": "CONTROLLO PAZIENTE",
+      "remove_from_patients": "RIMUOVI \nDAI PAZIENTI",
+      "this_patient": "questo paziente?"
+    },
+    "filter_patients": "Filtra Pazienti",
+    "confirm_remove_patient": "Sei sicuro di voler rimuovere {name}?",
+    "remove_patient_warning": "Una volta confermata la rimozione, non sarà possibile ripristinarla.",
+    "yes_remove": "Sì, rimuovi",
+    "patient_removed_success": "Paziente rimosso con successo",
+    "no_managed_patients": "Non hai Pazienti Gestiti",
+    "start_using_app": "Inizia ad usare l'app ed espandi la tua rete!",
+
+    "patient_card": {
+      "view_details": "Vedi dettagli"
+    },
+
+    "filters": {
+      "grid_view": "Vista griglia",
+      "list_view": "Vista lista",
+      "all_patients": "Tutti i pazienti",
+      "recent_patients": "Pazienti recenti"
+    },
+
+    "patient_details": {
+      "name": "Nome",
+      "surname": "Cognome",
+      "birthdate": "Data di nascita",
+      "age": "Età",
+      "gender": "Sesso biologico",
+      "male": "Maschio",
+      "female": "Femmina",
+      "email": "Email",
+      "fiscal_code": "Codice Fiscale",
+      "copy_fiscal_code": "Copia Codice Fiscale negli appunti",
+      "fiscal_code_copied": "Codice Fiscale copiato negli appunti",
+      "meeting_created": "Appuntamento creato con successo"
+    },
+
+    "patient_journey": {
+      "title": "Percorso Paziente",
+      "documents": "Documenti Paziente",
+      "upload_file": "Carica File",
+      "meeting_summaries": "Riassunti Incontri",
+      "add_summary": "Aggiungi Riassunto",
+      "add_meeting_patient": "Fissa appuntamento per paziente",
+      "no_summaries": "Nessun riassunto disponibile",
+      "select_meeting": "Seleziona un meeting",
+      "refresh": "Aggiorna",
+      "view_storyline": "Visualizza Timeline",
+      "patient_storyline": "Timeline Paziente",
+      "recently_added_files": "File Aggiunti di Recente",
+      "recently_added_files_loading": "Caricamento dei file recenti in corso...",
+      "no_files_found": "Nessun file trovato per questo paziente",
+      "upload_to_get_started": "Carica un file per iniziare",
+      "no_recent_meetings": "Nessun incontro recente disponibile",
+      "need_recent_meeting": "È necessario avere incontri completati prima di aggiungere un riassunto",
+      "file_tree": {
+        "year": "Anno",
+        "file_type": "Tipo di File",
+        "view": "Visualizza",
+        "share": "Condividi",
+        "encrypted": "Crittografato",
+        "delete": "Elimina",
+        "confirm_delete": "Sei sicuro di voler eliminare questo file?",
+        "file_size": "Dimensione",
+        "file_date": "Data",
+        "current_year": "Anno Corrente",
+        "loading_files": "Caricamento file paziente..."
+      }
+    },
+
+    "patient_info": {
+      "edit_title": "Modifica Informazioni Paziente",
+      "update_success": "Informazioni del paziente aggiornate con successo",
+      "update_failure": "Impossibile aggiornare le informazioni del paziente: {error}",
+      "basic_info": "Informazioni di Base",
+      "lifestyle": "Stile di Vita",
+      "allergies": "Allergie",
+      "medical_history": "Storia Medica",
+      "family_history": "Storia Familiare",
+      "save_changes": "Salva Modifiche",
+      "weight_with_unit": "Peso (kg)",
+      "height_with_unit": "Altezza (cm)",
+      "weight_hint": "Peso in kg",
+      "height_hint": "Altezza in cm",
+      "physical_activity": "Attività Fisica",
+      "frequency": "Frequenza",
+      "intensity": "Intensità",
+      "diet": "Dieta",
+      "type_of_diet": "Tipo di Dieta",
+      "habits": "Abitudini",
+      "smoking_habits": "Frequenza Fumo",
+      "alcohol_consumption": "Consumo di Alcol",
+      "hours_of_sleep": "Ore di Sonno",
+      "hours": "ore",
+
+      "add_allergy": "Aggiungi Nuova Allergia",
+      "allergy_type": "Tipo di Allergia",
+      "allergy_name": "Nome Allergia",
+      "allergy_name_required": "Inserisci il nome dell'allergia",
+      "add_allergy_button": "Aggiungi Allergia",
+      "current_allergies": "Allergie Attuali",
+      "no_allergies": "Nessuna allergia caricata",
+
+      "add_medical_history": "Aggiungi Storia Medica",
+      "disease_condition": "Malattia/Condizione",
+      "disease_condition_required": "Inserisci la malattia o condizione",
+      "year": "Anno",
+      "add_medical_history_button": "Aggiungi Storia Medica",
+      "current_medical_history": "Storia Medica Attuale",
+      "no_medical_history": "Nessuna storia medica disponibile",
+
+      "add_family_history": "Aggiungi Storia Familiare",
+      "family_member": "Membro della Famiglia",
+      "add_family_history_button": "Aggiungi Storia Familiare",
+      "current_family_history": "Storia Familiare Attuale",
+      "type": "Tipo",
+      "no_family_history": "Nessuna storia famiglia disponibile",
+
+      "dropdown_values": {
+        "physical_activity": {
+          "frequency": {
+            "never": "Mai",
+            "rarely": "Raramente",
+            "occasionally": "Occasionalmente",
+            "weekly": "Settimanalmente",
+            "daily": "Quotidianamente"
+          },
+          "intensity": {
+            "none": "Nessuna",
+            "light": "Leggera",
+            "moderate": "Moderata",
+            "vigorous": "Intensa",
+            "extreme": "Estrema"
+          }
+        },
+        "diet_types": {
+          "balanced": "Bilanciata",
+          "pescatarian": "Pescetariana",
+          "vegetarian": "Vegetariana",
+          "vegan": "Vegana",
+          "keto": "Keto",
+          "paleo": "Paleo",
+          "other": "Altro"
+        },
+        "smoking": {
+          "never": "Mai",
+          "former": "Ex Fumatore",
+          "light": "Fumatore Leggero",
+          "heavy": "Fumatore Accanito"
+        },
+        "alcohol": {
+          "never": "Mai",
+          "rarely": "Raramente",
+          "occasionally": "Occasionalmente",
+          "weekly": "Settimanalmente",
+          "daily": "Quotidianamente"
+        },
+        "allergy_types": {
+          "food": "Cibo",
+          "drug": "Farmaco",
+          "contrast_agent": "Mezzo di contrasto"
+        },
+        "family_members": {
+          "father": "Padre",
+          "mother": "Madre",
+          "brother": "Fratello",
+          "sister": "Sorella",
+          "grandfather_paternal": "Nonno (Paterno)",
+          "grandmother_paternal": "Nonna (Paterna)",
+          "grandfather_maternal": "Nonno (Materno)",
+          "grandmother_maternal": "Nonna (Materna)",
+          "uncle": "Zio",
+          "aunt": "Zia",
+          "other": "Altro"
+        }
+      }
+    },
+
+    "file_upload": {
+      "title": "Carica Documento",
+      "download": "Scarica",
+      "share_with_family_doctor": "Condividi con il medico famiglia",
+      "for_patient": "Per paziente: {patient_name}",
+      "browse_files": "Sfoglia File",
+      "select_file": "Seleziona un file da caricare",
+      "supported_formats": "Formati supportati: PDF, JPG, PNG, TXT",
+      "document_type": "Tipo di Documento",
+      "document_name": "Nome Documento",
+      "document_date": "Data Documento",
+      "selected_file": "File Selezionato:",
+      "size": "Dimensione: {size}",
+      "cancel": "Annulla",
+      "upload": "Carica",
+      "change_file": "Cambia File",
+      "document_types": {
+        "medical_recipe": "Ricetta Medica",
+        "diagnosis": "Diagnosi",
+        "lab_results": "Risultati Laboratorio",
+        "imaging": "Immagini Diagnostiche",
+        "prescription": "Prescrizione",
+        "medical_report": "Referto Medico",
+        "therapy": "Terapia",
+        "discharge_summary": "Lettera di Dimissione",
+        "other": "Altro"
+      }
+    },
+
+    "patient_monitoring": {
+      "warning": "La funzione Controllo Paziente sarà disponibile a breve"
+    },
+
+    "measurements": {
+      "body_temperature": "Temperatura Corporea",
+      "blood_pressure": "Pressione Sanguigna",
+      "heart_rate": "Frequenza Cardiaca",
+      "systolic": "Sistolica",
+      "diastolic": "Diastolica",
+      "bpm": "BPM",
+      "celsius": "°C",
+      "mmHg": "mmHg"
+    }
+  },
+  "my_equipe": {
+    "title": "La Mia Equipe",
+    "search_placeholder": "Cerca membro equipe...",
+    "no_doctors": "Nessun dottore trovato",
+    "no_doctor_selected": "Nessun membro dell'equipe selezionato",
+    "buttons": {
+      "remove_from_equipe": "RIMUOVI\nDALL'EQUIPE",
+      "this_member": "questo membro dalla tua equipe?",
+      "doctor_removed_success": "Dottore rimosso dall'equipe con successo",
+      "confirm_remove_doctor": "Sei sicuro di voler rimuovere {name}?",
+      "remove_doctor_warning": "Una volta confermata la rimozione, non sarà possibile ripristinarla.",
+      "yes_remove": "Sì, rimuovi"
+    },
+    "fetching_members": "Recupero membri dell'equipe in corso...",
+    "doctor_details": {
+      "title": "Dottore",
+      "title_f": "Dott.ssa",
+      "title_m": "Dott.",
+      "specialty": "Specialità",
+      "email": "Email",
+      "place_of_work": "Luogo di Lavoro",
+      "areas_of_interest": "AREE DI INTERESSE"
+    },
+    "add_doctor": {
+      "dialog_title": "Aggiungi Dottore all'Equipe",
+      "search_instruction": "Cerca dottori da aggiungere alla tua equipe",
+      "email_label": "Email",
+      "email_hint": "dottore@esempio.com",
+      "specialty_label": "Specialità",
+      "specialty_hint": "Cardiologia",
+      "city_label": "Città",
+      "city_hint": "Roma",
+      "role_label": "Ruolo",
+      "select_role": "Seleziona ruolo",
+      "search_button": "Cerca",
+      "no_doctors_found": "Nessun risultato trovato corrispondente ai criteri",
+      "enter_criteria": "Inserisci i criteri di ricerca e fai clic su Cerca",
+      "login_required": "Devi essere loggato per aggiungere dottori alla tua equipe",
+      "send_request": "Invia Richiesta",
+      "no_pending_requests": "Nessuna richiesta in attesa",
+      "no_sent_requests": "Nessuna richiesta inviata",
+      "decline": "Rifiuta",
+      "accept": "Accetta"
+    },
+    "equipe_requests": {
+      "title": "Richieste Equipe",
+      "tabs": {
+        "pending": "Richieste in Attesa",
+        "sent": "Richieste Inviate"
+      },
+      "status": {
+        "pending": "In Attesa",
+        "accepted": "Accettata",
+        "declined": "Rifiutata",
+        "unknown": "Sconosciuto"
+      },
+      "info": {
+        "received": "Richiesta ricevuta",
+        "sent_to": "Inviata a",
+        "date": "Data",
+        "responded": "Risposta il"
+      }
+    }
+  },
+  "my_consultations": {
+    "title": "Le Mie Conversazioni",
+    "subtitle": "Conversazioni",
+    "search_placeholder": "Cerca conversazione...",
+    "no_conversations": "Nessuna conversazione ancora",
+    "no_conversation_selected": "Nessuna conversazione selezionata",
+    "start_conversation": "Inizia una conversazione con un membro della tua equipe",
+    "new_conversation": "Nuova Conversazione",
+    "select_conversation": "Seleziona una conversazione",
+    "choose_chat": "Scegli una chat dall'elenco per iniziare a messaggiare",
+    "no_messages": "Ancora nessun messaggio. Invia un messaggio per iniziare la conversazione.",
+    "no_conversations_match": "Nessuna conversazione corrisponde alla tua ricerca",
+    "loading_conversations": "Caricamento conversazioni...",
+    "creating_conversation": "Creazione conversazione...",
+    "connecting_conversation": "Connessione alla conversazione...",
+    "duplicate_conversation_error": "Esiste già una conversazione con questo medico",
+    "login_required": "Devi essere loggato per iniziare una conversazione",
+    "no_equipe_members": "Nessun membro dell'equipe trovato",
+    "conversation_actions": {
+      "send": "Invia",
+      "select_contact": "Seleziona Contatto",
+      "cancel": "Annulla"
+    },
+    "encryption": {
+      "encrypted": "Crittografato",
+      "not_encrypted": "Non crittografato"
+    },
+    "chat_details": {
+      "last_message_at": "ultimo messaggio alle: {time}",
+      "type_message": "Scrivi il tuo messaggio..."
+    },
+    "errors": {
+      "generic": "Errore: {message}",
+      "try_again": "Riprova"
+    }
+  },
+  "televisit_calendar": {
+    "title": "Calendario Televisite",
+    "calendar_views": {
+      "day": "Giorno Singolo",
+      "week": "Settimana",
+      "month": "Mese"
+    },
+    "calendar_instructions": "Tocca sul calendario per aggiungere un appuntamento",
+    "meeting_actions": {
+      "answer": "Rispondi",
+      "accept": "Accetta",
+      "delete": "Elimina"
+    },
+    "meeting_status": {
+      "pending": "In Attesa",
+      "incoming": "In Arrivo",
+      "recent": "Recenti",
+      "available": "Disponibile"
+    },
+    "meeting_info": {
+      "call_link": "Link per la chiamata",
+      "link": "Link",
+      "was_days_ago": "Appuntamento di {days} giorno fa",
+      "was_days_ago_plural": "Appuntamento di {days} giorni fa",
+      "today": "Appuntamento di oggi",
+      "tomorrow": "Appuntamento di domani",
+      "in_days": "Appuntamento tra {days} giorni"
+    },
+    "meeting_requests": "Richieste di Appuntamento",
+    "no_meetings": {
+      "pending": "Nessun appuntamento in attesa",
+      "incoming": "Nessun appuntamento in arrivo",
+      "recent": "Nessun appuntamento recente",
+      "category": "Nessun appuntamento in questa categoria",
+      "available": "Non disponibile"
+    },
+    "meeting_delete": {
+      "confirm_title": "Sei sicuro di voler ELIMINARE l'appuntamento confermato?",
+      "reason_placeholder": "Spiega il motivo al paziente*",
+      "reason_none": "Nessun motivo fornito",
+      "send": "Invia",
+      "processing": "Elaborazione in corso..."
+    },
+    "meeting_link": {
+      "title": "Ottieni Link Google Meet",
+      "instructions": "Per favore:",
+      "step1": "1. Attendi che Google Meet si apra",
+      "step2": "2. Copia il link dell'appuntamento",
+      "step3": "3. Incollalo qui",
+      "warning": "Se Google Meet non si apre, controlla le impostazioni del blocco popup.",
+      "placeholder": "Incolla il link di Google Meet qui",
+      "valid_link": "Formato del link valido",
+      "invalid_link": "Incolla un link valido",
+      "open_meet": "Apri Meet",
+      "confirm": "Conferma"
+    },
+    "loading": {
+      "appointments": "Caricamento appuntamenti...",
+      "meeting_update": "Elaborazione aggiornamento appuntamento...",
+      "calendar": "Caricamento del calendario...",
+      "finding_slots": "Ricerca slot disponibili...",
+      "processing": "Elaborazione in corso..."
+    },
+    "notifications": {
+      "meeting_created": "Appuntamento creato con successo!",
+      "meeting_accepted": "Appuntamento accettato con successo!"
+    },
+    "errors": {
+      "doctor_only": "Solo i medici possono visualizzare e gestire gli appuntamenti",
+      "schedule_conflict": "Non è possibile accettare questo appuntamento poiché hai già un altro appuntamento programmato durante questo periodo.\nPer favore, rifiutalo e chiedi un altro orario."
+    },
+    "other": {
+      "current_role": "Ruolo Attuale: {role}"
+    }
+  },
+  "meeting_form": {
+    "title": "Aggiungi Appuntamento",
+    "your_selection": "Tua Selezione",
+    "steps": {
+      "patient_identification": "Trova Paziente",
+      "patient_details": "Dettagli Nuovo Paziente",
+      "meeting_details": "Nuovo Appuntamento"
+    },
+    "patient_identification": {
+      "title": "Inserisci il Codice Fiscale del Paziente",
+      "fiscal_code_label": "Codice Fiscale (C.F.)*",
+      "fiscal_code_hint": "es., RSSMRA80A01H501S",
+      "fiscal_code_required": "Il codice fiscale è obbligatorio",
+      "search_button": "Cerca",
+      "searching": "Ricerca paziente in corso...",
+      "patient_found_title": "Paziente Trovato",
+      "continue_button": "Continua ai Dettagli Appuntamento",
+      "select_file": "Seleziona un File"
+    },
+    "patient_details": {
+      "title": "Paziente Non Trovato - Inserisci Dettagli Paziente",
+      "first_name_label": "Nome*",
+      "first_name_required": "Il nome è obbligatorio",
+      "last_name_label": "Cognome*",
+      "last_name_required": "Il cognome è obbligatorio",
+      "email_label": "Email*",
+      "email_required": "L'email è obbligatoria",
+      "email_invalid": "Inserisci un indirizzo email valido",
+      "sex_label": "Sesso*",
+      "male": "Maschio",
+      "female": "Femmina",
+      "birthdate_label": "Data di Nascita*",
+      "change_button": "Cambia"
+    },
+    "meeting_details": {
+      "patient_info_title": "Informazioni Paziente",
+      "name": "Nome",
+      "fiscal_code": "Codice Fiscale",
+      "reason_label": "Motivo della Visita*",
+      "reason_hint": "es., Controllo annuale, Follow-up, Consulenza",
+      "reason_required": "Il motivo della visita è obbligatorio",
+      "reason_min_length": "Il motivo deve contenere almeno {min} caratteri",
+      "reason_max_length": "Il motivo non può superare {max} caratteri",
+      "doctor_required": "Seleziona un dottore",
+      "suggested_slots": "Fasce Orarie Suggerite:",
+      "loading_slots": "Ricerca fasce orarie disponibili...",
+      "appointment_time": "Orario Appuntamento",
+      "start_time": "Ora Inizio",
+      "end_time": "Ora Fine",
+      "change_start": "Cambia Inizio",
+      "change_end": "Cambia Fine",
+      "duration": "Durata: {minutes} minuti",
+      "doctor_selector": "Seleziona Dottore*"
+    },
+    "dialog_actions": {
+      "cancel": "Annulla",
+      "back": "Indietro",
+      "next": "Avanti",
+      "save": "Salva"
+    },
+    "errors": {
+      "time_past": "Non è possibile creare appuntamenti nel passato",
+      "min_duration": "La durata dell'appuntamento deve essere di almeno 30 minuti",
+      "same_day": "L'ora di inizio e fine devono essere nello stesso giorno",
+      "working_hours": "Gli appuntamenti devono essere programmati tra le {start}:00 e le {end}:00",
+      "weekend": "Gli appuntamenti non possono essere programmati nei fine settimana",
+      "conflict": "L'orario selezionato è in conflitto con un appuntamento esistente. Il dottore necessita di almeno 15 minuti tra gli appuntamenti.",
+      "saving_patient": "Errore nel salvare il paziente: {error}"
+    }
+  },
+  "errors": {
+    "auth": {
+      "invalid_email": "Formato email non valido",
+      "invalid_credentials": "Credenziali non valide",
+      "authentication_failed": "Autenticazione fallita. Controlla le tue credenziali.",
+      "user_not_found": "Utente non trovato",
+      "email_required": "L'email è richiesta",
+      "password_required": "La password è richiesta",
+      "doctor_not_found": "Dottore non trovato",
+      "admin_not_found": "Amministratore non trovato",
+      "invalid_admin_credentials": "Credenziali amministratore non valide",
+      "permission_denied": "Non hai il permesso di scaricare file per questo paziente",
+      "password_change_failed": "Cambio password fallito",
+      "firebase_auth_user_creation_failed": "Impossibile creare l'utente Firebase Auth: {error}",
+      "invalid_doctor_id": "ID dottore non valido",
+      "logout_failed": "Logout fallito: {error}",
+      "user_reload_failed": "Impossibile ricaricare i dati utente dopo il cambio password",
+      "profile_picture_store_failed": "Impossibile salvare l'immagine del profilo",
+      "profile_picture_update_failed": "Impossibile aggiornare l'immagine del profilo",
+      "password_reset_failed": "Impossibile inviare l'email di reset password"
+    },
+    "patient": {
+      "not_found": "Paziente non trovato",
+      "invalid_fiscal_code": "Formato codice fiscale non valido. \nDeve essere 16 caratteri: \n- 6 lettere, \n- 2 cifre, \n- 1 lettera, \n- 2 cifre, \n- 1 lettera, \n- 3 cifre, \n- 1 lettera.",
+      "creation_failed": "Errore nella creazione del paziente",
+      "update_failed": "Impossibile aggiornare le informazioni del paziente",
+      "no_patients_found": "Nessun paziente trovato",
+      "patient_id_empty": "L'ID del paziente non può essere vuoto",
+      "remove_failed": "Impossibile rimuovere il paziente"
+    },
+    "signup": {
+      "email_exists": "È già presente una richiesta di registrazione per questa email o Google email",
+      "invalid_email_format": "Formato email non valido",
+      "google_email_required": "La Google email è richiesta",
+      "google_email_must_be_gmail": "La Google email deve essere un indirizzo Gmail",
+      "name_required": "Il nome è richiesto",
+      "surname_required": "Il cognome è richiesto per i dottori",
+      "sex_required": "Il sesso è richiesto per i dottori",
+      "vat_required": "La partita IVA è richiesta per i dottori",
+      "fiscal_code_required": "Il codice fiscale è richiesto per le cliniche",
+      "specialty_required": "La specialità è richiesta",
+      "phone_required": "Il numero di telefono è richiesto",
+      "city_required": "La città di lavoro è richiesta",
+      "role_invalid": "Il ruolo deve essere DOTTORE o CLINICA",
+      "request_not_found": "Richiesta di registrazione non trovata",
+      "request_not_pending": "Impossibile elaborare una richiesta che non è in attesa",
+      "approval_failed": "Impossibile approvare la richiesta di registrazione",
+      "rejection_failed": "Impossibile rifiutare la richiesta di registrazione",
+      "send_request_failed": "Per favore, riempire i campi richiesti"
+    },
+    "equipe": {
+      "cannot_send_to_self": "Non puoi inviare una richiesta a te stesso",
+      "request_already_pending": "Hai già una richiesta in attesa per questo dottore",
+      "incoming_request_exists": "Questo dottore ti ha già inviato una richiesta. Controlla le tue richieste in attesa.",
+      "doctor_not_found": "Dottore non trovato",
+      "request_send_failed": "Impossibile inviare la richiesta",
+      "request_accept_failed": "Impossibile accettare la richiesta",
+      "request_reject_failed": "Impossibile rifiutare la richiesta",
+      "doctor_remove_failed": "Impossibile rimuovere il dottore dall'equipe"
+    },
+    "meetings": {
+      "invalid_time_range": "L'ora di inizio della riunione deve essere prima dell'ora di fine",
+      "patient_fiscal_code_empty": "Il codice fiscale del paziente non può essere vuoto",
+      "clinic_only": "Solo gli utenti con ruolo CLINICA possono creare riunioni",
+      "time_in_past": "Non è possibile creare riunioni nel passato",
+      "min_duration": "La durata della riunione deve essere di almeno 30 minuti",
+      "same_day_required": "L'ora di inizio e fine devono essere nello stesso giorno",
+      "working_hours": "Le riunioni devono essere programmate tra le {start}:00 e le {end}:00",
+      "weekend_not_allowed": "Le riunioni non possono essere programmate nei fine settimana",
+      "schedule_conflict": "Non è possibile accettare questa riunione poiché hai già un'altra riunione programmata durante questo periodo.\nPer favore, rifiutala e chiedi un altro orario.",
+      "update_failed": "Impossibile aggiornare la riunione",
+      "create_failed": "Impossibile creare la riunione",
+      "status_update_failed": "Impossibile aggiornare lo stato della riunione"
+    },
+    "files": {
+      "bytes_empty": "I byte del file non possono essere vuoti",
+      "name_empty": "Il nome del file non può essere vuoto",
+      "type_empty": "Il tipo di file non può essere vuoto",
+      "patient_id_empty": "L'ID del paziente non può essere vuoto",
+      "file_id_empty": "L'ID del file non può essere vuoto",
+      "upload_failed": "Impossibile caricare il file crittografato: {error}",
+      "download_failed": "Impossibile scaricare e decrittografare il file: {error}",
+      "delete_failed": "Impossibile eliminare il file: {error}",
+      "metadata_not_found": "Metadati del file non trovati nel database",
+      "path_missing": "Il percorso del file manca nei metadati",
+      "storage_delete_failed": "Impossibile eliminare il file dallo storage: {error}",
+      "metadata_delete_failed": "Impossibile eliminare i metadati del file: {error}",
+      "file_not_found": "File non trovato",
+      "access_denied": "Non hai il permesso di accedere ai file di questo paziente",
+      "permission_denied": "Non hai il permesso di eliminare questo file",
+      "load_failed": "Impossibile caricare i file. Riprova.",
+      "share_failed": "Impossibile condividere il file: {error}"
+    },
+    "chat": {
+      "invalid_conversation_id": "ID conversazione non valido",
+      "conversation_not_found": "Conversazione non trovata",
+      "conversation_load_failed": "Impossibile caricare la conversazione: {error}",
+      "message_send_failed": "Impossibile inviare il messaggio: {error}",
+      "equipe_doctors_load_failed": "Impossibile caricare i dottori dell'equipe: {error}",
+      "conversations_load_failed": "Impossibile caricare le conversazioni: {error}",
+      "conversation_create_failed": "Impossibile creare la conversazione: {error}",
+      "conversation_already_exists": "Esiste già una conversazione con questo dottore",
+      "refresh_failed": "Impossibile aggiornare la chat: {error}"
+    },
+    "admin": {
+      "users_load_failed": "Impossibile caricare gli utenti: {error}",
+      "user_delete_failed": "Impossibile eliminare l'utente",
+      "user_delete_error": "Errore durante l'eliminazione dell'utente: {error}"
+    },
+    "general": {
+      "field_required": "{field} è richiesto",
+      "invalid_format": "Formato non valido per {field}",
+      "operation_failed": "Operazione fallita: {error}",
+      "no_data_found": "Nessun dato trovato",
+      "feature_not_implemented": "Questa funzionalità sarà implementata in un aggiornamento futuro"
+    }
+  },
+  "success": {
+    "auth": {
+      "login_success": "Accesso effettuato con successo",
+      "logout_success": "Disconnessione effettuata con successo",
+      "password_changed": "Password cambiata con successo",
+      "password_reset_sent": "Email di reset password inviata a: {email}",
+      "profile_picture_updated": "Immagine del profilo aggiornata con successo"
+    },
+    "patient": {
+      "created": "Paziente creato con successo",
+      "updated": "Informazioni del paziente aggiornate con successo",
+      "removed": "Paziente rimosso con successo"
+    },
+    "signup": {
+      "request_created": "Richiesta di registrazione creata con successo",
+      "request_approved": "Richiesta di registrazione approvata con successo",
+      "request_rejected": "Richiesta di registrazione rifiutata"
+    },
+    "equipe": {
+      "request_sent": "Richiesta inviata con successo",
+      "request_accepted": "Richiesta accettata con successo",
+      "request_rejected": "Richiesta rifiutata con successo",
+      "doctor_removed": "Dottore rimosso dall'equipe con successo"
+    },
+    "meetings": {
+      "created": "Riunione creata con successo",
+      "updated": "Riunione aggiornata con successo",
+      "accepted": "Stato della riunione accettato con successo",
+      "deleted": "Riunione eliminata con successo"
+    },
+    "files": {
+      "uploaded": "File caricato con successo",
+      "deleted": "File eliminato con successo",
+      "shared": "File condiviso con il medico di famiglia"
+    },
+    "admin": {
+      "user_deleted": "Utente eliminato con successo"
+    }
+  },
+  "validation": {
+    "email": {
+      "invalid": "Inserisci un indirizzo email valido",
+      "required": "Email",
+      "already_registered": "Questa email è già registrata nel nostro sistema. Effettua il login.",
+      "pending_request": "Esiste già una richiesta di registrazione con questa email. Contatta il supporto per assistenza."
+    },
+    "password": {
+      "required": "Password",
+      "min_length": "La password deve contenere almeno {min} caratteri",
+      "mismatch": "Le password non corrispondono"
+    },
+    "fiscal_code": {
+      "invalid": "Formato codice fiscale non valido",
+      "required": "Il codice fiscale è obbligatorio",
+      "required_for_clinics": "Il codice fiscale è obbligatorio per le cliniche"
+    },
+    "required_field": "{field} è obbligatorio",
+    "min_length": "{field} deve contenere almeno {min} caratteri",
+    "max_length": "{field} non può superare {max} caratteri",
+    "name": {
+      "required": "Il nome è obbligatorio"
+    },
+    "surname": {
+      "required_for_doctors": "Il cognome è obbligatorio per i dottori"
+    },
+    "specialty": {
+      "required": "La specialità è obbligatoria"
+    },
+    "phone": {
+      "required": "Il numero di telefono è obbligatorio"
+    },
+    "city": {
+      "required": "La città è obbligatoria"
+    },
+    "vat": {
+      "required_for_doctors": "La partita IVA è obbligatoria per i dottori"
+    },
+    "google_email": {
+      "required": "La Google email è obbligatoria",
+      "invalid": "Inserisci un indirizzo email valido",
+      "must_be_gmail": "Deve essere un indirizzo Gmail",
+      "already_registered": "Questa Google email è già registrata nel nostro sistema. Effettua il login.",
+      "pending_request": "Richiesta di registrazione in attesa per questa Google email"
+    }
+  }
+}

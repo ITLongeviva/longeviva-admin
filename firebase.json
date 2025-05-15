@@ -1,0 +1,45 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "longeviva-app",
+          "appId": "1:423905918553:android:78ad8da9f5c2e37a9c3b48",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "longeviva-app",
+          "configurations": {
+            "android": "1:423905918553:android:78ad8da9f5c2e37a9c3b48",
+            "ios": "1:423905918553:ios:52caff492729d7d59c3b48",
+            "macos": "1:423905918553:ios:52caff492729d7d59c3b48",
+            "web": "1:423905918553:web:d67a7d3071f563c79c3b48"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        ".runtimeconfig.json",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ]
+    }
+  ],
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  }
+}

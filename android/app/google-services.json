@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "423905918553",
+    "project_id": "longeviva-app",
+    "storage_bucket": "longeviva-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:423905918553:android:3202acf92d9d20b59c3b48",
+        "android_client_info": {
+          "package_name": "com.example.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAUHN0lxUY2Xcb65oUWkM2CyGzjnfB74Mc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:423905918553:android:78ad8da9f5c2e37a9c3b48",
+        "android_client_info": {
+          "package_name": "com.example.longeviva_v1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAUHN0lxUY2Xcb65oUWkM2CyGzjnfB74Mc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
