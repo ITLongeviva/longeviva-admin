@@ -96,7 +96,6 @@ class AdminAuthWrapper extends StatelessWidget {
             ),
           );
         } else if (state is AdminAuthAuthenticated) {
-          // When navigating to dashboard, also trigger signup requests fetch
           context.read<SignupRequestBloc>().add(FetchAllSignupRequests());
           return const AdminDashboardLandingPage();
         } else {
