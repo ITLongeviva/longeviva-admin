@@ -33,7 +33,6 @@ Future<void> main() async {
         BlocProvider<LanguageBloc>(
           create: (context) => LanguageBloc()..add(const LanguageStarted()),
         ),
-        // Add SignupRequestBloc here at the app level
         BlocProvider<SignupRequestBloc>(
           create: (context) => SignupRequestBloc(
             controller: SignupRequestController(),
