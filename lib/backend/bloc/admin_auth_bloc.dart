@@ -24,6 +24,12 @@ class AdminLogoutRequested extends AdminAuthEvent {}
 
 class CheckAdminAuthStatus extends AdminAuthEvent {}
 
+class AdminRequestPasswordReset extends AdminAuthEvent {
+  final String email;
+
+  AdminRequestPasswordReset({required this.email});
+}
+
 // Admin Auth States
 abstract class AdminAuthState {}
 
@@ -54,6 +60,12 @@ class AdminAuthFailure extends AdminAuthState {
   String toString() => 'AdminAuthFailure: $error';
 }
 
+class AdminPasswordResetSent extends AdminAuthState {
+  final String email;
+
+  AdminPasswordResetSent({required this.email});
+}
+
 // Admin Auth BLoC
 class AdminAuthBloc extends Bloc<AdminAuthEvent, AdminAuthState> {
   final AdminController adminController;
@@ -64,6 +76,7 @@ class AdminAuthBloc extends Bloc<AdminAuthEvent, AdminAuthState> {
     on<AdminLoginRequested>(_handleAdminLoginRequested);
     on<AdminLogoutRequested>(_handleAdminLogoutRequested);
     on<CheckAdminAuthStatus>(_handleCheckAdminAuthStatus);
+    on<AdminRequestPasswordReset>(_handleAdminRequestPasswordReset);
   }
 
   Admin? get currentAdmin => _currentAdmin;
@@ -163,6 +176,34 @@ class AdminAuthBloc extends Bloc<AdminAuthEvent, AdminAuthState> {
       emit(AdminAuthUnauthenticated());
     } finally {
       _isProcessingAuth = false;
+    }
+  }
+
+  Future<void> _handleAdminRequestPasswordReset(
+      AdminRequestPasswordReset event,
+      Emitter<AdminAuthState> emit,
+      ) async {
+    try {
+      emit(AdminAuthLoading());
+
+      await adminController.sendPasswordResetEmail(event.email);
+
+      emit(AdminPasswordResetSent(email: event.email));
+    } catch (e) {
+      String errorMessage = e.toString();
+      String? translationKey;
+      Map<String, String>? translationArgs;
+
+      if (e is AppException) {
+        translationKey = e.translationKey;
+        translationArgs = e.translationArgs;
+      }
+
+      emit(AdminAuthFailure(
+        error: errorMessage,
+        translationKey: translationKey ?? 'errors.auth.password_reset_failed',
+        translationArgs: translationArgs,
+      ));
     }
   }
 }

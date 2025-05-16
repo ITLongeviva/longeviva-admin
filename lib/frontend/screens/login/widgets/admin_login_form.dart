@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:email_validator/email_validator.dart';
+import 'package:longeviva_admin_v1/shared/utils/context_extensions.dart';
 
 import '../../../../backend/bloc/admin_auth_bloc.dart';
 import '../../../../shared/utils/colors.dart';
@@ -49,11 +50,79 @@ class _AdminLoginFormState extends State<AdminLoginForm> {
     }
   }
 
+  // Add this method to show the forgot password dialog
+  void _showForgotPasswordDialog(BuildContext context) {
+    final emailController = TextEditingController();
+
+    context.showAnimatedDialog(
+      dialogBuilder: (dialogContext) => AlertDialog(
+        title: const Text(
+          'Reset Password',
+          style: TextStyle(
+            fontFamily: 'Montserrat',
+            fontWeight: FontWeight.bold,
+            color: CustomColors.verdeAbisso,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Enter your admin email address. We\'ll send you a link to reset your password.',
+              style: TextStyle(fontFamily: 'Montserrat'),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: emailController,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(
+                labelText: 'Admin Email',
+                prefixIcon: Icon(Icons.email),
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              // Hide the dialog
+              Navigator.of(dialogContext).pop();
+
+              // Trigger password reset
+              if (emailController.text.isNotEmpty) {
+                context.read<AdminAuthBloc>().add(
+                  AdminRequestPasswordReset(
+                    email: emailController.text.trim(),
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: CustomColors.verdeMare,
+            ),
+            child: const Text('Send Reset Link'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<AdminAuthBloc, AdminAuthState>(
       listener: (context, state) {
         print('Admin Auth state changed: $state');
+
+        if (state is AdminPasswordResetSent) {
+          context.showSuccessAlert(
+            'Password reset link sent to ${state.email}. Please check your email.',
+          );
+        }
       },
       builder: (context, state) {
         if (state is AdminAuthFailure) {
@@ -236,6 +305,21 @@ class _AdminLoginFormState extends State<AdminLoginForm> {
                 },
               ),
 
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => _showForgotPasswordDialog(context),
+                  child: const Text(
+                    'Forgot Password?',
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      color: CustomColors.biancoPuro,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+
               const SizedBox(height: 42),
 
               // Login button
@@ -264,22 +348,6 @@ class _AdminLoginFormState extends State<AdminLoginForm> {
                     fontFamily: 'Montserrat',
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Back to regular login
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pushReplacementNamed('/');
-                },
-                child: const Text(
-                  'Back to regular login',
-                  style: TextStyle(
-                    fontFamily: 'Montserrat',
-                    color: CustomColors.biancoPuro,
                   ),
                 ),
               ),

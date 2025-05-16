@@ -1,47 +1,95 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../shared/utils/error_handler.dart';
 import '../models/admin_model.dart';
 
 class AdminRepository {
   final FirebaseFirestore _firestore;
+  final FirebaseAuth _firebaseAuth;
 
-  AdminRepository({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+  AdminRepository({
+    FirebaseFirestore? firestore,
+    FirebaseAuth? firebaseAuth,
+  }) :
+        _firestore = firestore ?? FirebaseFirestore.instance,
+        _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
 
+  /// Login admin using Firebase Authentication
   Future<Admin?> loginAdmin(String email, String password) async {
     try {
-      // Query Firestore for an admin with matching email
-      final querySnapshot = await _firestore
-          .collection('admins')
-          .where('email', isEqualTo: email)
-          .limit(1)
-          .get();
+      // Authenticate with Firebase Auth
+      final userCredential = await _firebaseAuth.signInWithEmailAndPassword(
+          email: email,
+          password: password
+      );
 
-      if (querySnapshot.docs.isEmpty) {
-        ErrorHandler.logWarning('No admin found with email: $email');
+      if (userCredential.user == null) {
+        ErrorHandler.logWarning('No Firebase user returned for admin login: $email');
         return null;
       }
 
-      final adminData = querySnapshot.docs.first.data();
-      final adminId = querySnapshot.docs.first.id;
+      // Get ID token result to check custom claims
+      final idTokenResult = await userCredential.user!.getIdTokenResult();
+      final isAdmin = idTokenResult.claims?['admin'] == true;
 
-      // Check if password matches
-      if (adminData['password'] != password) {
-        ErrorHandler.logWarning('Invalid password for admin: $email');
+      if (!isAdmin) {
+        // Not an admin, sign out and return null
+        await _firebaseAuth.signOut();
+        ErrorHandler.logWarning('User is not an admin: $email');
         return null;
       }
+
+      // Get admin profile from Firestore (optional, for additional admin data)
+      final adminData = await getAdminProfile(userCredential.user!.uid);
 
       // Create and return the admin model
-      return Admin.fromJson({
-        ...adminData,
-        'id': adminId, // Include the document ID
-      });
+      return Admin(
+        id: userCredential.user!.uid,
+        email: email,
+        name: adminData?['name'] ?? 'Admin User',
+        password: '', // Never store or return the password
+      );
+    } on FirebaseAuthException catch (e) {
+      ErrorHandler.logError('Firebase Auth error during admin login', e);
+      throw AppException(
+          _handleFirebaseAuthError(e),
+          originalError: e
+      );
     } catch (e) {
       ErrorHandler.logError('Error during admin login', e);
       throw AppException(
           'Error during admin login: ${e.toString()}',
           originalError: e
       );
+    }
+  }
+
+  /// Get admin profile data from Firestore
+  Future<Map<String, dynamic>?> getAdminProfile(String uid) async {
+    try {
+      final docSnapshot = await _firestore.collection('admin_profiles').doc(uid).get();
+      return docSnapshot.exists ? docSnapshot.data() : null;
+    } catch (e) {
+      ErrorHandler.logWarning('Error fetching admin profile: $e');
+      return null;
+    }
+  }
+
+  /// Handle Firebase Auth error messages for better user feedback
+  String _handleFirebaseAuthError(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'user-not-found':
+        return 'No admin account found with this email.';
+      case 'wrong-password':
+        return 'Invalid password. Please try again.';
+      case 'invalid-credential':
+        return 'Invalid admin credentials.';
+      case 'user-disabled':
+        return 'This admin account has been disabled.';
+      case 'too-many-requests':
+        return 'Too many login attempts. Please try again later.';
+      default:
+        return 'Authentication failed: ${e.message}';
     }
   }
 
@@ -132,6 +180,46 @@ class AdminRepository {
     } catch (e) {
       ErrorHandler.logError('Error deleting user', e);
       return false;
+    }
+  }
+
+  /// Create a new admin account (to be used by super admin)
+  Future<Admin?> createAdminAccount({
+    required String email,
+    required String password,
+    required String name,
+  }) async {
+    try {
+      // Create user with Firebase Auth
+      final userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
+          email: email,
+          password: password
+      );
+
+      if (userCredential.user == null) {
+        throw AppException('Failed to create admin user');
+      }
+
+      // Create admin profile in Firestore
+      await _firestore.collection('admin_profiles').doc(userCredential.user!.uid).set({
+        'name': name,
+        'email': email,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      // Return the created admin
+      return Admin(
+        id: userCredential.user!.uid,
+        email: email,
+        name: name,
+        password: '', // Never store the password
+      );
+    } on FirebaseAuthException catch (e) {
+      ErrorHandler.logError('Error creating admin account', e);
+      throw AppException(_handleFirebaseAuthError(e), originalError: e);
+    } catch (e) {
+      ErrorHandler.logError('Error creating admin account', e);
+      throw AppException('Error creating admin account: ${e.toString()}', originalError: e);
     }
   }
 }
