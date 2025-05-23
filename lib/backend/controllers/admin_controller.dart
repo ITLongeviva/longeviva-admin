@@ -1,4 +1,7 @@
+// lib/backend/controllers/admin_controller.dart
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../shared/utils/error_handler.dart';
@@ -12,6 +15,8 @@ class AdminController {
   static const String _adminTokenKey = 'admin_token';
   static const String _adminEmailKey = 'admin_email';
   static const String _adminExpireKey = 'admin_expire';
+  static const String _adminIdKey = 'admin_id';
+  static const String _adminNameKey = 'admin_name';
 
   AdminController({
     AdminRepository? adminRepository,
@@ -52,8 +57,9 @@ class AdminController {
         );
       }
 
-      if (rememberMe) {
-        await _secureStorage.write(key: _adminEmailKey, value: email);
+      // Store admin info for Windows platform (since custom claims don't work)
+      if (defaultTargetPlatform == TargetPlatform.windows || rememberMe) {
+        await _storeAdminInfo(admin, rememberMe);
       }
 
       ErrorHandler.logDebug('Admin logged in successfully: $email');
@@ -64,11 +70,38 @@ class AdminController {
     }
   }
 
+  Future<void> _storeAdminInfo(Admin admin, bool persistent) async {
+    try {
+      if (persistent) {
+        // Store for long-term persistence
+        final expireDate = DateTime.now().add(const Duration(days: 7)).toIso8601String();
+        await _secureStorage.write(key: _adminExpireKey, value: expireDate);
+      }
+
+      // Always store for Windows compatibility
+      await _secureStorage.write(key: _adminEmailKey, value: admin.email);
+      await _secureStorage.write(key: _adminIdKey, value: admin.id);
+      await _secureStorage.write(key: _adminNameKey, value: admin.name);
+
+      ErrorHandler.logDebug('Admin info stored securely');
+    } catch (e) {
+      ErrorHandler.logError('Error storing admin info', e);
+    }
+  }
+
   Future<void> logoutAdmin() async {
     try {
       ErrorHandler.logDebug('Logging out admin');
-      await _firebaseAuth.signOut();
+
+      // Clear stored credentials
       await _secureStorage.delete(key: _adminEmailKey);
+      await _secureStorage.delete(key: _adminIdKey);
+      await _secureStorage.delete(key: _adminNameKey);
+      await _secureStorage.delete(key: _adminExpireKey);
+
+      // Sign out from Firebase
+      await _firebaseAuth.signOut();
+
       ErrorHandler.logDebug('Admin logged out successfully');
     } catch (e) {
       ErrorHandler.logError('Admin logout error', e);
@@ -78,30 +111,170 @@ class AdminController {
 
   Future<Admin?> checkAdminAuth() async {
     try {
-      // Check if we have a currently authenticated user
+      ErrorHandler.logDebug('Checking admin authentication status');
+
+      // Check if we have a currently authenticated Firebase user
       final currentUser = _firebaseAuth.currentUser;
 
       if (currentUser != null) {
-        // Verify the user has admin claim
-        final idTokenResult = await currentUser.getIdTokenResult(true);
-        final isAdmin = idTokenResult.claims?['admin'] == true;
+        ErrorHandler.logDebug('Firebase user found: ${currentUser.email}');
 
-        if (isAdmin) {
-          // Get admin profile
-          final adminData = await _adminRepository.getAdminProfile(currentUser.uid);
+        // For Windows, always verify against stored admin info and Firestore
+        if (defaultTargetPlatform == TargetPlatform.windows) {
+          return await _checkWindowsAdminAuth(currentUser);
+        }
 
+        // For other platforms, try custom claims first
+        try {
+          final idTokenResult = await currentUser.getIdTokenResult(true);
+          final approved = idTokenResult.claims?['admin'] as bool? ?? false;
+
+          if (approved) {
+            // Get admin profile
+            final adminData = await _adminRepository.getAdminProfile(currentUser.uid);
+            if (adminData != null) {
+              return Admin(
+                id: currentUser.uid,
+                email: currentUser.email ?? '',
+                name: adminData['name'] ?? 'Admin User',
+                password: '',
+              );
+            }
+          }
+        } catch (e) {
+          ErrorHandler.logWarning('Custom claims check failed, trying Firestore: $e');
+        }
+
+        // Fallback to direct Firestore verification
+        return await _verifyAdminDirectly(currentUser);
+      }
+
+      // No Firebase user, check stored credentials for Windows
+      if (defaultTargetPlatform == TargetPlatform.windows) {
+        return await _checkStoredAdminAuth();
+      }
+
+      ErrorHandler.logDebug('No authenticated user found');
+      return null;
+
+    } catch (e) {
+      ErrorHandler.logError('Check admin auth error', e);
+      return null;
+    }
+  }
+
+  Future<Admin?> _checkWindowsAdminAuth(User user) async {
+    try {
+      // Get stored admin info
+      final storedEmail = await _secureStorage.read(key: _adminEmailKey);
+      final storedId = await _secureStorage.read(key: _adminIdKey);
+      final storedName = await _secureStorage.read(key: _adminNameKey);
+
+      if (storedEmail != null && storedId != null && storedName != null) {
+        // Verify the stored info matches current user
+        if (user.email == storedEmail && user.uid == storedId) {
+          ErrorHandler.logDebug('Windows admin auth verified from stored info');
           return Admin(
-            id: currentUser.uid,
-            email: currentUser.email ?? '',
-            name: adminData?['name'] ?? 'Admin User',
+            id: storedId,
+            email: storedEmail,
+            name: storedName,
             password: '',
           );
         }
       }
 
+      // If stored info doesn't match or doesn't exist, verify directly
+      return await _verifyAdminDirectly(user);
+    } catch (e) {
+      ErrorHandler.logError('Error checking Windows admin auth', e);
+      return null;
+    }
+  }
+
+  Future<Admin?> _checkStoredAdminAuth() async {
+    try {
+      final storedEmail = await _secureStorage.read(key: _adminEmailKey);
+      final storedId = await _secureStorage.read(key: _adminIdKey);
+      final storedName = await _secureStorage.read(key: _adminNameKey);
+      final expireStr = await _secureStorage.read(key: _adminExpireKey);
+
+      if (storedEmail == null || storedId == null || storedName == null) {
+        ErrorHandler.logDebug('No stored admin credentials found');
+        return null;
+      }
+
+      // Check if credentials are expired (if expiration was set)
+      if (expireStr != null) {
+        final expireDate = DateTime.parse(expireStr);
+        if (DateTime.now().isAfter(expireDate)) {
+          ErrorHandler.logDebug('Stored admin credentials expired');
+          await logoutAdmin(); // Clean up expired credentials
+          return null;
+        }
+      }
+
+      ErrorHandler.logDebug('Using stored admin credentials for Windows');
+      return Admin(
+        id: storedId,
+        email: storedEmail,
+        name: storedName,
+        password: '',
+      );
+    } catch (e) {
+      ErrorHandler.logError('Error checking stored admin auth', e);
+      return null;
+    }
+  }
+
+  Future<Admin?> _verifyAdminDirectly(User user) async {
+    try {
+      // Direct Firestore verification
+      final adminData = await _adminRepository.getAdminProfile(user.uid);
+      if (adminData != null) {
+        final admin = Admin(
+          id: user.uid,
+          email: user.email ?? '',
+          name: adminData['name'] ?? 'Admin User',
+          password: '',
+        );
+
+        // Store for future Windows compatibility
+        if (defaultTargetPlatform == TargetPlatform.windows) {
+          await _storeAdminInfo(admin, false);
+        }
+
+        return admin;
+      }
+
+      // If not found in admin_profiles, check other collections
+      // This is the same logic from the repository
+      final firestoreDb = FirebaseFirestore.instance;
+
+      final adminQuery = await firestoreDb
+          .collection('admins')
+          .where('email', isEqualTo: user.email)
+          .limit(1)
+          .get();
+
+      if (adminQuery.docs.isNotEmpty) {
+        final adminData = adminQuery.docs.first.data();
+        final admin = Admin(
+          id: user.uid,
+          email: user.email ?? '',
+          name: adminData['name'] ?? 'Admin User',
+          password: '',
+        );
+
+        if (defaultTargetPlatform == TargetPlatform.windows) {
+          await _storeAdminInfo(admin, false);
+        }
+
+        return admin;
+      }
+
       return null;
     } catch (e) {
-      ErrorHandler.logError('Check admin auth error', e);
+      ErrorHandler.logError('Error verifying admin directly', e);
       return null;
     }
   }
@@ -149,6 +322,7 @@ class AdminController {
     }
   }
 
+  // ... rest of your existing methods remain the same
   Future<List<Map<String, dynamic>>> getSignupRequests() async {
     try {
       return await _adminRepository.getSignupRequests();

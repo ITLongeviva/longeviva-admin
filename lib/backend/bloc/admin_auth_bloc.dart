@@ -1,6 +1,7 @@
 // lib/backend/bloc/admin_auth_bloc.dart
 
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/foundation.dart';
 import '../controllers/admin_controller.dart';
 import '../models/admin_model.dart';
 import '../../shared/utils/error_handler.dart';
@@ -29,6 +30,8 @@ class AdminRequestPasswordReset extends AdminAuthEvent {
 
   AdminRequestPasswordReset({required this.email});
 }
+
+class RefreshAdminAuth extends AdminAuthEvent {}
 
 // Admin Auth States
 abstract class AdminAuthState {}
@@ -77,12 +80,14 @@ class AdminAuthBloc extends Bloc<AdminAuthEvent, AdminAuthState> {
   final AdminController adminController;
   Admin? _currentAdmin;
   bool _isProcessingAuth = false;
+  DateTime? _lastSuccessfulAuth;
 
   AdminAuthBloc({required this.adminController}) : super(AdminAuthInitial()) {
     on<AdminLoginRequested>(_handleAdminLoginRequested);
     on<AdminLogoutRequested>(_handleAdminLogoutRequested);
     on<CheckAdminAuthStatus>(_handleCheckAdminAuthStatus);
     on<AdminRequestPasswordReset>(_handleAdminRequestPasswordReset);
+    on<RefreshAdminAuth>(_handleRefreshAdminAuth);
   }
 
   Admin? get currentAdmin => _currentAdmin;
@@ -110,8 +115,14 @@ class AdminAuthBloc extends Bloc<AdminAuthEvent, AdminAuthState> {
 
       if (admin != null) {
         _currentAdmin = admin;
+        _lastSuccessfulAuth = DateTime.now();
         ErrorHandler.logDebug('AdminAuthBloc: Login successful, emitting AdminAuthAuthenticated');
         emit(AdminAuthAuthenticated(admin: admin));
+
+        // For Windows, set up a periodic auth refresh to maintain session
+        if (defaultTargetPlatform == TargetPlatform.windows) {
+          _setupPeriodicAuthRefresh();
+        }
       } else {
         ErrorHandler.logWarning('AdminAuthBloc: Login returned null admin');
         _currentAdmin = null;
@@ -158,6 +169,7 @@ class AdminAuthBloc extends Bloc<AdminAuthEvent, AdminAuthState> {
     try {
       await adminController.logoutAdmin();
       _currentAdmin = null;
+      _lastSuccessfulAuth = null;
       ErrorHandler.logDebug('AdminAuthBloc: Logout successful, emitting AdminAuthUnauthenticated');
       emit(AdminAuthUnauthenticated());
     } catch (e) {
@@ -181,38 +193,91 @@ class AdminAuthBloc extends Bloc<AdminAuthEvent, AdminAuthState> {
       return;
     }
 
+    // For Windows, if we have a current admin and recent successful auth, don't check again
+    if (defaultTargetPlatform == TargetPlatform.windows &&
+        _currentAdmin != null &&
+        _lastSuccessfulAuth != null &&
+        DateTime.now().difference(_lastSuccessfulAuth!).inMinutes < 30) {
+      ErrorHandler.logDebug('AdminAuthBloc: Using cached admin for Windows: ${_currentAdmin!.email}');
+      emit(AdminAuthAuthenticated(admin: _currentAdmin!));
+      return;
+    }
+
     _isProcessingAuth = true;
     ErrorHandler.logDebug('AdminAuthBloc: Checking admin auth status');
 
     emit(AdminAuthLoading());
 
     try {
-      // Check if we already have a cached admin
-      if (_currentAdmin != null) {
-        ErrorHandler.logDebug('AdminAuthBloc: Using cached admin: ${_currentAdmin!.email}');
-        emit(AdminAuthAuthenticated(admin: _currentAdmin!));
-        return;
-      }
-
       // Check with controller
       final admin = await adminController.checkAdminAuth();
 
       if (admin != null) {
         _currentAdmin = admin;
+        _lastSuccessfulAuth = DateTime.now();
         ErrorHandler.logDebug('AdminAuthBloc: Auth check successful, emitting AdminAuthAuthenticated for: ${admin.email}');
         emit(AdminAuthAuthenticated(admin: admin));
+
+        // For Windows, set up a periodic auth refresh to maintain session
+        if (defaultTargetPlatform == TargetPlatform.windows) {
+          _setupPeriodicAuthRefresh();
+        }
       } else {
         _currentAdmin = null;
+        _lastSuccessfulAuth = null;
         ErrorHandler.logDebug('AdminAuthBloc: Auth check failed, emitting AdminAuthUnauthenticated');
         emit(AdminAuthUnauthenticated());
       }
     } catch (e) {
       ErrorHandler.logError('AdminAuthBloc: Auth check error', e);
-      _currentAdmin = null;
-      ErrorHandler.logDebug('AdminAuthBloc: Auth check error, emitting AdminAuthUnauthenticated');
-      emit(AdminAuthUnauthenticated());
+
+      // For Windows, if we had a successful auth recently, don't fail immediately
+      if (defaultTargetPlatform == TargetPlatform.windows &&
+          _currentAdmin != null &&
+          _lastSuccessfulAuth != null &&
+          DateTime.now().difference(_lastSuccessfulAuth!).inMinutes < 60) {
+        ErrorHandler.logWarning('AdminAuthBloc: Auth check failed but keeping Windows session alive');
+        emit(AdminAuthAuthenticated(admin: _currentAdmin!));
+      } else {
+        _currentAdmin = null;
+        _lastSuccessfulAuth = null;
+        ErrorHandler.logDebug('AdminAuthBloc: Auth check error, emitting AdminAuthUnauthenticated');
+        emit(AdminAuthUnauthenticated());
+      }
     } finally {
       _isProcessingAuth = false;
+    }
+  }
+
+  Future<void> _handleRefreshAdminAuth(
+      RefreshAdminAuth event,
+      Emitter<AdminAuthState> emit,
+      ) async {
+    if (_currentAdmin == null) return;
+
+    try {
+      ErrorHandler.logDebug('AdminAuthBloc: Refreshing admin auth');
+
+      final admin = await adminController.checkAdminAuth();
+      if (admin != null) {
+        _currentAdmin = admin;
+        _lastSuccessfulAuth = DateTime.now();
+        ErrorHandler.logDebug('AdminAuthBloc: Auth refresh successful');
+        // Don't emit new state unless it changes to avoid unnecessary rebuilds
+      } else {
+        ErrorHandler.logWarning('AdminAuthBloc: Auth refresh failed, logging out');
+        _currentAdmin = null;
+        _lastSuccessfulAuth = null;
+        emit(AdminAuthUnauthenticated());
+      }
+    } catch (e) {
+      ErrorHandler.logError('AdminAuthBloc: Auth refresh error', e);
+      // Don't logout on refresh error for Windows, just log the warning
+      if (defaultTargetPlatform != TargetPlatform.windows) {
+        _currentAdmin = null;
+        _lastSuccessfulAuth = null;
+        emit(AdminAuthUnauthenticated());
+      }
     }
   }
 
@@ -248,14 +313,24 @@ class AdminAuthBloc extends Bloc<AdminAuthEvent, AdminAuthState> {
     }
   }
 
+  void _setupPeriodicAuthRefresh() {
+    // Set up periodic auth refresh for Windows to maintain session
+    Stream.periodic(const Duration(minutes: 15)).take(1).listen((_) {
+      if (_currentAdmin != null) {
+        add(RefreshAdminAuth());
+      }
+    });
+  }
+
   /// Force refresh auth state (useful for debugging)
   void forceRefreshAuthState() {
     ErrorHandler.logDebug('AdminAuthBloc: Force refreshing auth state');
+    _lastSuccessfulAuth = null; // Reset to force check
     add(CheckAdminAuthStatus());
   }
 
   /// Get current state info for debugging
   String getStateInfo() {
-    return 'Current State: ${state.runtimeType}, Cached Admin: ${_currentAdmin?.email ?? 'null'}, Processing: $_isProcessingAuth';
+    return 'Current State: ${state.runtimeType}, Cached Admin: ${_currentAdmin?.email ?? 'null'}, Processing: $_isProcessingAuth, Last Auth: $_lastSuccessfulAuth';
   }
 }
