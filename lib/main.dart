@@ -192,9 +192,10 @@ class AdminAuthWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocConsumer<AdminAuthBloc, AdminAuthState>(
       listener: (context, state) {
-        // Show platform-specific warnings
+        // Handle side effects in listener, not in builder
         if (state is AdminAuthAuthenticated && FirebasePlatformService.hasFirebaseLimitations) {
-          Future.delayed(const Duration(seconds: 2), () {
+          // Use post frame callback to avoid build-time side effects
+          WidgetsBinding.instance.addPostFrameCallback((_) {
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -249,9 +250,11 @@ class AdminAuthWrapper extends StatelessWidget {
             ),
           );
         } else if (state is AdminAuthAuthenticated) {
+          // Trigger signup requests fetch when authenticated
           context.read<SignupRequestBloc>().add(FetchAllSignupRequests());
           return const AdminDashboardLandingPage();
         } else {
+          // For unauthenticated or any other state, show login
           return const AdminLoginLandingPage();
         }
       },

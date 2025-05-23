@@ -41,9 +41,15 @@ class AdminAuthAuthenticated extends AdminAuthState {
   final Admin admin;
 
   AdminAuthAuthenticated({required this.admin});
+
+  @override
+  String toString() => 'AdminAuthAuthenticated: ${admin.email}';
 }
 
-class AdminAuthUnauthenticated extends AdminAuthState {}
+class AdminAuthUnauthenticated extends AdminAuthState {
+  @override
+  String toString() => 'AdminAuthUnauthenticated';
+}
 
 class AdminAuthFailure extends AdminAuthState {
   final String error;
@@ -85,8 +91,13 @@ class AdminAuthBloc extends Bloc<AdminAuthEvent, AdminAuthState> {
       AdminLoginRequested event,
       Emitter<AdminAuthState> emit,
       ) async {
-    if (_isProcessingAuth) return;
+    if (_isProcessingAuth) {
+      ErrorHandler.logDebug('AdminAuthBloc: Login already in progress, ignoring');
+      return;
+    }
+
     _isProcessingAuth = true;
+    ErrorHandler.logDebug('AdminAuthBloc: Processing login request for ${event.email}');
 
     emit(AdminAuthLoading());
 
@@ -99,14 +110,20 @@ class AdminAuthBloc extends Bloc<AdminAuthEvent, AdminAuthState> {
 
       if (admin != null) {
         _currentAdmin = admin;
+        ErrorHandler.logDebug('AdminAuthBloc: Login successful, emitting AdminAuthAuthenticated');
         emit(AdminAuthAuthenticated(admin: admin));
       } else {
+        ErrorHandler.logWarning('AdminAuthBloc: Login returned null admin');
+        _currentAdmin = null;
         emit(AdminAuthFailure(
           error: 'Invalid admin credentials',
           translationKey: 'errors.auth.invalid_admin_credentials',
         ));
       }
     } catch (e) {
+      ErrorHandler.logError('AdminAuthBloc: Login error', e);
+      _currentAdmin = null;
+
       String errorMessage = e.toString();
       String? translationKey;
       Map<String, String>? translationArgs;
@@ -135,13 +152,16 @@ class AdminAuthBloc extends Bloc<AdminAuthEvent, AdminAuthState> {
     if (_isProcessingAuth) return;
     _isProcessingAuth = true;
 
+    ErrorHandler.logDebug('AdminAuthBloc: Processing logout request');
     emit(AdminAuthLoading());
 
     try {
       await adminController.logoutAdmin();
       _currentAdmin = null;
+      ErrorHandler.logDebug('AdminAuthBloc: Logout successful, emitting AdminAuthUnauthenticated');
       emit(AdminAuthUnauthenticated());
     } catch (e) {
+      ErrorHandler.logError('AdminAuthBloc: Logout error', e);
       emit(AdminAuthFailure(
         error: e.toString(),
         translationKey: 'errors.auth.logout_failed',
@@ -156,23 +176,40 @@ class AdminAuthBloc extends Bloc<AdminAuthEvent, AdminAuthState> {
       CheckAdminAuthStatus event,
       Emitter<AdminAuthState> emit,
       ) async {
-    if (_isProcessingAuth) return;
+    if (_isProcessingAuth) {
+      ErrorHandler.logDebug('AdminAuthBloc: Auth check already in progress');
+      return;
+    }
+
     _isProcessingAuth = true;
+    ErrorHandler.logDebug('AdminAuthBloc: Checking admin auth status');
 
     emit(AdminAuthLoading());
 
     try {
+      // Check if we already have a cached admin
+      if (_currentAdmin != null) {
+        ErrorHandler.logDebug('AdminAuthBloc: Using cached admin: ${_currentAdmin!.email}');
+        emit(AdminAuthAuthenticated(admin: _currentAdmin!));
+        return;
+      }
+
+      // Check with controller
       final admin = await adminController.checkAdminAuth();
 
       if (admin != null) {
         _currentAdmin = admin;
+        ErrorHandler.logDebug('AdminAuthBloc: Auth check successful, emitting AdminAuthAuthenticated for: ${admin.email}');
         emit(AdminAuthAuthenticated(admin: admin));
       } else {
-        print('AdminAuthBloc: auth check failed - emitting AdminAuthUnauthenticated');
+        _currentAdmin = null;
+        ErrorHandler.logDebug('AdminAuthBloc: Auth check failed, emitting AdminAuthUnauthenticated');
         emit(AdminAuthUnauthenticated());
       }
     } catch (e) {
-      print('AdminAuthBloc: auth check error - ${e.toString()}');
+      ErrorHandler.logError('AdminAuthBloc: Auth check error', e);
+      _currentAdmin = null;
+      ErrorHandler.logDebug('AdminAuthBloc: Auth check error, emitting AdminAuthUnauthenticated');
       emit(AdminAuthUnauthenticated());
     } finally {
       _isProcessingAuth = false;
@@ -184,12 +221,16 @@ class AdminAuthBloc extends Bloc<AdminAuthEvent, AdminAuthState> {
       Emitter<AdminAuthState> emit,
       ) async {
     try {
+      ErrorHandler.logDebug('AdminAuthBloc: Processing password reset request for ${event.email}');
       emit(AdminAuthLoading());
 
       await adminController.sendPasswordResetEmail(event.email);
 
+      ErrorHandler.logDebug('AdminAuthBloc: Password reset email sent successfully');
       emit(AdminPasswordResetSent(email: event.email));
     } catch (e) {
+      ErrorHandler.logError('AdminAuthBloc: Password reset error', e);
+
       String errorMessage = e.toString();
       String? translationKey;
       Map<String, String>? translationArgs;
@@ -205,5 +246,16 @@ class AdminAuthBloc extends Bloc<AdminAuthEvent, AdminAuthState> {
         translationArgs: translationArgs,
       ));
     }
+  }
+
+  /// Force refresh auth state (useful for debugging)
+  void forceRefreshAuthState() {
+    ErrorHandler.logDebug('AdminAuthBloc: Force refreshing auth state');
+    add(CheckAdminAuthStatus());
+  }
+
+  /// Get current state info for debugging
+  String getStateInfo() {
+    return 'Current State: ${state.runtimeType}, Cached Admin: ${_currentAdmin?.email ?? 'null'}, Processing: $_isProcessingAuth';
   }
 }
