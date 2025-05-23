@@ -21,6 +21,7 @@ class _AdminDashboardLandingPageState extends State<AdminDashboardLandingPage> {
   int _selectedIndex = 0;
   final PageController _pageController = PageController();
   final double _smallScreenBreakpoint = 1100;
+  bool _hasNavigated = false; // Prevent multiple navigation calls
 
   @override
   void dispose() {
@@ -46,20 +47,22 @@ class _AdminDashboardLandingPageState extends State<AdminDashboardLandingPage> {
       child: BlocConsumer<AdminAuthBloc, AdminAuthState>(
         listener: (context, state) {
           // Handle state changes that require side effects
-          if (state is AdminAuthUnauthenticated) {
+          if (state is AdminAuthUnauthenticated && !_hasNavigated) {
             ErrorHandler.logDebug('AdminDashboardLandingPage: User unauthenticated, navigating to login');
+            _hasNavigated = true;
 
             // Use post frame callback to avoid build-time navigation
-            Future.microtask(() {
-              if (mounted) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted && !_hasNavigated) {
                 Navigator.of(context).pushReplacementNamed('/admin_login');
               }
             });
-          } else if (state is AdminAuthFailure) {
+          } else if (state is AdminAuthFailure && !_hasNavigated) {
             ErrorHandler.logError('AdminDashboardLandingPage: Auth failure', state.error);
+            _hasNavigated = true;
 
             // Use post frame callback to avoid build-time side effects
-            Future.microtask(() {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -71,6 +74,9 @@ class _AdminDashboardLandingPageState extends State<AdminDashboardLandingPage> {
                 Navigator.of(context).pushReplacementNamed('/admin_login');
               }
             });
+          } else if (state is AdminAuthAuthenticated) {
+            // Reset navigation flag when authenticated
+            _hasNavigated = false;
           }
         },
         builder: (context, state) {
@@ -109,11 +115,6 @@ class _AdminDashboardLandingPageState extends State<AdminDashboardLandingPage> {
               },
             );
           }
-
-          // For any other state (including unauthenticated), show login
-          // Don't show alerts here - let the listener handle navigation
-          ErrorHandler.logDebug('AdminDashboardLandingPage: Showing login screen for state: ${state.runtimeType}');
-          return const AdminLoginLandingPage();
         },
       ),
     );

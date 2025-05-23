@@ -18,6 +18,10 @@ class AdminController {
   static const String _adminIdKey = 'admin_id';
   static const String _adminNameKey = 'admin_name';
 
+  // Timeout configurations
+  static const Duration _authTimeout = Duration(seconds: 10);
+  static const Duration _firestoreTimeout = Duration(seconds: 8);
+
   AdminController({
     AdminRepository? adminRepository,
     FirebaseAuth? firebaseAuth,
@@ -48,7 +52,11 @@ class AdminController {
         );
       }
 
-      final admin = await _adminRepository.loginAdmin(email, password);
+      // Add timeout to login operation
+      final admin = await Future.any([
+        _adminRepository.loginAdmin(email, password),
+        Future.delayed(_authTimeout, () => throw TimeoutException('Login timeout', _authTimeout)),
+      ]);
 
       if (admin == null) {
         throw AppException(
@@ -64,6 +72,12 @@ class AdminController {
 
       ErrorHandler.logDebug('Admin logged in successfully: $email');
       return admin;
+    } on TimeoutException catch (e) {
+      ErrorHandler.logError('Admin login timeout', e);
+      throw AppException(
+        'Login is taking too long. Please check your connection and try again.',
+        translationKey: 'errors.auth.login_timeout',
+      );
     } catch (e) {
       ErrorHandler.logError('Admin login error', e);
       rethrow;
@@ -99,8 +113,11 @@ class AdminController {
       await _secureStorage.delete(key: _adminNameKey);
       await _secureStorage.delete(key: _adminExpireKey);
 
-      // Sign out from Firebase
-      await _firebaseAuth.signOut();
+      // Sign out from Firebase with timeout
+      await Future.any([
+        _firebaseAuth.signOut(),
+        Future.delayed(const Duration(seconds: 5), () => null), // Allow timeout for signOut
+      ]);
 
       ErrorHandler.logDebug('Admin logged out successfully');
     } catch (e) {
@@ -111,10 +128,39 @@ class AdminController {
 
   Future<Admin?> checkAdminAuth() async {
     try {
+      ErrorHandler.logDebug('Starting admin auth check with timeout');
+
+      // Wrap the entire auth check in a timeout
+      return await Future.any([
+        _performAuthCheck(),
+        Future.delayed(_authTimeout, () {
+          ErrorHandler.logWarning('Auth check timed out after ${_authTimeout.inSeconds} seconds');
+          return null;
+        }),
+      ]);
+
+    } catch (e) {
+      ErrorHandler.logError('Check admin auth error', e);
+      return null;
+    }
+  }
+
+  Future<Admin?> _performAuthCheck() async {
+    try {
       ErrorHandler.logDebug('Checking admin authentication status');
 
-      // Check if we have a currently authenticated Firebase user
-      final currentUser = _firebaseAuth.currentUser;
+      // Step 1: Check if we have a currently authenticated Firebase user (with timeout)
+      User? currentUser;
+      try {
+        currentUser = await Future.any([
+          Future.value(_firebaseAuth.currentUser),
+          Future.delayed(const Duration(seconds: 3), () => null),
+        ]);
+        ErrorHandler.logDebug('Firebase currentUser check completed: ${currentUser?.email ?? 'null'}');
+      } catch (e) {
+        ErrorHandler.logWarning('Firebase currentUser check failed: $e');
+        currentUser = null;
+      }
 
       if (currentUser != null) {
         ErrorHandler.logDebug('Firebase user found: ${currentUser.email}');
@@ -126,12 +172,21 @@ class AdminController {
 
         // For other platforms, try custom claims first
         try {
-          final idTokenResult = await currentUser.getIdTokenResult(true);
+          final idTokenResult = await Future.any([
+            currentUser.getIdTokenResult(true),
+            Future.delayed(const Duration(seconds: 5), () => throw TimeoutException('Token timeout')),
+          ]);
+
           final approved = idTokenResult.claims?['admin'] as bool? ?? false;
+          ErrorHandler.logDebug('Custom claims checked: admin=$approved');
 
           if (approved) {
-            // Get admin profile
-            final adminData = await _adminRepository.getAdminProfile(currentUser.uid);
+            // Get admin profile with timeout
+            final adminData = await Future.any([
+              _adminRepository.getAdminProfile(currentUser.uid),
+              Future.delayed(_firestoreTimeout, () => null),
+            ]);
+
             if (adminData != null) {
               return Admin(
                 id: currentUser.uid,
@@ -158,17 +213,26 @@ class AdminController {
       return null;
 
     } catch (e) {
-      ErrorHandler.logError('Check admin auth error', e);
+      ErrorHandler.logError('Auth check internal error', e);
       return null;
     }
   }
 
   Future<Admin?> _checkWindowsAdminAuth(User user) async {
     try {
-      // Get stored admin info
-      final storedEmail = await _secureStorage.read(key: _adminEmailKey);
-      final storedId = await _secureStorage.read(key: _adminIdKey);
-      final storedName = await _secureStorage.read(key: _adminNameKey);
+      ErrorHandler.logDebug('Checking Windows admin auth for: ${user.email}');
+
+      // Get stored admin info with timeout
+      final storedData = await Future.any([
+        _getStoredAdminData(),
+        Future.delayed(const Duration(seconds: 3), () => <String, String?>{
+          'email': null, 'id': null, 'name': null
+        }),
+      ]);
+
+      final storedEmail = storedData['email'];
+      final storedId = storedData['id'];
+      final storedName = storedData['name'];
 
       if (storedEmail != null && storedId != null && storedName != null) {
         // Verify the stored info matches current user
@@ -191,12 +255,33 @@ class AdminController {
     }
   }
 
+  Future<Map<String, String?>> _getStoredAdminData() async {
+    try {
+      final results = await Future.wait([
+        _secureStorage.read(key: _adminEmailKey),
+        _secureStorage.read(key: _adminIdKey),
+        _secureStorage.read(key: _adminNameKey),
+      ]);
+
+      return {
+        'email': results[0],
+        'id': results[1],
+        'name': results[2],
+      };
+    } catch (e) {
+      ErrorHandler.logError('Error reading stored admin data', e);
+      return {'email': null, 'id': null, 'name': null};
+    }
+  }
+
   Future<Admin?> _checkStoredAdminAuth() async {
     try {
-      final storedEmail = await _secureStorage.read(key: _adminEmailKey);
-      final storedId = await _secureStorage.read(key: _adminIdKey);
-      final storedName = await _secureStorage.read(key: _adminNameKey);
-      final expireStr = await _secureStorage.read(key: _adminExpireKey);
+      ErrorHandler.logDebug('Checking stored admin credentials');
+
+      final storedData = await _getStoredAdminData();
+      final storedEmail = storedData['email'];
+      final storedId = storedData['id'];
+      final storedName = storedData['name'];
 
       if (storedEmail == null || storedId == null || storedName == null) {
         ErrorHandler.logDebug('No stored admin credentials found');
@@ -204,6 +289,7 @@ class AdminController {
       }
 
       // Check if credentials are expired (if expiration was set)
+      final expireStr = await _secureStorage.read(key: _adminExpireKey);
       if (expireStr != null) {
         final expireDate = DateTime.parse(expireStr);
         if (DateTime.now().isAfter(expireDate)) {
@@ -213,7 +299,7 @@ class AdminController {
         }
       }
 
-      ErrorHandler.logDebug('Using stored admin credentials for Windows');
+      ErrorHandler.logDebug('Using stored admin credentials');
       return Admin(
         id: storedId,
         email: storedEmail,
@@ -228,8 +314,14 @@ class AdminController {
 
   Future<Admin?> _verifyAdminDirectly(User user) async {
     try {
-      // Direct Firestore verification
-      final adminData = await _adminRepository.getAdminProfile(user.uid);
+      ErrorHandler.logDebug('Verifying admin directly in Firestore for: ${user.email}');
+
+      // Direct Firestore verification with timeout
+      final adminData = await Future.any([
+        _adminRepository.getAdminProfile(user.uid),
+        Future.delayed(_firestoreTimeout, () => null),
+      ]);
+
       if (adminData != null) {
         final admin = Admin(
           id: user.uid,
@@ -243,18 +335,21 @@ class AdminController {
           await _storeAdminInfo(admin, false);
         }
 
+        ErrorHandler.logDebug('Admin verified directly from Firestore');
         return admin;
       }
 
-      // If not found in admin_profiles, check other collections
-      // This is the same logic from the repository
+      // If not found in admin_profiles, check other collections with timeout
       final firestoreDb = FirebaseFirestore.instance;
 
-      final adminQuery = await firestoreDb
-          .collection('admins')
-          .where('email', isEqualTo: user.email)
-          .limit(1)
-          .get();
+      final adminQuery = await Future.any([
+        firestoreDb
+            .collection('admins')
+            .where('email', isEqualTo: user.email)
+            .limit(1)
+            .get(),
+        Future.delayed(_firestoreTimeout, () => throw TimeoutException('Firestore timeout')),
+      ]);
 
       if (adminQuery.docs.isNotEmpty) {
         final adminData = adminQuery.docs.first.data();
@@ -269,9 +364,14 @@ class AdminController {
           await _storeAdminInfo(admin, false);
         }
 
+        ErrorHandler.logDebug('Admin verified from admins collection');
         return admin;
       }
 
+      ErrorHandler.logDebug('Admin not found in any collection');
+      return null;
+    } on TimeoutException catch (e) {
+      ErrorHandler.logError('Firestore verification timeout', e);
       return null;
     } catch (e) {
       ErrorHandler.logError('Error verifying admin directly', e);
@@ -290,10 +390,19 @@ class AdminController {
         );
       }
 
-      // Use Firebase Auth to send a password reset email
-      await _firebaseAuth.sendPasswordResetEmail(email: email);
+      // Use Firebase Auth to send a password reset email with timeout
+      await Future.any([
+        _firebaseAuth.sendPasswordResetEmail(email: email),
+        Future.delayed(const Duration(seconds: 10), () => throw TimeoutException('Password reset timeout')),
+      ]);
 
       ErrorHandler.logDebug('Password reset email sent to: $email');
+    } on TimeoutException catch (e) {
+      ErrorHandler.logError('Password reset timeout', e);
+      throw AppException(
+        'Password reset is taking too long. Please try again.',
+        translationKey: 'errors.auth.password_reset_timeout',
+      );
     } catch (e) {
       ErrorHandler.logError('Error sending password reset email', e);
 
@@ -358,4 +467,14 @@ class AdminController {
       return false;
     }
   }
+}
+
+class TimeoutException implements Exception {
+  final String message;
+  final Duration timeout;
+
+  TimeoutException(this.message, [this.timeout = const Duration(seconds: 10)]);
+
+  @override
+  String toString() => 'TimeoutException: $message (timeout: ${timeout.inSeconds}s)';
 }

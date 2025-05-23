@@ -9,6 +9,10 @@ class AdminRepository {
   final FirebaseFirestore _firestore;
   final FirebaseAuth _firebaseAuth;
 
+  // Timeout configurations
+  static const Duration _authTimeout = Duration(seconds: 10);
+  static const Duration _firestoreTimeout = Duration(seconds: 8);
+
   AdminRepository({
     FirebaseFirestore? firestore,
     FirebaseAuth? firebaseAuth,
@@ -19,13 +23,13 @@ class AdminRepository {
   /// Login admin using Firebase Authentication with Windows-optimized approach
   Future<Admin?> loginAdmin(String email, String password) async {
     try {
-      ErrorHandler.logDebug('Attempting admin login for: $email on platform: ${defaultTargetPlatform.name}');
+      ErrorHandler.logDebug('Repository: Attempting admin login for: $email on platform: ${defaultTargetPlatform.name}');
 
-      // Authenticate with Firebase Auth
-      final userCredential = await _firebaseAuth.signInWithEmailAndPassword(
-          email: email,
-          password: password
-      );
+      // Authenticate with Firebase Auth with timeout
+      final userCredential = await Future.any([
+        _firebaseAuth.signInWithEmailAndPassword(email: email, password: password),
+        Future.delayed(_authTimeout, () => throw TimeoutException('Firebase auth timeout', _authTimeout)),
+      ]);
 
       if (userCredential.user == null) {
         ErrorHandler.logWarning('No Firebase user returned for admin login: $email');
@@ -33,6 +37,7 @@ class AdminRepository {
       }
 
       final user = userCredential.user!;
+      ErrorHandler.logDebug('Firebase auth successful for: $email, UID: ${user.uid}');
 
       // For Windows, skip custom claims and go directly to Firestore verification
       if (defaultTargetPlatform == TargetPlatform.windows) {
@@ -48,11 +53,17 @@ class AdminRepository {
         return admin;
       } else {
         // Sign out if not admin
-        await _firebaseAuth.signOut();
+        await _signOutWithTimeout();
         ErrorHandler.logWarning('User is not an admin: $email');
         return null;
       }
 
+    } on TimeoutException catch (e) {
+      ErrorHandler.logError('Admin login timeout', e);
+      throw AppException(
+          'Login is taking too long. Please check your connection and try again.',
+          originalError: e
+      );
     } on FirebaseAuthException catch (e) {
       ErrorHandler.logError('Firebase Auth error during admin login', e);
       throw AppException(
@@ -68,13 +79,27 @@ class AdminRepository {
     }
   }
 
+  Future<void> _signOutWithTimeout() async {
+    try {
+      await Future.any([
+        _firebaseAuth.signOut(),
+        Future.delayed(const Duration(seconds: 5), () => null),
+      ]);
+    } catch (e) {
+      ErrorHandler.logWarning('Sign out timeout or error: $e');
+    }
+  }
+
   /// Windows-optimized admin verification using only Firestore
   Future<Admin?> _verifyAdminInFirestore(String uid, String email) async {
     try {
       ErrorHandler.logDebug('Verifying admin status in Firestore for UID: $uid');
 
-      // Check if user exists in admin_profiles collection
-      final adminDoc = await _firestore.collection('admin_profiles').doc(uid).get();
+      // Check if user exists in admin_profiles collection with timeout
+      final adminDoc = await Future.any([
+        _firestore.collection('admin_profiles').doc(uid).get(),
+        Future.delayed(_firestoreTimeout, () => throw TimeoutException('Admin profile timeout')),
+      ]);
 
       if (adminDoc.exists && adminDoc.data() != null) {
         final adminData = adminDoc.data()!;
@@ -88,12 +113,15 @@ class AdminRepository {
         );
       }
 
-      // Alternative: Check in a generic admins collection
-      final adminQuery = await _firestore
-          .collection('admins')
-          .where('email', isEqualTo: email)
-          .limit(1)
-          .get();
+      // Alternative: Check in a generic admins collection with timeout
+      final adminQuery = await Future.any([
+        _firestore
+            .collection('admins')
+            .where('email', isEqualTo: email)
+            .limit(1)
+            .get(),
+        Future.delayed(_firestoreTimeout, () => throw TimeoutException('Admins collection timeout')),
+      ]);
 
       if (adminQuery.docs.isNotEmpty) {
         final adminData = adminQuery.docs.first.data();
@@ -107,13 +135,16 @@ class AdminRepository {
         );
       }
 
-      // Check if user has admin role in any user collection
-      final doctorQuery = await _firestore
-          .collection('doctors')
-          .where('email', isEqualTo: email)
-          .where('role', isEqualTo: 'ADMIN')
-          .limit(1)
-          .get();
+      // Check if user has admin role in any user collection with timeout
+      final doctorQuery = await Future.any([
+        _firestore
+            .collection('doctors')
+            .where('email', isEqualTo: email)
+            .where('role', isEqualTo: 'ADMIN')
+            .limit(1)
+            .get(),
+        Future.delayed(_firestoreTimeout, () => throw TimeoutException('Doctors collection timeout')),
+      ]);
 
       if (doctorQuery.docs.isNotEmpty) {
         final doctorData = doctorQuery.docs.first.data();
@@ -130,6 +161,9 @@ class AdminRepository {
       ErrorHandler.logWarning('Admin not found in any Firestore collections for: $email');
       return null;
 
+    } on TimeoutException catch (e) {
+      ErrorHandler.logError('Firestore verification timeout', e);
+      return null;
     } catch (e) {
       ErrorHandler.logError('Error verifying admin status in Firestore', e);
       return null;
@@ -141,18 +175,24 @@ class AdminRepository {
     try {
       ErrorHandler.logDebug('Checking custom claims for non-Windows platform');
 
-      // Try to get custom claims (this works on mobile/web)
-      final idTokenResult = await user.getIdTokenResult(true);
-      final claims = idTokenResult.claims ?? {};
+      // Try to get custom claims (this works on mobile/web) with timeout
+      final idTokenResult = await Future.any([
+        user.getIdTokenResult(true),
+        Future.delayed(const Duration(seconds: 8), () => throw TimeoutException('Token claims timeout')),
+      ]);
 
+      final claims = idTokenResult.claims ?? {};
       ErrorHandler.logDebug('Retrieved claims: ${claims.keys.toList()}');
 
       // Check for admin claim
       final isAdmin = claims['admin'] == true;
 
       if (isAdmin) {
-        // Get admin profile from Firestore
-        final adminData = await getAdminProfile(user.uid);
+        // Get admin profile from Firestore with timeout
+        final adminData = await Future.any([
+          getAdminProfile(user.uid),
+          Future.delayed(_firestoreTimeout, () => null),
+        ]);
 
         return Admin(
           id: user.uid,
@@ -166,6 +206,9 @@ class AdminRepository {
       ErrorHandler.logDebug('Custom claims not found, falling back to Firestore verification');
       return await _verifyAdminInFirestore(user.uid, email);
 
+    } on TimeoutException catch (e) {
+      ErrorHandler.logError('Custom claims check timeout, falling back to Firestore', e);
+      return await _verifyAdminInFirestore(user.uid, email);
     } catch (e) {
       ErrorHandler.logError('Error checking custom claims, falling back to Firestore', e);
       return await _verifyAdminInFirestore(user.uid, email);
@@ -175,8 +218,14 @@ class AdminRepository {
   /// Get admin profile data from Firestore
   Future<Map<String, dynamic>?> getAdminProfile(String uid) async {
     try {
-      final docSnapshot = await _firestore.collection('admin_profiles').doc(uid).get();
+      final docSnapshot = await Future.any([
+        _firestore.collection('admin_profiles').doc(uid).get(),
+        Future.delayed(_firestoreTimeout, () => throw TimeoutException('Admin profile timeout')),
+      ]);
       return docSnapshot.exists ? docSnapshot.data() : null;
+    } on TimeoutException catch (e) {
+      ErrorHandler.logWarning('Admin profile fetch timeout: $e');
+      return null;
     } catch (e) {
       ErrorHandler.logWarning('Error fetching admin profile: $e');
       return null;
@@ -203,13 +252,16 @@ class AdminRepository {
     }
   }
 
-  // ... rest of your existing methods remain the same
+  // ... rest of your existing methods with timeout handling
   Future<List<Map<String, dynamic>>> getSignupRequests() async {
     try {
-      final querySnapshot = await _firestore
-          .collection('signup_requests')
-          .orderBy('requestedAt', descending: true)
-          .get();
+      final querySnapshot = await Future.any([
+        _firestore
+            .collection('signup_requests')
+            .orderBy('requestedAt', descending: true)
+            .get(),
+        Future.delayed(_firestoreTimeout, () => throw TimeoutException('Signup requests timeout')),
+      ]);
 
       return querySnapshot.docs.map((doc) {
         final data = doc.data();
@@ -218,6 +270,12 @@ class AdminRepository {
           ...data,
         };
       }).toList();
+    } on TimeoutException catch (e) {
+      ErrorHandler.logError('Signup requests fetch timeout', e);
+      throw AppException(
+          'Loading signup requests is taking too long. Please try again.',
+          originalError: e
+      );
     } catch (e) {
       ErrorHandler.logError('Error fetching signup requests', e);
       throw AppException(
@@ -229,11 +287,17 @@ class AdminRepository {
 
   Future<bool> rejectSignupRequest(String requestId) async {
     try {
-      await _firestore.collection('signup_requests').doc(requestId).update({
-        'status': 'rejected',
-        'rejectedAt': FieldValue.serverTimestamp().toString(),
-      });
+      await Future.any([
+        _firestore.collection('signup_requests').doc(requestId).update({
+          'status': 'rejected',
+          'rejectedAt': FieldValue.serverTimestamp().toString(),
+        }),
+        Future.delayed(_firestoreTimeout, () => throw TimeoutException('Reject request timeout')),
+      ]);
       return true;
+    } on TimeoutException catch (e) {
+      ErrorHandler.logError('Reject signup request timeout', e);
+      return false;
     } catch (e) {
       ErrorHandler.logError('Error rejecting signup request', e);
       return false;
@@ -242,8 +306,12 @@ class AdminRepository {
 
   Future<List<Map<String, dynamic>>> getAllUsers() async {
     try {
-      // Get doctors
-      final doctorSnapshot = await _firestore.collection('doctors').get();
+      // Get doctors with timeout
+      final doctorSnapshot = await Future.any([
+        _firestore.collection('doctors').get(),
+        Future.delayed(_firestoreTimeout, () => throw TimeoutException('Doctors fetch timeout')),
+      ]);
+
       final doctors = doctorSnapshot.docs.map((doc) {
         final data = doc.data();
         return {
@@ -258,8 +326,12 @@ class AdminRepository {
         };
       }).toList();
 
-      // Get patients
-      final patientSnapshot = await _firestore.collection('patients').get();
+      // Get patients with timeout
+      final patientSnapshot = await Future.any([
+        _firestore.collection('patients').get(),
+        Future.delayed(_firestoreTimeout, () => throw TimeoutException('Patients fetch timeout')),
+      ]);
+
       final patients = patientSnapshot.docs.map((doc) {
         final data = doc.data();
         return {
@@ -273,6 +345,12 @@ class AdminRepository {
       }).toList();
 
       return [...doctors, ...patients];
+    } on TimeoutException catch (e) {
+      ErrorHandler.logError('Get all users timeout', e);
+      throw AppException(
+          'Loading users is taking too long. Please try again.',
+          originalError: e
+      );
     } catch (e) {
       ErrorHandler.logError('Error fetching all users', e);
       throw AppException(
@@ -285,11 +363,27 @@ class AdminRepository {
   Future<bool> deleteUser(String userId, String userType) async {
     try {
       String collection = userType == 'doctor' ? 'doctors' : 'patients';
-      await _firestore.collection(collection).doc(userId).delete();
+      await Future.any([
+        _firestore.collection(collection).doc(userId).delete(),
+        Future.delayed(_firestoreTimeout, () => throw TimeoutException('Delete user timeout')),
+      ]);
       return true;
+    } on TimeoutException catch (e) {
+      ErrorHandler.logError('Delete user timeout', e);
+      return false;
     } catch (e) {
       ErrorHandler.logError('Error deleting user', e);
       return false;
     }
   }
+}
+
+class TimeoutException implements Exception {
+  final String message;
+  final Duration timeout;
+
+  TimeoutException(this.message, [this.timeout = const Duration(seconds: 10)]);
+
+  @override
+  String toString() => 'TimeoutException: $message (timeout: ${timeout.inSeconds}s)';
 }

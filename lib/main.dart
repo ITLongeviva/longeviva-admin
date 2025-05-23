@@ -49,7 +49,7 @@ Future<void> main() async {
           BlocProvider<AdminAuthBloc>(
             create: (context) => AdminAuthBloc(
               adminController: AdminController(),
-            )..add(CheckAdminAuthStatus()),
+            )..add(CheckAdminAuthStatus()), // Only check once at startup
           ),
           BlocProvider<LanguageBloc>(
             create: (context) => LanguageBloc()..add(const LanguageStarted()),
@@ -217,6 +217,8 @@ class AdminAuthWrapper extends StatelessWidget {
         }
       },
       builder: (context, state) {
+        ErrorHandler.logDebug('AdminAuthWrapper: State = ${state.runtimeType}');
+
         if (state is AdminAuthLoading) {
           return Scaffold(
             body: Center(
@@ -228,7 +230,7 @@ class AdminAuthWrapper extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'Loading...',
+                    'Checking authentication...',
                     style: TextStyle(
                       fontFamily: 'Montserrat',
                       color: CustomColors.verdeAbisso,
@@ -250,8 +252,10 @@ class AdminAuthWrapper extends StatelessWidget {
             ),
           );
         } else if (state is AdminAuthAuthenticated) {
-          // Trigger signup requests fetch when authenticated
-          context.read<SignupRequestBloc>().add(FetchAllSignupRequests());
+          // Initialize signup requests when authenticated
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            context.read<SignupRequestBloc>().add(FetchAllSignupRequests());
+          });
           return const AdminDashboardLandingPage();
         } else {
           // For unauthenticated or any other state, show login
