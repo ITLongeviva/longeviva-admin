@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../backend/bloc/admin_auth_bloc.dart';
-
 import '../../../../backend/models/admin_model.dart';
 import '../../../../shared/utils/colors.dart';
-import '../../../../shared/utils/context_extensions.dart';
+import '../../../../shared/utils/logout_helper.dart'; // NEW IMPORT
 
 class AdminHeader extends StatelessWidget {
   final Admin admin;
@@ -22,7 +20,7 @@ class AdminHeader extends StatelessWidget {
       height: 80,
       padding: const EdgeInsets.symmetric(horizontal: 24),
       decoration: const BoxDecoration(
-        color: CustomColors.perla, // Match main app's background color
+        color: CustomColors.perla,
         boxShadow: [
           BoxShadow(
             color: Colors.black12,
@@ -37,16 +35,16 @@ class AdminHeader extends StatelessWidget {
           Text(
             pageTitle,
             style: const TextStyle(
-              fontFamily: 'Nunito', // Using Nunito for headers like in main app
+              fontFamily: 'Nunito',
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: CustomColors.verdeAbisso, // Match main app color theme
+              color: CustomColors.verdeAbisso,
             ),
           ),
 
           const Spacer(),
 
-          // Current time
+          // Current time (you can keep this if you want)
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -77,11 +75,11 @@ class AdminHeader extends StatelessWidget {
 
           const SizedBox(width: 24),
 
-          // Admin profile
+          // Admin profile with SIMPLIFIED popup menu
           Row(
             children: [
               CircleAvatar(
-                backgroundColor: CustomColors.verdeMare, // Updated to use app color scheme
+                backgroundColor: CustomColors.verdeMare,
                 child: const Icon(
                   Icons.admin_panel_settings,
                   color: Colors.white,
@@ -97,28 +95,20 @@ class AdminHeader extends StatelessWidget {
               ),
               PopupMenuButton<String>(
                 icon: const Icon(Icons.keyboard_arrow_down),
-                offset: const Offset(0, 40), // Fixed offset to align properly
+                offset: const Offset(0, 40),
                 onSelected: (value) {
-                  if (value == 'profile') {
-                    // Handle profile
-                  } else if (value == 'settings') {
-                    // Handle settings
-                  } else if (value == 'logout') {
-                    // Show confirmation dialog before logout
-                    _showLogoutConfirmation(context);
+                  if (value == 'logout') {
+                    // SIMPLIFIED LOGOUT - Just one line!
+                    LogoutHelper.showLogoutConfirmation(context);
                   }
+                  // Handle other menu items as needed
                 },
                 itemBuilder: (context) => [
                   const PopupMenuItem(
                     value: 'profile',
                     child: ListTile(
                       leading: Icon(Icons.person, color: CustomColors.verdeAbisso),
-                      title: Text(
-                        'My Profile',
-                        style: TextStyle(
-                          fontFamily: 'Montserrat',
-                        ),
-                      ),
+                      title: Text('My Profile', style: TextStyle(fontFamily: 'Montserrat')),
                       contentPadding: EdgeInsets.zero,
                       dense: true,
                     ),
@@ -127,12 +117,7 @@ class AdminHeader extends StatelessWidget {
                     value: 'settings',
                     child: ListTile(
                       leading: Icon(Icons.settings, color: CustomColors.verdeAbisso),
-                      title: Text(
-                        'Settings',
-                        style: TextStyle(
-                          fontFamily: 'Montserrat',
-                        ),
-                      ),
+                      title: Text('Settings', style: TextStyle(fontFamily: 'Montserrat')),
                       contentPadding: EdgeInsets.zero,
                       dense: true,
                     ),
@@ -142,13 +127,7 @@ class AdminHeader extends StatelessWidget {
                     value: 'logout',
                     child: ListTile(
                       leading: Icon(Icons.logout, color: CustomColors.rossoSimone),
-                      title: Text(
-                        'Logout',
-                        style: TextStyle(
-                          fontFamily: 'Montserrat',
-                          color: CustomColors.rossoSimone,
-                        ),
-                      ),
+                      title: Text('Logout', style: TextStyle(fontFamily: 'Montserrat', color: CustomColors.rossoSimone)),
                       contentPadding: EdgeInsets.zero,
                       dense: true,
                     ),
@@ -177,61 +156,5 @@ class AdminHeader extends StatelessWidget {
       'July', 'August', 'September', 'October', 'November', 'December'
     ];
     return '${months[now.month - 1]} ${now.day}, ${now.year}';
-  }
-
-  void _showLogoutConfirmation(BuildContext context) {
-    context.showAnimatedDialog(
-      dialogBuilder: (dialogContext) => AlertDialog(
-        title: const Text(
-          'Confirm Logout',
-          style: TextStyle(
-            fontFamily: 'Montserrat',
-            fontWeight: FontWeight.bold,
-            color: CustomColors.verdeAbisso,
-          ),
-        ),
-        content: const Text(
-          'Are you sure you want to log out?',
-          style: TextStyle(
-            fontFamily: 'Montserrat',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(
-                fontFamily: 'Montserrat',
-                color: Colors.grey,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: CustomColors.rossoSimone,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            onPressed: () {
-              Navigator.of(dialogContext).pop();
-
-              // Use the original context which has access to the bloc
-              final adminAuthBloc = BlocProvider.of<AdminAuthBloc>(context);
-              adminAuthBloc.add(AdminLogoutRequested());
-            },
-            child: const Text(
-              'Logout',
-              style: TextStyle(
-                fontFamily: 'Montserrat',
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

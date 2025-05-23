@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/svg.dart';
 import '../../../../backend/bloc/admin_auth_bloc.dart';
 import '../../../../shared/utils/colors.dart';
-import '../../../../shared/utils/context_extensions.dart';
+import '../../../../shared/utils/logout_helper.dart'; // NEW IMPORT
 
 class AdminSidebar extends StatelessWidget {
   final int selectedIndex;
@@ -15,91 +15,30 @@ class AdminSidebar extends StatelessWidget {
     required this.onItemTapped,
   });
 
-  void _showLogoutConfirmation(BuildContext context) {
-    // Create a properly scoped context for the dialog
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text(
-          'Confirm Logout',
-          style: TextStyle(
-            fontFamily: 'Montserrat',
-            fontWeight: FontWeight.bold,
-            color: CustomColors.verdeAbisso,
-          ),
-        ),
-        content: const Text(
-          'Are you sure you want to log out?',
-          style: TextStyle(
-            fontFamily: 'Montserrat',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(
-                fontFamily: 'Montserrat',
-                color: Colors.grey,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: CustomColors.rossoSimone,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            onPressed: () {
-              Navigator.of(dialogContext).pop();
-
-              context.read<AdminAuthBloc>().add(AdminLogoutRequested());
-            },
-            child: const Text(
-              'Logout',
-              style: TextStyle(
-                fontFamily: 'Montserrat',
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
       width: 250,
-      color: CustomColors.verdeAbisso, // Updated to match main app color scheme
+      color: CustomColors.verdeAbisso,
       child: Column(
         children: [
-          // Logo and admin title
+          // Logo section
           Container(
             padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-            color: CustomColors.verdeAbisso, // Lighter accent color from app palette
-            child: Row(
-              children: [
-                SvgPicture.asset(
-                  'assets/icons/logo/longeviva_logo_only_text.svg',
-                  height: 40,
-                  colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                ),
-              ],
+            child: SvgPicture.asset(
+              'assets/icons/logo/longeviva_logo_only_text.svg',
+              height: 40,
+              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
             ),
           ),
 
-          // Admin name (from authenticated admin)
-          BlocBuilder<AdminAuthBloc, AdminAuthState>(
+          // Admin info section
+          BlocBuilder<SimpleAdminAuthBloc, SimpleAdminAuthState>(
             builder: (context, state) {
-              if (state is AdminAuthAuthenticated) {
+              if (state is AuthSuccess) {
                 return Container(
                   padding: const EdgeInsets.all(16),
-                  color: CustomColors.verdeAbisso.withOpacity(0.8), // Slightly lighter than sidebar
+                  color: CustomColors.verdeAbisso.withOpacity(0.8),
                   child: Row(
                     children: [
                       const CircleAvatar(
@@ -148,58 +87,25 @@ class AdminSidebar extends StatelessWidget {
             child: ListView(
               padding: EdgeInsets.zero,
               children: [
-                _buildNavItem(
-                  context,
-                  index: 0,
-                  title: 'Dashboard',
-                  icon: Icons.dashboard,
-                ),
-                _buildNavItem(
-                  context,
-                  index: 1,
-                  title: 'Signup Requests',
-                  icon: Icons.app_registration,
-                ),
-                _buildNavItem(
-                  context,
-                  index: 2,
-                  title: 'User Management',
-                  icon: Icons.people,
-                ),
+                _buildNavItem(context, index: 0, title: 'Dashboard', icon: Icons.dashboard),
+                _buildNavItem(context, index: 1, title: 'Signup Requests', icon: Icons.app_registration),
+                _buildNavItem(context, index: 2, title: 'User Management', icon: Icons.people),
               ],
             ),
           ),
 
-          // Logout button
+          // UPDATED LOGOUT BUTTON - Much simpler!
           Container(
             padding: const EdgeInsets.all(16),
-            child: ElevatedButton.icon(
-              onPressed: () => _showLogoutConfirmation(context),
-              icon: const Icon(Icons.logout),
-              label: const Text('Logout'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: CustomColors.rossoSimone,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 48),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
+            child: LogoutHelper.getLogoutButton(context), // NEW SIMPLE LOGOUT
           ),
         ],
       ),
     );
   }
 
-  Widget _buildNavItem(
-      BuildContext context, {
-        required int index,
-        required String title,
-        required IconData icon,
-      }) {
+  Widget _buildNavItem(BuildContext context, {required int index, required String title, required IconData icon}) {
     final isSelected = selectedIndex == index;
-
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -220,7 +126,6 @@ class AdminSidebar extends StatelessWidget {
           ),
         ),
         onTap: () => onItemTapped(index),
-        selected: isSelected,
       ),
     );
   }
