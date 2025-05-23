@@ -1,5 +1,7 @@
+// lib/backend/repositories/admin_repository.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import '../../shared/utils/error_handler.dart';
 import '../models/admin_model.dart';
 
@@ -14,9 +16,11 @@ class AdminRepository {
         _firestore = firestore ?? FirebaseFirestore.instance,
         _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
 
-  /// Login admin using Firebase Authentication
+  /// Login admin using Firebase Authentication with improved custom claims handling
   Future<Admin?> loginAdmin(String email, String password) async {
     try {
+      ErrorHandler.logDebug('Attempting admin login for: $email on platform: ${defaultTargetPlatform.name}');
+
       // Authenticate with Firebase Auth
       final userCredential = await _firebaseAuth.signInWithEmailAndPassword(
           email: email,
@@ -28,27 +32,21 @@ class AdminRepository {
         return null;
       }
 
-      // Get ID token result to check custom claims
-      final idTokenResult = await userCredential.user!.getIdTokenResult();
-      final isAdmin = idTokenResult.claims?['admin'] == true;
+      final user = userCredential.user!;
 
-      if (!isAdmin) {
-        // Not an admin, sign out and return null
+      // Platform-specific custom claims handling
+      final admin = await _handleCustomClaimsWithRetry(user, email);
+
+      if (admin != null) {
+        ErrorHandler.logDebug('Admin authentication successful for: $email');
+        return admin;
+      } else {
+        // Sign out if not admin
         await _firebaseAuth.signOut();
         ErrorHandler.logWarning('User is not an admin: $email');
         return null;
       }
 
-      // Get admin profile from Firestore (optional, for additional admin data)
-      final adminData = await getAdminProfile(userCredential.user!.uid);
-
-      // Create and return the admin model
-      return Admin(
-        id: userCredential.user!.uid,
-        email: email,
-        name: adminData?['name'] ?? 'Admin User',
-        password: '', // Never store or return the password
-      );
     } on FirebaseAuthException catch (e) {
       ErrorHandler.logError('Firebase Auth error during admin login', e);
       throw AppException(
@@ -61,6 +59,101 @@ class AdminRepository {
           'Error during admin login: ${e.toString()}',
           originalError: e
       );
+    }
+  }
+
+  /// Handle custom claims with retry mechanism for Windows compatibility
+  Future<Admin?> _handleCustomClaimsWithRetry(User user, String email) async {
+    int maxRetries = 3;
+    int retryDelay = 1; // seconds
+
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        ErrorHandler.logDebug('Checking custom claims, attempt $attempt of $maxRetries');
+
+        // Force refresh the ID token
+        final idTokenResult = await user.getIdTokenResult(true);
+        final claims = idTokenResult.claims ?? {};
+
+        ErrorHandler.logDebug('Retrieved claims: ${claims.keys.toList()}');
+
+        // Check for admin claim
+        final isAdmin = claims['admin'] == true;
+
+        if (isAdmin) {
+          // Get admin profile from Firestore
+          final adminData = await getAdminProfile(user.uid);
+
+          return Admin(
+            id: user.uid,
+            email: email,
+            name: adminData?['name'] ?? 'Admin User',
+            password: '', // Never store the password
+          );
+        } else if (attempt < maxRetries) {
+          // If not admin and we have retries left, wait and try again
+          ErrorHandler.logDebug('Custom claims not found, retrying in ${retryDelay} seconds...');
+          await Future.delayed(Duration(seconds: retryDelay));
+          retryDelay *= 2; // Exponential backoff
+        }
+
+      } catch (e) {
+        ErrorHandler.logError('Error checking custom claims on attempt $attempt', e);
+        if (attempt == maxRetries) {
+          throw e;
+        }
+        await Future.delayed(Duration(seconds: retryDelay));
+        retryDelay *= 2;
+      }
+    }
+
+    // Fallback: Check Firestore directly for admin status
+    return await _checkAdminStatusInFirestore(user.uid, email);
+  }
+
+  /// Fallback method to check admin status directly in Firestore
+  Future<Admin?> _checkAdminStatusInFirestore(String uid, String email) async {
+    try {
+      ErrorHandler.logDebug('Checking admin status in Firestore as fallback');
+
+      // Check if user exists in admin_profiles collection
+      final adminDoc = await _firestore.collection('admin_profiles').doc(uid).get();
+
+      if (adminDoc.exists && adminDoc.data() != null) {
+        final adminData = adminDoc.data()!;
+
+        return Admin(
+          id: uid,
+          email: email,
+          name: adminData['name'] ?? 'Admin User',
+          password: '',
+        );
+      }
+
+      // Alternative: Check in a generic admins collection
+      final adminQuery = await _firestore
+          .collection('admins')
+          .where('email', isEqualTo: email)
+          .limit(1)
+          .get();
+
+      if (adminQuery.docs.isNotEmpty) {
+        final adminData = adminQuery.docs.first.data();
+
+        return Admin(
+          id: uid,
+          email: email,
+          name: adminData['name'] ?? 'Admin User',
+          password: '',
+        );
+      }
+
+      ErrorHandler.logWarning('Admin not found in Firestore collections');
+      return null;
+
+    } catch (e) {
+      ErrorHandler.logError('Error checking admin status in Firestore', e);
+      return null;
     }
   }
 
@@ -88,11 +181,14 @@ class AdminRepository {
         return 'This admin account has been disabled.';
       case 'too-many-requests':
         return 'Too many login attempts. Please try again later.';
+      case 'network-request-failed':
+        return 'Network error. Please check your connection and try again.';
       default:
         return 'Authentication failed: ${e.message}';
     }
   }
 
+  // ... rest of the existing methods remain the same
   Future<List<Map<String, dynamic>>> getSignupRequests() async {
     try {
       final querySnapshot = await _firestore
@@ -161,7 +257,6 @@ class AdminRepository {
         };
       }).toList();
 
-      // Combine and return all users
       return [...doctors, ...patients];
     } catch (e) {
       ErrorHandler.logError('Error fetching all users', e);
@@ -207,12 +302,11 @@ class AdminRepository {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      // Return the created admin
       return Admin(
         id: userCredential.user!.uid,
         email: email,
         name: name,
-        password: '', // Never store the password
+        password: '',
       );
     } on FirebaseAuthException catch (e) {
       ErrorHandler.logError('Error creating admin account', e);
