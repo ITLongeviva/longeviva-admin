@@ -6,12 +6,16 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/foundation.dart';
 
 import 'backend/bloc/admin_auth_bloc.dart';
+import 'backend/bloc/admin_bloc.dart';
 import 'backend/bloc/signup_request_bloc.dart';
 import 'backend/controllers/admin_controller.dart';
 import 'backend/controllers/signup_request_controller.dart';
+import 'backend/models/admin_model.dart';
 import 'backend/services/firebase_platform_service.dart';
 import 'firebase_options.dart';
 import 'frontend/screens/admin_dashboard/landing_page/admin_dashboard_landing_page.dart';
+import 'frontend/screens/admin_dashboard/view_model/admin_dashboard_large_screen_view_model.dart';
+import 'frontend/screens/admin_dashboard/view_model/admin_dashboard_small_screen_view_model.dart';
 import 'frontend/screens/login/landing_page/admin_login_landing_page.dart';
 import 'shared/localization/app_localizations.dart';
 import 'shared/localization/language_bloc.dart';
@@ -49,7 +53,7 @@ Future<void> main() async {
           BlocProvider<AdminAuthBloc>(
             create: (context) => AdminAuthBloc(
               adminController: AdminController(),
-            )..add(CheckAdminAuthStatus()), // Only check once at startup
+            ), // Removed the initial CheckAdminAuthStatus event
           ),
           BlocProvider<LanguageBloc>(
             create: (context) => LanguageBloc()..add(const LanguageStarted()),
@@ -185,6 +189,8 @@ class LongevivaAdminApp extends StatelessWidget {
   }
 }
 
+// Replace the AdminAuthWrapper class in your main.dart with this:
+
 class AdminAuthWrapper extends StatelessWidget {
   const AdminAuthWrapper({super.key});
 
@@ -218,6 +224,14 @@ class AdminAuthWrapper extends StatelessWidget {
       },
       builder: (context, state) {
         ErrorHandler.logDebug('AdminAuthWrapper: State = ${state.runtimeType}');
+
+        // Trigger auth check only when we first build and state is initial
+        if (state is AdminAuthInitial) {
+          // Use post frame callback to avoid build-time side effects
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            context.read<AdminAuthBloc>().add(CheckAdminAuthStatus());
+          });
+        }
 
         if (state is AdminAuthLoading) {
           return Scaffold(
@@ -256,12 +270,122 @@ class AdminAuthWrapper extends StatelessWidget {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             context.read<SignupRequestBloc>().add(FetchAllSignupRequests());
           });
-          return const AdminDashboardLandingPage();
+
+          // Pass the admin directly to avoid any state reading issues
+          return AdminDashboardWrapper(admin: state.admin);
         } else {
           // For unauthenticated or any other state, show login
           return const AdminLoginLandingPage();
         }
       },
     );
+  }
+}
+
+// New wrapper widget that receives admin as parameter
+class AdminDashboardWrapper extends StatefulWidget {
+  final Admin admin;
+
+  const AdminDashboardWrapper({super.key, required this.admin});
+
+  @override
+  State<AdminDashboardWrapper> createState() => _AdminDashboardWrapperState();
+}
+
+class _AdminDashboardWrapperState extends State<AdminDashboardWrapper> {
+  int _selectedIndex = 0;
+  final PageController _pageController = PageController();
+  final double _smallScreenBreakpoint = 1100;
+  bool _hasNavigated = false;
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _navigateToPage(int index) {
+    setState(() {
+      _selectedIndex = index;
+      _pageController.jumpToPage(index);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    ErrorHandler.logDebug('AdminDashboardWrapper: Building dashboard for admin: ${widget.admin.email}');
+
+    return BlocProvider<AdminOperationsBloc>(
+      create: (context) => AdminOperationsBloc(
+        adminController: AdminController(),
+      ),
+      child: BlocListener<AdminAuthBloc, AdminAuthState>(
+        listener: (context, state) {
+          // Handle logout or auth failures
+          if (state is AdminAuthUnauthenticated && !_hasNavigated) {
+            ErrorHandler.logDebug('AdminDashboardWrapper: User unauthenticated, navigating to login');
+            _hasNavigated = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                Navigator.of(context).pushReplacementNamed('/admin_login');
+              }
+            });
+          } else if (state is AdminAuthFailure && !_hasNavigated) {
+            ErrorHandler.logError('AdminDashboardWrapper: Auth failure', state.error);
+            _hasNavigated = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Authentication error: ${state.error}'),
+                    backgroundColor: Colors.red,
+                    duration: const Duration(seconds: 3),
+                  ),
+                );
+                Navigator.of(context).pushReplacementNamed('/admin_login');
+              }
+            });
+          } else if (state is AdminAuthAuthenticated) {
+            _hasNavigated = false;
+          }
+        },
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isSmallScreen = constraints.maxWidth <= _smallScreenBreakpoint;
+
+            if (isSmallScreen) {
+              return AdminDashboardSmallScreenViewModel(
+                admin: widget.admin,
+                selectedIndex: _selectedIndex,
+                onItemTapped: _navigateToPage,
+                pageController: _pageController,
+                pageTitle: _getPageTitle(_selectedIndex),
+              );
+            } else {
+              return AdminDashboardLargeScreenViewModel(
+                admin: widget.admin,
+                selectedIndex: _selectedIndex,
+                onItemTapped: _navigateToPage,
+                pageController: _pageController,
+                pageTitle: _getPageTitle(_selectedIndex),
+              );
+            }
+          },
+        ),
+      ),
+    );
+  }
+
+  String _getPageTitle(int index) {
+    switch (index) {
+      case 0:
+        return 'Admin Dashboard';
+      case 1:
+        return 'Signup Requests';
+      case 2:
+        return 'User Management';
+      default:
+        return 'Admin Dashboard';
+    }
   }
 }

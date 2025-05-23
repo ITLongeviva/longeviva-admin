@@ -10,8 +10,8 @@ class AdminRepository {
   final FirebaseAuth _firebaseAuth;
 
   // Timeout configurations
-  static const Duration _authTimeout = Duration(seconds: 10);
-  static const Duration _firestoreTimeout = Duration(seconds: 8);
+  static const Duration _authTimeout = Duration(seconds: 6);
+  static const Duration _firestoreTimeout = Duration(seconds: 5);
 
   AdminRepository({
     FirebaseFirestore? firestore,

@@ -40,11 +40,28 @@ class _AdminDashboardLandingPageState extends State<AdminDashboardLandingPage> {
   Widget build(BuildContext context) {
     ErrorHandler.logDebug('AdminDashboardLandingPage: Building dashboard');
 
+    // Get the current admin from the existing AdminAuthBloc
+    final adminAuthBloc = context.read<AdminAuthBloc>();
+    final currentAdmin = adminAuthBloc.currentAdmin;
+
+    // If we don't have an admin, something went wrong - go back to login
+    if (currentAdmin == null) {
+      ErrorHandler.logWarning('AdminDashboardLandingPage: No current admin found, returning to login');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Navigator.of(context).pushReplacementNamed('/admin_login');
+        }
+      });
+      return _buildLoadingScreen();
+    }
+
+    ErrorHandler.logDebug('AdminDashboardLandingPage: Found admin: ${currentAdmin.email}');
+
     return BlocProvider<AdminOperationsBloc>(
       create: (context) => AdminOperationsBloc(
         adminController: AdminController(),
       ),
-      child: BlocConsumer<AdminAuthBloc, AdminAuthState>(
+      child: BlocListener<AdminAuthBloc, AdminAuthState>(
         listener: (context, state) {
           // Handle state changes that require side effects
           if (state is AdminAuthUnauthenticated && !_hasNavigated) {
@@ -53,7 +70,7 @@ class _AdminDashboardLandingPageState extends State<AdminDashboardLandingPage> {
 
             // Use post frame callback to avoid build-time navigation
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted && !_hasNavigated) {
+              if (mounted) {
                 Navigator.of(context).pushReplacementNamed('/admin_login');
               }
             });
@@ -79,43 +96,29 @@ class _AdminDashboardLandingPageState extends State<AdminDashboardLandingPage> {
             _hasNavigated = false;
           }
         },
-        builder: (context, state) {
-          ErrorHandler.logDebug('AdminDashboardLandingPage: State = ${state.runtimeType}');
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isSmallScreen = constraints.maxWidth <= _smallScreenBreakpoint;
 
-          // Handle different authentication states
-          if (state is AdminAuthLoading) {
-            return _buildLoadingScreen();
-          }
-
-          if (state is AdminAuthAuthenticated) {
-            final admin = state.admin;
-            ErrorHandler.logDebug('AdminDashboardLandingPage: Found admin: ${admin.email}');
-
-            return LayoutBuilder(
-              builder: (context, constraints) {
-                final isSmallScreen = constraints.maxWidth <= _smallScreenBreakpoint;
-
-                if (isSmallScreen) {
-                  return AdminDashboardSmallScreenViewModel(
-                    admin: admin,
-                    selectedIndex: _selectedIndex,
-                    onItemTapped: _navigateToPage,
-                    pageController: _pageController,
-                    pageTitle: _getPageTitle(_selectedIndex),
-                  );
-                } else {
-                  return AdminDashboardLargeScreenViewModel(
-                    admin: admin,
-                    selectedIndex: _selectedIndex,
-                    onItemTapped: _navigateToPage,
-                    pageController: _pageController,
-                    pageTitle: _getPageTitle(_selectedIndex),
-                  );
-                }
-              },
-            );
-          }
-        },
+            if (isSmallScreen) {
+              return AdminDashboardSmallScreenViewModel(
+                admin: currentAdmin,
+                selectedIndex: _selectedIndex,
+                onItemTapped: _navigateToPage,
+                pageController: _pageController,
+                pageTitle: _getPageTitle(_selectedIndex),
+              );
+            } else {
+              return AdminDashboardLargeScreenViewModel(
+                admin: currentAdmin,
+                selectedIndex: _selectedIndex,
+                onItemTapped: _navigateToPage,
+                pageController: _pageController,
+                pageTitle: _getPageTitle(_selectedIndex),
+              );
+            }
+          },
+        ),
       ),
     );
   }

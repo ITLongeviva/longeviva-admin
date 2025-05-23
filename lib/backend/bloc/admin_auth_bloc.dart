@@ -81,8 +81,11 @@ class AdminAuthBloc extends Bloc<AdminAuthEvent, AdminAuthState> {
   final AdminController adminController;
   Admin? _currentAdmin;
   bool _isProcessingAuth = false;
+  bool _isProcessingLogin = false; // Separate flag for login
   DateTime? _lastSuccessfulAuth;
   DateTime? _lastAuthCheck;
+  Timer? _authCheckTimer;
+  Completer<Admin?>? _ongoingAuthCheck;
 
   AdminAuthBloc({required this.adminController}) : super(AdminAuthInitial()) {
     on<AdminLoginRequested>(_handleAdminLoginRequested);
@@ -94,17 +97,27 @@ class AdminAuthBloc extends Bloc<AdminAuthEvent, AdminAuthState> {
 
   Admin? get currentAdmin => _currentAdmin;
 
+  @override
+  Future<void> close() {
+    _authCheckTimer?.cancel();
+    _ongoingAuthCheck?.complete(null);
+    return super.close();
+  }
+
   Future<void> _handleAdminLoginRequested(
       AdminLoginRequested event,
       Emitter<AdminAuthState> emit,
       ) async {
-    if (_isProcessingAuth) {
+    if (_isProcessingLogin) {
       ErrorHandler.logDebug('AdminAuthBloc: Login already in progress, ignoring');
       return;
     }
 
-    _isProcessingAuth = true;
+    _isProcessingLogin = true;
     ErrorHandler.logDebug('AdminAuthBloc: Processing login request for ${event.email}');
+
+    // Cancel any ongoing auth checks during login
+    _cancelOngoingAuthCheck();
 
     emit(AdminAuthLoading());
 
@@ -156,7 +169,7 @@ class AdminAuthBloc extends Bloc<AdminAuthEvent, AdminAuthState> {
         translationArgs: translationArgs,
       ));
     } finally {
-      _isProcessingAuth = false;
+      _isProcessingLogin = false;
     }
   }
 
@@ -164,8 +177,10 @@ class AdminAuthBloc extends Bloc<AdminAuthEvent, AdminAuthState> {
       AdminLogoutRequested event,
       Emitter<AdminAuthState> emit,
       ) async {
-    if (_isProcessingAuth) return;
+    if (_isProcessingAuth || _isProcessingLogin) return;
+
     _isProcessingAuth = true;
+    _cancelOngoingAuthCheck();
 
     ErrorHandler.logDebug('AdminAuthBloc: Processing logout request');
     emit(AdminAuthLoading());
@@ -175,6 +190,7 @@ class AdminAuthBloc extends Bloc<AdminAuthEvent, AdminAuthState> {
       _currentAdmin = null;
       _lastSuccessfulAuth = null;
       _lastAuthCheck = null;
+      _authCheckTimer?.cancel();
       ErrorHandler.logDebug('AdminAuthBloc: Logout successful, emitting AdminAuthUnauthenticated');
       emit(AdminAuthUnauthenticated());
     } catch (e) {
@@ -193,41 +209,54 @@ class AdminAuthBloc extends Bloc<AdminAuthEvent, AdminAuthState> {
       CheckAdminAuthStatus event,
       Emitter<AdminAuthState> emit,
       ) async {
-    if (_isProcessingAuth) {
-      ErrorHandler.logDebug('AdminAuthBloc: Auth check already in progress, waiting...');
-      // Wait a bit and try again if still processing
-      await Future.delayed(const Duration(milliseconds: 500));
-      if (_isProcessingAuth) {
-        ErrorHandler.logDebug('AdminAuthBloc: Auth check still in progress, skipping');
-        return;
-      }
+
+    // Don't check auth if we're in the middle of login
+    if (_isProcessingLogin) {
+      ErrorHandler.logDebug('AdminAuthBloc: Login in progress, skipping auth check');
+      return;
     }
 
-    // Prevent too frequent auth checks (especially important for Windows)
+    // If we're already authenticated and it's recent, don't check again
+    if (_currentAdmin != null &&
+        _lastSuccessfulAuth != null &&
+        DateTime.now().difference(_lastSuccessfulAuth!).inMinutes < 5) {
+      ErrorHandler.logDebug('AdminAuthBloc: Using cached admin (recent auth): ${_currentAdmin!.email}');
+      emit(AdminAuthAuthenticated(admin: _currentAdmin!));
+      return;
+    }
+
+    if (_isProcessingAuth) {
+      ErrorHandler.logDebug('AdminAuthBloc: Auth check already in progress, waiting...');
+
+      // Wait for the ongoing auth check to complete
+      if (_ongoingAuthCheck != null) {
+        final result = await _ongoingAuthCheck!.future;
+        if (result != null) {
+          emit(AdminAuthAuthenticated(admin: result));
+        } else {
+          emit(AdminAuthUnauthenticated());
+        }
+      }
+      return;
+    }
+
+    // Prevent too frequent auth checks
     if (_lastAuthCheck != null &&
         DateTime.now().difference(_lastAuthCheck!).inSeconds < 3) {
       ErrorHandler.logDebug('AdminAuthBloc: Skipping auth check - too recent (${DateTime.now().difference(_lastAuthCheck!).inSeconds}s ago)');
 
-      // If we have a current admin and recent successful auth, use cached state
-      if (_currentAdmin != null && _lastSuccessfulAuth != null) {
+      // If we have a current admin, use cached state
+      if (_currentAdmin != null) {
         ErrorHandler.logDebug('AdminAuthBloc: Using cached admin: ${_currentAdmin!.email}');
         emit(AdminAuthAuthenticated(admin: _currentAdmin!));
         return;
       }
     }
 
-    // For Windows, if we have a current admin and recent successful auth, don't check again
-    if (defaultTargetPlatform == TargetPlatform.windows &&
-        _currentAdmin != null &&
-        _lastSuccessfulAuth != null &&
-        DateTime.now().difference(_lastSuccessfulAuth!).inMinutes < 30) {
-      ErrorHandler.logDebug('AdminAuthBloc: Using cached admin for Windows: ${_currentAdmin!.email}');
-      emit(AdminAuthAuthenticated(admin: _currentAdmin!));
-      return;
-    }
-
     _isProcessingAuth = true;
     _lastAuthCheck = DateTime.now();
+    _ongoingAuthCheck = Completer<Admin?>();
+
     ErrorHandler.logDebug('AdminAuthBloc: Checking admin auth status');
 
     // Only emit loading if we don't have a cached admin
@@ -236,13 +265,13 @@ class AdminAuthBloc extends Bloc<AdminAuthEvent, AdminAuthState> {
     }
 
     try {
-      // Check with controller with additional timeout wrapper
       ErrorHandler.logDebug('AdminAuthBloc: Starting controller.checkAdminAuth()');
 
+      // Reduced timeout to prevent interfering with login flow
       final admin = await Future.any([
         adminController.checkAdminAuth(),
-        Future.delayed(const Duration(seconds: 15), () {
-          ErrorHandler.logError('AdminAuthBloc: Auth check timed out after 15 seconds', 'TIMEOUT');
+        Future.delayed(const Duration(seconds: 8), () {
+          ErrorHandler.logWarning('AdminAuthBloc: Auth check timed out after 8 seconds');
           return null;
         }),
       ]);
@@ -253,6 +282,8 @@ class AdminAuthBloc extends Bloc<AdminAuthEvent, AdminAuthState> {
         _currentAdmin = admin;
         _lastSuccessfulAuth = DateTime.now();
         ErrorHandler.logDebug('AdminAuthBloc: Auth check successful, emitting AdminAuthAuthenticated for: ${admin.email}');
+
+        _ongoingAuthCheck?.complete(admin);
         emit(AdminAuthAuthenticated(admin: admin));
 
         // For Windows, set up a periodic auth refresh to maintain session
@@ -260,10 +291,21 @@ class AdminAuthBloc extends Bloc<AdminAuthEvent, AdminAuthState> {
           _setupPeriodicAuthRefresh();
         }
       } else {
-        _currentAdmin = null;
-        _lastSuccessfulAuth = null;
-        ErrorHandler.logDebug('AdminAuthBloc: Auth check failed, emitting AdminAuthUnauthenticated');
-        emit(AdminAuthUnauthenticated());
+        // For Windows, if we had a successful auth recently, don't fail immediately
+        if (defaultTargetPlatform == TargetPlatform.windows &&
+            _currentAdmin != null &&
+            _lastSuccessfulAuth != null &&
+            DateTime.now().difference(_lastSuccessfulAuth!).inMinutes < 30) {
+          ErrorHandler.logWarning('AdminAuthBloc: Auth check failed but keeping Windows session alive');
+          _ongoingAuthCheck?.complete(_currentAdmin);
+          emit(AdminAuthAuthenticated(admin: _currentAdmin!));
+        } else {
+          _currentAdmin = null;
+          _lastSuccessfulAuth = null;
+          ErrorHandler.logDebug('AdminAuthBloc: Auth check failed, emitting AdminAuthUnauthenticated');
+          _ongoingAuthCheck?.complete(null);
+          emit(AdminAuthUnauthenticated());
+        }
       }
     } catch (e) {
       ErrorHandler.logError('AdminAuthBloc: Auth check error', e);
@@ -274,15 +316,18 @@ class AdminAuthBloc extends Bloc<AdminAuthEvent, AdminAuthState> {
           _lastSuccessfulAuth != null &&
           DateTime.now().difference(_lastSuccessfulAuth!).inMinutes < 60) {
         ErrorHandler.logWarning('AdminAuthBloc: Auth check failed but keeping Windows session alive');
+        _ongoingAuthCheck?.complete(_currentAdmin);
         emit(AdminAuthAuthenticated(admin: _currentAdmin!));
       } else {
         _currentAdmin = null;
         _lastSuccessfulAuth = null;
         ErrorHandler.logDebug('AdminAuthBloc: Auth check error, emitting AdminAuthUnauthenticated');
+        _ongoingAuthCheck?.complete(null);
         emit(AdminAuthUnauthenticated());
       }
     } finally {
       _isProcessingAuth = false;
+      _ongoingAuthCheck = null;
     }
   }
 
@@ -290,7 +335,7 @@ class AdminAuthBloc extends Bloc<AdminAuthEvent, AdminAuthState> {
       RefreshAdminAuth event,
       Emitter<AdminAuthState> emit,
       ) async {
-    if (_currentAdmin == null || _isProcessingAuth) return;
+    if (_currentAdmin == null || _isProcessingAuth || _isProcessingLogin) return;
 
     try {
       ErrorHandler.logDebug('AdminAuthBloc: Refreshing admin auth');
@@ -350,10 +395,16 @@ class AdminAuthBloc extends Bloc<AdminAuthEvent, AdminAuthState> {
     }
   }
 
+  void _cancelOngoingAuthCheck() {
+    _ongoingAuthCheck?.complete(null);
+    _ongoingAuthCheck = null;
+    _authCheckTimer?.cancel();
+  }
+
   void _setupPeriodicAuthRefresh() {
-    // Set up periodic auth refresh for Windows to maintain session
-    Stream.periodic(const Duration(minutes: 15)).take(1).listen((_) {
-      if (_currentAdmin != null && !_isProcessingAuth) {
+    _authCheckTimer?.cancel();
+    _authCheckTimer = Timer.periodic(const Duration(minutes: 15), (_) {
+      if (_currentAdmin != null && !_isProcessingAuth && !_isProcessingLogin) {
         add(RefreshAdminAuth());
       }
     });
@@ -369,6 +420,6 @@ class AdminAuthBloc extends Bloc<AdminAuthEvent, AdminAuthState> {
 
   /// Get current state info for debugging
   String getStateInfo() {
-    return 'Current State: ${state.runtimeType}, Cached Admin: ${_currentAdmin?.email ?? 'null'}, Processing: $_isProcessingAuth, Last Auth: $_lastSuccessfulAuth, Last Check: $_lastAuthCheck';
+    return 'Current State: ${state.runtimeType}, Cached Admin: ${_currentAdmin?.email ?? 'null'}, Processing Auth: $_isProcessingAuth, Processing Login: $_isProcessingLogin, Last Auth: $_lastSuccessfulAuth, Last Check: $_lastAuthCheck';
   }
 }
