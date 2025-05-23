@@ -107,7 +107,7 @@ class ErrorHandler {
   }
 
   static void logError(String message, dynamic error, [StackTrace? stackTrace]) {
-    _logger.e(message, error, stackTrace);
+    _logger.e(message);
   }
 
   // Error Dialog - Using existing dialog for more detailed messages that need longer visibility

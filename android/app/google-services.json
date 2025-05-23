@@ -12,7 +12,12 @@
           "package_name": "com.example.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "423905918553-h3dcd5ip8a72g7tfua6ek7pvnodn7r36.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAUHN0lxUY2Xcb65oUWkM2CyGzjnfB74Mc"
@@ -20,7 +25,70 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "423905918553-h3dcd5ip8a72g7tfua6ek7pvnodn7r36.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:423905918553:android:070767eddbdae9149c3b48",
+        "android_client_info": {
+          "package_name": "com.example.longeviva_admin"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "423905918553-h3dcd5ip8a72g7tfua6ek7pvnodn7r36.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAUHN0lxUY2Xcb65oUWkM2CyGzjnfB74Mc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "423905918553-h3dcd5ip8a72g7tfua6ek7pvnodn7r36.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:423905918553:android:5979ea2a89dc48b59c3b48",
+        "android_client_info": {
+          "package_name": "com.example.longeviva_client_v1"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "423905918553-h3dcd5ip8a72g7tfua6ek7pvnodn7r36.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAUHN0lxUY2Xcb65oUWkM2CyGzjnfB74Mc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "423905918553-h3dcd5ip8a72g7tfua6ek7pvnodn7r36.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     },
@@ -31,7 +99,12 @@
           "package_name": "com.example.longeviva_v1"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "423905918553-h3dcd5ip8a72g7tfua6ek7pvnodn7r36.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAUHN0lxUY2Xcb65oUWkM2CyGzjnfB74Mc"
@@ -39,7 +112,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "423905918553-h3dcd5ip8a72g7tfua6ek7pvnodn7r36.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
