@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:longeviva_admin_v1/shared/utils/context_extensions.dart';
 import '../../../../backend/bloc/admin_auth_bloc.dart';
 import '../../../../backend/bloc/admin_bloc.dart';
 import '../../../../backend/controllers/admin_controller.dart';
+import '../../../../backend/models/admin_model.dart';
+import '../../login/landing_page/admin_login_landing_page.dart';
 import '../view_model/admin_dashboard_large_screen_view_model.dart';
 import '../view_model/admin_dashboard_small_screen_view_model.dart';
-import '../../../../shared/widgets/custom_progress_indicator.dart';
+import '../../../../shared/utils/error_handler.dart';
 
 class AdminDashboardLandingPage extends StatefulWidget {
   const AdminDashboardLandingPage({super.key});
@@ -16,7 +19,6 @@ class AdminDashboardLandingPage extends StatefulWidget {
 
 class _AdminDashboardLandingPageState extends State<AdminDashboardLandingPage> {
   int _selectedIndex = 0;
-  bool _isRedirecting = false;
   final PageController _pageController = PageController();
   final double _smallScreenBreakpoint = 1100;
 
@@ -35,45 +37,29 @@ class _AdminDashboardLandingPageState extends State<AdminDashboardLandingPage> {
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        // Remove AdminAuthBloc from here - it's already provided in main.dart
-        BlocProvider<AdminOperationsBloc>(
-          create: (context) => AdminOperationsBloc(
-            adminController: AdminController(),
-          ),
-        ),
-      ],
-      child: BlocConsumer<AdminAuthBloc, AdminAuthState>(
-        listener: (context, state) {
-          if (state is AdminAuthUnauthenticated && !_isRedirecting) {
-            _isRedirecting = true;
-            Future.microtask(() {
-              Navigator.of(context).pushReplacementNamed('/admin_login');
-              _isRedirecting = false;
-            });
-          }
-        },
-        builder: (context, state) {
-          // Remove the AdminAuthInitial check since it's handled in main.dart
-          if (state is AdminAuthLoading) {
-            return const Scaffold(
-              body: Center(
-                child: CustomProgressIndicator(
-                  message: "Loading admin dashboard...",
-                ),
-              ),
-            );
-          }
+    ErrorHandler.logDebug('AdminDashboardLandingPage: Building dashboard (Emergency Fix)');
 
-          if (state is AdminAuthAuthenticated) {
+    return BlocProvider<AdminOperationsBloc>(
+      create: (context) => AdminOperationsBloc(
+        adminController: AdminController(),
+      ),
+      child: BlocBuilder<AdminAuthBloc, AdminAuthState>(
+        builder: (context, state) {
+          ErrorHandler.logDebug('AdminDashboardLandingPage: State = ${state.runtimeType}');
+
+          // Get the admin - if we're here, we should have one
+          final admin = (state is AdminAuthAuthenticated) ? state.admin : null;
+
+          if (admin != null) {
+            ErrorHandler.logDebug('AdminDashboardLandingPage: Found admin: ${admin.email}');
+
             return LayoutBuilder(
                 builder: (context, constraints) {
                   final isSmallScreen = constraints.maxWidth <= _smallScreenBreakpoint;
 
                   if (isSmallScreen) {
                     return AdminDashboardSmallScreenViewModel(
-                      admin: state.admin,
+                      admin: admin,
                       selectedIndex: _selectedIndex,
                       onItemTapped: _navigateToPage,
                       pageController: _pageController,
@@ -81,7 +67,7 @@ class _AdminDashboardLandingPageState extends State<AdminDashboardLandingPage> {
                     );
                   } else {
                     return AdminDashboardLargeScreenViewModel(
-                      admin: state.admin,
+                      admin: admin,
                       selectedIndex: _selectedIndex,
                       onItemTapped: _navigateToPage,
                       pageController: _pageController,
@@ -90,15 +76,11 @@ class _AdminDashboardLandingPageState extends State<AdminDashboardLandingPage> {
                   }
                 }
             );
+          } else {
+            ErrorHandler.logDebug('AdminDashboardLandingPage: No admin found');
+            context.showErrorAlert('No admin found');
+            return AdminLoginLandingPage();
           }
-
-          return const Scaffold(
-            body: Center(
-              child: CustomProgressIndicator(
-                message: "Preparing dashboard...",
-              ),
-            ),
-          );
         },
       ),
     );
