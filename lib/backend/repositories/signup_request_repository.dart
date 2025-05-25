@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-
 import '../../shared/utils/error_handler.dart';
 import '../models/doctor/sign_up_data.dart';
 import '../models/signup_request_model.dart';
@@ -74,7 +73,7 @@ class SignupRequestRepository {
     }
   }
 
-  /// Create a new signup request
+  /// Create a new signup request with new fields
   Future<SignupRequest> createSignupRequest(SignupData data) async {
     try {
       ErrorHandler.logDebug('Creating signup request for: ${data.email}');
@@ -96,7 +95,7 @@ class SignupRequestRepository {
       // Create a new document reference to get an ID
       final docRef = _firestore.collection(_collectionPath).doc();
 
-      // Prepare the data with server timestamp
+      // Prepare the data with server timestamp and new fields
       final requestData = {
         'id': docRef.id,
         'role': data.role,
@@ -111,6 +110,11 @@ class SignupRequestRepository {
         'googleEmail': data.googleEmail,
         'vatNumber': data.vatNumber,
         'fiscalCode': data.fiscalCode,
+        // New fields
+        'address': data.address,
+        'languagesSpoken': data.languagesSpoken,
+        'organization': data.organization,
+        'ragioneSociale': data.ragioneSociale,
         'status': 'pending',
         'requestedAt': FieldValue.serverTimestamp(),
       };
@@ -179,59 +183,88 @@ class SignupRequestRepository {
           }
       );
 
-      // 2. Create doctor/clinic record based on the request
+      // 2. Create doctor/clinic record based on the request with new FHIR-compliant fields
       final doctorsCollection = _firestore.collection('doctors');
       final newDoctorRef = doctorsCollection.doc(); // Auto-generate ID
 
-      // Common fields that apply to both doctor and clinic
+      // Common fields that apply to both doctor and clinic with FHIR compliance
       final commonFields = {
         'createdAt': FieldValue.serverTimestamp(),
         'signupRequestId': requestId,
         'signupApprovalDate': FieldValue.serverTimestamp(),
         'requiredPasswordChange': true, // Flag to indicate first login needs password change
         'googleEmail': requestData['googleEmail'] ?? '', // Include the Google email
+        // New FHIR-compliant fields with sensible defaults
+        'isActive': true,  // FHIR active boolean - new users are active by default
+        'isAlive': true,   // FHIR deceased indicator - assume alive for new signups
+        'address': requestData['address'] ?? '', // FHIR address
+        'languagesSpoken': requestData['languagesSpoken'] ?? [], // FHIR communication.language
+        'qualificationValidity': null, // FHIR qualification.period - to be set later by admin
+        'issuer': '', // FHIR qualification.issuer - to be set later by admin
+        'organizationPeriodValidity': null, // FHIR PractitionerRole.period - to be set later
+        'organization': requestData['organization'] ?? '', // FHIR organization reference
+        'profilePictureUrl': '', // FHIR photo - empty initially
       };
 
       ErrorHandler.logDebug('Setting requiredPasswordChange to true and storing temporary password: $temporaryPassword');
 
       if (requestData['role'] == 'DOCTOR') {
+        // Create FHIR-compliant Doctor (Practitioner) record
         batch.set(newDoctorRef, {
+          // Basic FHIR Practitioner fields
           'name': requestData['name'] ?? '',
           'surname': requestData['surname'] ?? '',
-          'sex': requestData['sex'] ?? '',
-          'phoneNumber': requestData['phoneNumber'] ?? '',
-          'birthdate': requestData['birthdate'],
-          'specialty': requestData['specialty'] ?? '',
-          'email': requestData['email'] ?? '',
-          'placeOfWork': '',
-          'cityOfWork': requestData['cityOfWork'] ?? '',
-          'areaOfInterest': '',
+          'sex': requestData['sex'] ?? '', // FHIR gender
+          'phoneNumber': requestData['phoneNumber'] ?? '', // FHIR telecom
+          'birthdate': requestData['birthdate'], // FHIR birthDate
+          'email': requestData['email'] ?? '', // FHIR telecom
+
+          // FHIR Practitioner.identifier fields
+          'vatNumber': requestData['vatNumber'] ?? '', // Business identifier
+          'fiscalCode': requestData['fiscalCode'] ?? '', // National identifier
+          'licenseNumber': '', // FHIR qualification.identifier - to be set later
+
+          // FHIR PractitionerRole fields (specialty is role-specific)
+          'specialty': requestData['specialty'] ?? '', // FHIR PractitionerRole.specialty
+          'placeOfWork': '', // FHIR PractitionerRole.location - to be completed
+          'cityOfWork': requestData['cityOfWork'] ?? '', // Part of location address
+          'areaOfInterest': '', // Extension of specialty - to be set later
+
+          // Application-specific fields
           'role': 'DOCTOR',
-          'licenseNumber': '',
-          'vatNumber': requestData['vatNumber'] ?? '',
-          'fiscalCode': requestData['fiscalCode'] ?? '', // Include fiscal code
-          'hourlyFees': 0.0,
+          'hourlyFees': 0.0, // To be set later
           'isDoctor': true,
+
           ...commonFields,
         });
       } else if (requestData['role'] == 'CLINIC') {
+        // Create FHIR-compliant Organization record stored as Doctor entity
+        // Note: In proper FHIR, this should be a separate Organization resource
         batch.set(newDoctorRef, {
+          // Organization basic info
           'name': requestData['name'] ?? '',
-          'surname': '',
-          'sex': '',
-          'phoneNumber': requestData['phoneNumber'] ?? '',
-          'birthdate': null,
-          'specialty': requestData['specialty'] ?? '',
-          'email': requestData['email'] ?? '',
-          'placeOfWork': '',
-          'cityOfWork': requestData['cityOfWork'] ?? '',
-          'areaOfInterest': '',
+          'surname': '', // Organizations don't have surnames
+          'sex': '', // Organizations don't have gender
+          'phoneNumber': requestData['phoneNumber'] ?? '', // FHIR Organization.telecom
+          'birthdate': null, // Organizations don't have birthdates
+          'email': requestData['email'] ?? '', // FHIR Organization.telecom
+
+          // FHIR Organization.identifier fields
+          'vatNumber': '', // Not applicable for clinics in this context
+          'fiscalCode': requestData['fiscalCode'] ?? '', // Organization tax identifier
+          'licenseNumber': requestData['ragioneSociale'] ?? '', // Business name stored as license
+
+          // Service-related fields
+          'specialty': requestData['specialty'] ?? '', // Services provided
+          'placeOfWork': '', // To be completed
+          'cityOfWork': requestData['cityOfWork'] ?? '', // FHIR Organization.address
+          'areaOfInterest': '', // Service areas - to be set later
+
+          // Application-specific fields
           'role': 'CLINIC',
-          'licenseNumber': '',
-          'vatNumber': '',
-          'fiscalCode': requestData['fiscalCode'] ?? '', // Include fiscal code
-          'hourlyFees': 0.0,
-          'isDoctor': false,
+          'hourlyFees': 0.0, // Service rates - to be set later
+          'isDoctor': false, // This is an organization, not an individual practitioner
+
           ...commonFields,
         });
       }
@@ -240,11 +273,11 @@ class SignupRequestRepository {
       await batch.commit();
       ErrorHandler.logDebug('Batch committed successfully with password: $temporaryPassword');
 
-      // Create Firebase Auth user
+      // Create Firebase Auth user request (handled by Cloud Function)
       await _createFirebaseAuthUser(
         requestData['email'],
         temporaryPassword,
-        requestData['name'],
+        '${requestData['name']} ${requestData['surname'] ?? ''}',
         requestData['role'],
       );
 
@@ -274,7 +307,7 @@ class SignupRequestRepository {
     }
   }
 
-  /// Check if emails exist
+  /// Check if emails exist with enhanced validation
   Future<Map<String, Map<String, bool>>> checkDetailedEmailsExist(
       String email, String googleEmail) async {
     try {
@@ -321,7 +354,7 @@ class SignupRequestRepository {
     }
   }
 
-  /// Helper method to check if an email exists
+  /// Helper method to check if an email exists with enhanced validation
   Future<Map<String, bool>> _checkDetailedEmailExists(String email, {bool isGoogleEmail = false}) async {
     try {
       // Normalize the email to lowercase for consistent checks
@@ -335,28 +368,40 @@ class SignupRequestRepository {
         'existsInSignupRequests': false
       };
 
-      // Check in doctors collection
-      final doctorQuerySnapshot = await _firestore
-          .collection('doctors')
-          .where(fieldToCheck, isEqualTo: normalizedEmail)
-          .limit(1)
-          .get();
+      // Check in doctors collection with timeout
+      try {
+        final doctorQuerySnapshot = await _firestore
+            .collection('doctors')
+            .where(fieldToCheck, isEqualTo: normalizedEmail)
+            .limit(1)
+            .get()
+            .timeout(const Duration(seconds: 10));
 
-      if (doctorQuerySnapshot.docs.isNotEmpty) {
-        ErrorHandler.logDebug('Found existing ${isGoogleEmail ? "Google " : ""}email in doctors collection');
-        result['existsInDoctors'] = true;
+        if (doctorQuerySnapshot.docs.isNotEmpty) {
+          ErrorHandler.logDebug('Found existing ${isGoogleEmail ? "Google " : ""}email in doctors collection');
+          result['existsInDoctors'] = true;
+        }
+      } catch (e) {
+        ErrorHandler.logWarning('Error checking doctors collection: $e');
+        // Continue with other checks even if this fails
       }
 
-      // Check in signup_requests collection for pending requests
-      final anyRequestsQuery = await _firestore
-          .collection(_collectionPath)
-          .where(fieldToCheck, isEqualTo: normalizedEmail)
-          .limit(1)
-          .get();
+      // Check in signup_requests collection for any requests (not just pending)
+      try {
+        final anyRequestsQuery = await _firestore
+            .collection(_collectionPath)
+            .where(fieldToCheck, isEqualTo: normalizedEmail)
+            .limit(1)
+            .get()
+            .timeout(const Duration(seconds: 10));
 
-      if (anyRequestsQuery.docs.isNotEmpty) {
-        ErrorHandler.logDebug('Found existing ${isGoogleEmail ? "Google " : ""}email in signup requests');
-        result['existsInSignupRequests'] = true;
+        if (anyRequestsQuery.docs.isNotEmpty) {
+          ErrorHandler.logDebug('Found existing ${isGoogleEmail ? "Google " : ""}email in signup requests');
+          result['existsInSignupRequests'] = true;
+        }
+      } catch (e) {
+        ErrorHandler.logWarning('Error checking signup requests collection: $e');
+        // Continue even if this check fails
       }
 
       return result;

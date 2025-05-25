@@ -14,6 +14,12 @@ class SignupRequest {
   final String googleEmail;
   final String vatNumber;
   final String fiscalCode;
+  // New fields
+  final String address;
+  final List<String> languagesSpoken;
+  final String organization;
+  final String ragioneSociale;
+  // Status fields
   final String status; // 'pending', 'approved', 'rejected'
   final DateTime requestedAt;
   final DateTime? processedAt;
@@ -35,6 +41,11 @@ class SignupRequest {
     required this.googleEmail,
     required this.vatNumber,
     required this.fiscalCode,
+    // New fields with defaults
+    this.address = '',
+    this.languagesSpoken = const [],
+    this.organization = '',
+    this.ragioneSociale = '',
     required this.status,
     required this.requestedAt,
     this.processedAt,
@@ -62,6 +73,13 @@ class SignupRequest {
       googleEmail: json['googleEmail'] ?? '',
       vatNumber: json['vatNumber'] ?? '',
       fiscalCode: json['fiscalCode'] ?? '',
+      // New fields
+      address: json['address'] ?? '',
+      languagesSpoken: json['languagesSpoken'] != null
+          ? List<String>.from(json['languagesSpoken'])
+          : [],
+      organization: json['organization'] ?? '',
+      ragioneSociale: json['ragioneSociale'] ?? '',
       status: json['status'] ?? 'pending',
       requestedAt: json['requestedAt'] != null ?
       (json['requestedAt'] is Timestamp ?
@@ -97,6 +115,11 @@ class SignupRequest {
       'googleEmail': googleEmail,
       'vatNumber': vatNumber,
       'fiscalCode': fiscalCode,
+      // New fields
+      'address': address,
+      'languagesSpoken': languagesSpoken,
+      'organization': organization,
+      'ragioneSociale': ragioneSociale,
       'status': status,
       'requestedAt': requestedAt.toIso8601String(),
       'processedAt': processedAt?.toIso8601String(),
@@ -121,6 +144,11 @@ class SignupRequest {
     String? googleEmail,
     String? vatNumber,
     String? fiscalCode,
+    // New fields
+    String? address,
+    List<String>? languagesSpoken,
+    String? organization,
+    String? ragioneSociale,
     String? status,
     DateTime? requestedAt,
     DateTime? processedAt,
@@ -140,6 +168,11 @@ class SignupRequest {
       googleEmail: googleEmail ?? this.googleEmail,
       vatNumber: vatNumber ?? this.vatNumber,
       fiscalCode: fiscalCode ?? this.fiscalCode,
+      // New fields
+      address: address ?? this.address,
+      languagesSpoken: languagesSpoken ?? this.languagesSpoken,
+      organization: organization ?? this.organization,
+      ragioneSociale: ragioneSociale ?? this.ragioneSociale,
       status: status ?? this.status,
       requestedAt: requestedAt ?? this.requestedAt,
       processedAt: processedAt ?? this.processedAt,

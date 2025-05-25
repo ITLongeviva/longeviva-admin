@@ -11,6 +11,11 @@ class SignupData {
   final String googleEmail;
   final String vatNumber;
   final String fiscalCode;
+  // New fields
+  final String address;
+  final List<String> languagesSpoken;
+  final String organization;
+  final String ragioneSociale; // Business name/company name
 
   SignupData({
     required this.role,
@@ -25,6 +30,11 @@ class SignupData {
     required this.googleEmail,
     required this.vatNumber,
     required this.fiscalCode,
+    // New fields with defaults
+    this.address = '',
+    this.languagesSpoken = const [],
+    this.organization = '',
+    this.ragioneSociale = '',
   });
 
   // Create a copy with updated fields
@@ -41,6 +51,11 @@ class SignupData {
     String? googleEmail,
     String? vatNumber,
     String? fiscalCode,
+    // New fields
+    String? address,
+    List<String>? languagesSpoken,
+    String? organization,
+    String? ragioneSociale,
   }) {
     return SignupData(
       role: role ?? this.role,
@@ -55,6 +70,11 @@ class SignupData {
       googleEmail: googleEmail ?? this.googleEmail,
       vatNumber: vatNumber ?? this.vatNumber,
       fiscalCode: fiscalCode ?? this.fiscalCode,
+      // New fields
+      address: address ?? this.address,
+      languagesSpoken: languagesSpoken ?? this.languagesSpoken,
+      organization: organization ?? this.organization,
+      ragioneSociale: ragioneSociale ?? this.ragioneSociale,
     );
   }
 }

@@ -26,7 +26,7 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
   void initState() {
     super.initState();
     // Generate a random password on initialization
-    _tempPasswordController.text = _generateRandomPassword(10);
+    _tempPasswordController.text = _generateRandomPassword(12);
   }
 
   @override
@@ -42,7 +42,10 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
         borderRadius: BorderRadius.circular(16),
       ),
       child: Container(
-        width: 600,
+        width: 700,
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.9,
+        ),
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -51,15 +54,31 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  widget.request.role == 'DOCTOR'
-                      ? 'Doctor Registration Request'
-                      : 'Clinic Registration Request',
-                  style: const TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: CustomColors.verdeAbisso,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.request.role == 'DOCTOR'
+                            ? 'Doctor Registration Request'
+                            : 'Clinic Registration Request',
+                        style: const TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: CustomColors.verdeAbisso,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Request ID: ${widget.request.id}',
+                        style: TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 IconButton(
@@ -71,7 +90,7 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
 
             const Divider(),
 
-            // Request details
+            // Request details with scrolling
             Expanded(
               child: SingleChildScrollView(
                 child: Column(
@@ -84,16 +103,19 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
 
                     // Personal details
                     _buildSection(
-                      title: 'Personal Details',
+                      title: 'Personal Information',
                       icon: Icons.person,
                       children: [
-                        _buildDetailRow('Name', widget.request.name),
+                        _buildDetailRow('Full Name', _getFullName()),
+                        if (widget.request.role == 'DOCTOR') ...[
+                          _buildDetailRow('Sex', widget.request.sex),
+                          if (widget.request.birthdate != null)
+                            _buildDetailRow(
+                                'Birthdate', DateFormat('MMMM dd, yyyy').format(widget.request.birthdate!)),
+                        ],
+                        _buildDetailRow('Fiscal Code', widget.request.fiscalCode),
                         if (widget.request.role == 'DOCTOR')
-                          _buildDetailRow('Surname', widget.request.surname),
-                        if (widget.request.role == 'DOCTOR') _buildDetailRow('Sex', widget.request.sex),
-                        if (widget.request.role == 'DOCTOR' && widget.request.birthdate != null)
-                          _buildDetailRow(
-                              'Birthdate', DateFormat('yyyy-MM-dd').format(widget.request.birthdate!)),
+                          _buildDetailRow('VAT Number', widget.request.vatNumber),
                       ],
                     ),
 
@@ -101,31 +123,49 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
 
                     // Professional details
                     _buildSection(
-                      title: 'Professional Details',
+                      title: 'Professional Information',
                       icon: Icons.work,
                       children: [
                         _buildDetailRow('Role', widget.request.role),
                         _buildDetailRow('Specialty', widget.request.specialty),
-                        _buildDetailRow('City of Work', widget.request.cityOfWork),
-                        if (widget.request.role == 'DOCTOR')
-                          _buildDetailRow('VAT Number', widget.request.vatNumber),
+                        _buildDetailRow('Organization', widget.request.organization),
                         if (widget.request.role == 'CLINIC')
-                          _buildDetailRow('Fiscal Code', widget.request.fiscalCode),
+                          _buildDetailRow('Business Name', widget.request.ragioneSociale),
+                        _buildDetailRow('City of Work', widget.request.cityOfWork),
                       ],
                     ),
 
                     const SizedBox(height: 16),
 
-                    // Contact details
+                    // Contact & Location details
                     _buildSection(
-                      title: 'Contact Details',
+                      title: 'Contact & Location',
                       icon: Icons.contact_mail,
                       children: [
                         _buildDetailRow('Email', widget.request.email),
                         _buildDetailRow('Google Email', widget.request.googleEmail),
                         _buildDetailRow('Phone', widget.request.phoneNumber),
+                        _buildDetailRow('Address', widget.request.address),
                       ],
                     ),
+
+                    const SizedBox(height: 16),
+
+                    // Additional Information
+                    _buildSection(
+                      title: 'Additional Information',
+                      icon: Icons.info_outline,
+                      children: [
+                        _buildLanguagesRow('Languages Spoken', widget.request.languagesSpoken),
+                        _buildDetailRow('Request Date', DateFormat('MMMM dd, yyyy \'at\' HH:mm').format(widget.request.requestedAt)),
+                      ],
+                    ),
+
+                    // Show processing info if applicable
+                    if (widget.request.status != 'pending') ...[
+                      const SizedBox(height: 16),
+                      _buildProcessingInfoSection(),
+                    ],
                   ],
                 ),
               ),
@@ -134,131 +174,158 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
             const Divider(),
 
             // Action buttons
-            if (widget.request.status == 'pending')
+            if (widget.request.status == 'pending') ...[
+              const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  OutlinedButton.icon(
-                    onPressed: () => _showRejectDialog(context),
-                    icon: const Icon(Icons.cancel, color: CustomColors.rossoSimone),
-                    label: const Text(
-                      'Reject',
-                      style: TextStyle(
-                        color: CustomColors.rossoSimone,
-                        fontFamily: 'Montserrat',
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _showRejectDialog(context),
+                      icon: const Icon(Icons.cancel, color: CustomColors.rossoSimone),
+                      label: const Text(
+                        'Reject Request',
+                        style: TextStyle(
+                          color: CustomColors.rossoSimone,
+                          fontFamily: 'Montserrat',
+                        ),
                       ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: CustomColors.rossoSimone),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: CustomColors.rossoSimone),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
                   ),
-                  ElevatedButton.icon(
-                    onPressed: () => _showApprovalDialog(context),
-                    icon: const Icon(Icons.check_circle, color: Colors.white),
-                    label: const Text(
-                      'Approve',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontFamily: 'Montserrat',
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _showApprovalDialog(context),
+                      icon: const Icon(Icons.check_circle, color: Colors.white),
+                      label: const Text(
+                        'Approve Request',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontFamily: 'Montserrat',
+                        ),
                       ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: CustomColors.verdeMare,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: CustomColors.verdeMare,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
                   ),
                 ],
               ),
+            ] else ...[
+              // Show current status for non-pending requests
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _getStatusColor().withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: _getStatusColor().withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(_getStatusIcon(), color: _getStatusColor()),
+                    const SizedBox(width: 8),
+                    Text(
+                      'This request has been ${widget.request.status}',
+                      style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        color: _getStatusColor(),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _buildStatusSection(SignupRequest request) {
-    Color statusColor;
-    IconData statusIcon;
-
-    switch (request.status) {
-      case 'approved':
-        statusColor = Colors.green;
-        statusIcon = Icons.check_circle;
-        break;
-      case 'rejected':
-        statusColor = CustomColors.rossoSimone;
-        statusIcon = Icons.cancel;
-        break;
-      default: // pending
-        statusColor = Colors.orange;
-        statusIcon = Icons.pending;
+  String _getFullName() {
+    if (widget.request.role == 'DOCTOR') {
+      return '${widget.request.name} ${widget.request.surname}';
+    } else {
+      return widget.request.name;
     }
+  }
 
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: statusColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(statusIcon, color: statusColor, size: 16),
-              const SizedBox(width: 4),
-              Text(
-                request.status.toUpperCase(),
-                style: TextStyle(
-                  color: statusColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                  fontFamily: 'Montserrat',
+  Color _getStatusColor() {
+    switch (widget.request.status) {
+      case 'approved':
+        return Colors.green;
+      case 'rejected':
+        return CustomColors.rossoSimone;
+      default:
+        return Colors.orange;
+    }
+  }
+
+  IconData _getStatusIcon() {
+    switch (widget.request.status) {
+      case 'approved':
+        return Icons.check_circle;
+      case 'rejected':
+        return Icons.cancel;
+      default:
+        return Icons.pending;
+    }
+  }
+
+  Widget _buildStatusSection(SignupRequest request) {
+    Color statusColor = _getStatusColor();
+    IconData statusIcon = _getStatusIcon();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: statusColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: statusColor, width: 1),
+      ),
+      child: Row(
+        children: [
+          Icon(statusIcon, color: statusColor, size: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Status: ${request.status.toUpperCase()}',
+                  style: TextStyle(
+                    color: statusColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    fontFamily: 'Montserrat',
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 16),
-        Text(
-          overflow: TextOverflow.ellipsis,
-          'Requested on ${DateFormat('MMM d, yyyy').format(request.requestedAt)}',
-          style: const TextStyle(
-            fontFamily: 'Montserrat',
-            color: Colors.grey,
-            fontSize: 14,
-          )
-        ),
-        if (request.status == 'approved')
-          Expanded(
-            child: Text(
-              overflow: TextOverflow.ellipsis,
-              ' • Approved on ${DateFormat('MMM d, yyyy').format(request.processedAt!)}',
-              style: const TextStyle(
-                fontFamily: 'Montserrat',
-                color: Colors.grey,
-                fontSize: 14,
-              ),
+                const SizedBox(height: 4),
+                Text(
+                  'Submitted on ${DateFormat('MMMM dd, yyyy \'at\' HH:mm').format(request.requestedAt)}',
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    color: Colors.grey[700],
+                    fontSize: 14,
+                  ),
+                ),
+              ],
             ),
           ),
-        if (request.status == 'rejected')
-          Expanded(
-            child: Text(
-              overflow: TextOverflow.ellipsis,
-              ' • Rejected on ${DateFormat('MMM d, yyyy').format(request.processedAt!)}',
-              style: const TextStyle(
-                fontFamily: 'Montserrat',
-                color: Colors.grey,
-                fontSize: 14,
-              ),
-            ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -271,7 +338,7 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: CustomColors.perla.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: CustomColors.verdeAbisso.withOpacity(0.2)),
       ),
       child: Column(
@@ -279,7 +346,7 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
         children: [
           Row(
             children: [
-              Icon(icon, color: CustomColors.verdeAbisso),
+              Icon(icon, color: CustomColors.verdeAbisso, size: 20),
               const SizedBox(width: 8),
               Text(
                 title,
@@ -306,27 +373,103 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 100,
+            width: 120,
             child: Text(
               label + ':',
               style: const TextStyle(
                 fontFamily: 'Montserrat',
                 fontWeight: FontWeight.w600,
                 color: Colors.black87,
+                fontSize: 14,
               ),
             ),
           ),
           Expanded(
             child: Text(
-              value,
-              style: const TextStyle(
+              value.isNotEmpty ? value : 'Not provided',
+              style: TextStyle(
                 fontFamily: 'Montserrat',
-                color: Colors.black87,
+                color: value.isNotEmpty ? Colors.black87 : Colors.grey,
+                fontSize: 14,
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildLanguagesRow(String label, List<String> languages) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              label + ':',
+              style: const TextStyle(
+                fontFamily: 'Montserrat',
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          Expanded(
+            child: languages.isNotEmpty
+                ? Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: languages.map((language) => Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: CustomColors.verdeMare.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: CustomColors.verdeMare.withOpacity(0.3)),
+                ),
+                child: Text(
+                  language,
+                  style: const TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 12,
+                    color: CustomColors.verdeAbisso,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              )).toList(),
+            )
+                : Text(
+              'Not provided',
+              style: TextStyle(
+                fontFamily: 'Montserrat',
+                color: Colors.grey,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProcessingInfoSection() {
+    if (widget.request.processedAt == null) return const SizedBox.shrink();
+
+    return _buildSection(
+      title: 'Processing Information',
+      icon: Icons.admin_panel_settings,
+      children: [
+        _buildDetailRow(
+          'Processed Date',
+          DateFormat('MMMM dd, yyyy \'at\' HH:mm').format(widget.request.processedAt!),
+        ),
+        if (widget.request.status == 'rejected' && widget.request.rejectionReason != null)
+          _buildDetailRow('Rejection Reason', widget.request.rejectionReason!),
+        if (widget.request.temporaryPassword != null)
+          _buildDetailRow('Temp Password Sent', 'Yes'),
+      ],
     );
   }
 
@@ -338,44 +481,81 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          title: const Text('Approve Request'),
+          title: const Text(
+            'Approve Registration Request',
+            style: TextStyle(
+              fontFamily: 'Montserrat',
+              fontWeight: FontWeight.bold,
+              color: CustomColors.verdeAbisso,
+            ),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Text(
+                'Approve registration for ${_getFullName()}?',
+                style: const TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontWeight: FontWeight.w500,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 16),
               const Text(
-                'Set a temporary password for the new user:',
+                'Set a temporary password:',
                 style: TextStyle(
                   fontFamily: 'Montserrat',
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(
                     child: TextField(
                       controller: _tempPasswordController,
-                      decoration: const InputDecoration(
+                      obscureText: !_passwordVisible,
+                      decoration: InputDecoration(
                         labelText: 'Temporary Password',
-                        border: OutlineInputBorder(),
+                        border: const OutlineInputBorder(),
+                        suffixIcon: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: Icon(_passwordVisible ? Icons.visibility_off : Icons.visibility),
+                              onPressed: () {
+                                setState(() {
+                                  _passwordVisible = !_passwordVisible;
+                                });
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.refresh),
+                              onPressed: () {
+                                setState(() {
+                                  _tempPasswordController.text = _generateRandomPassword(12);
+                                });
+                              },
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.refresh),
-                    onPressed: () {
-                      setState(() {
-                        _tempPasswordController.text = _generateRandomPassword(10);
-                      });
-                    },
                   ),
                 ],
               ),
               const SizedBox(height: 8),
-              const Text(
-                'The user will be prompted to change this password on first login.',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  'The user will be prompted to change this password on first login. An email with login credentials will be sent to both email addresses.',
+                  style: TextStyle(fontSize: 12, color: Colors.blue),
+                ),
               ),
             ],
           ),
@@ -385,22 +565,35 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
               children: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancel'),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      color: Colors.grey,
+                    ),
+                  ),
                 ),
                 ElevatedButton.icon(
                   onPressed: () {
+                    if (_tempPasswordController.text.trim().isEmpty) {
+                      context.showErrorAlert('Please enter a temporary password');
+                      return;
+                    }
+
                     Navigator.of(dialogContext).pop();
+                    Navigator.of(context).pop(); // Close the details dialog
+
                     // Use the captured bloc reference
                     signupRequestBloc.add(
                       ApproveSignupRequestWithPassword(
                         id: widget.request.id,
-                        temporaryPassword: _tempPasswordController.text,
+                        temporaryPassword: _tempPasswordController.text.trim(),
                       ),
                     );
                   },
                   icon: const Icon(Icons.check_circle, color: Colors.white),
                   label: const Text(
-                    'Approve',
+                    'Approve & Send Credentials',
                     style: TextStyle(
                       color: Colors.white,
                       fontFamily: 'Montserrat',
@@ -431,20 +624,48 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          title: const Text('Reject Request'),
+          title: const Text(
+            'Reject Registration Request',
+            style: TextStyle(
+              fontFamily: 'Montserrat',
+              fontWeight: FontWeight.bold,
+              color: CustomColors.verdeAbisso,
+            ),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Please provide a reason for rejection:'),
+              Text(
+                'Reject registration for ${_getFullName()}?',
+                style: const TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
               const SizedBox(height: 16),
+              const Text('Please provide a reason for rejection:'),
+              const SizedBox(height: 8),
               TextField(
                 controller: reasonController,
                 decoration: const InputDecoration(
                   labelText: 'Rejection Reason',
                   border: OutlineInputBorder(),
+                  hintText: 'e.g., Incomplete documentation, Invalid credentials...',
                 ),
                 maxLines: 3,
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  'An email notification will be sent to the applicant with the rejection reason.',
+                  style: TextStyle(fontSize: 12, color: Colors.orange),
+                ),
               ),
             ],
           ),
@@ -454,22 +675,35 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
               children: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancel'),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      color: Colors.grey,
+                    ),
+                  ),
                 ),
                 OutlinedButton.icon(
                   onPressed: () {
+                    if (reasonController.text.trim().isEmpty) {
+                      context.showErrorAlert('Please provide a reason for rejection');
+                      return;
+                    }
+
                     Navigator.of(dialogContext).pop();
+                    Navigator.of(context).pop(); // Close the details dialog
+
                     // Use the captured bloc reference
                     signupRequestBloc.add(
                       RejectSignupRequestWithReason(
                         id: widget.request.id,
-                        reason: reasonController.text,
+                        reason: reasonController.text.trim(),
                       ),
                     );
                   },
                   icon: const Icon(Icons.cancel, color: CustomColors.rossoSimone),
                   label: const Text(
-                    'Reject',
+                    'Reject & Notify',
                     style: TextStyle(
                       color: CustomColors.rossoSimone,
                       fontFamily: 'Montserrat',

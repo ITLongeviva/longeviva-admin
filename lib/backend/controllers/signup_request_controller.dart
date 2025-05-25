@@ -1,4 +1,6 @@
 import 'dart:math';
+import 'package:intl/intl.dart';
+
 import '../../shared/utils/error_handler.dart';
 import '../models/doctor/sign_up_data.dart';
 import '../models/signup_request_model.dart';
@@ -276,7 +278,19 @@ Temporary Password: $temporaryPassword
 
 Please note that you will be prompted to change your password upon your first login.
 
-Thank you for joining Longeviva.
+Your Profile Summary:
+- Role: ${request.role}
+- Specialty: ${request.specialty}
+- Organization: ${request.organization}
+- City of Work: ${request.cityOfWork}
+
+Next Steps:
+1. Log in using your temporary password
+2. Complete your profile setup
+3. Update your password
+4. Begin using the platform
+
+Thank you for joining Longeviva. We look forward to supporting your healthcare practice.
 
 Best regards,
 The Longeviva Team
@@ -298,15 +312,25 @@ The Longeviva Team
   }
 
   Future<void> _sendRejectionEmail(SignupRequest request, String reason) async {
-    final subject = 'Your Longeviva Registration Request';
+    final subject = 'Your Longeviva Registration Request Update';
     final body = '''
 Dear ${request.name} ${request.surname},
 
 We regret to inform you that your registration request for Longeviva has been declined.
 
-Reason: $reason
+Application Details:
+- Role: ${request.role}
+- Specialty: ${request.specialty}
+- Organization: ${request.organization}
+- Application Date: ${DateFormat('MMMM d, yyyy').format(request.requestedAt)}
 
-If you believe this decision was made in error or would like to provide additional information, please contact our support team.
+Reason for Decline:
+$reason
+
+Next Steps:
+If you believe this decision was made in error or would like to provide additional information, please contact our support team at longeviva.app@gmail.com.
+
+You may also submit a new application with updated information if the circumstances have changed.
 
 Best regards,
 The Longeviva Team
@@ -328,6 +352,7 @@ The Longeviva Team
   }
 
   void _validateSignupData(SignupData data) {
+    // Basic field validation
     if (data.email.isEmpty) {
       throw AppException(
         'Email is required',
@@ -370,36 +395,100 @@ The Longeviva Team
       );
     }
 
+    // Role-specific validation
     if (data.role == 'DOCTOR') {
-      if (data.surname.isEmpty) {
-        throw AppException(
-          'Surname is required for doctors',
-          translationKey: 'errors.signup.surname_required',
-        );
-      }
-
-      if (data.sex.isEmpty) {
-        throw AppException(
-          'Sex is required for doctors',
-          translationKey: 'errors.signup.sex_required',
-        );
-      }
-
-      if (data.vatNumber.isEmpty) {
-        throw AppException(
-          'VAT number is required for doctors',
-          translationKey: 'errors.signup.vat_required',
-        );
-      }
+      _validateDoctorFields(data);
     } else {
-      if (data.fiscalCode.isEmpty) {
-        throw AppException(
-          'Fiscal code is required for clinics',
-          translationKey: 'errors.signup.fiscal_code_required',
-        );
-      }
+      _validateClinicFields(data);
     }
 
+    // Common required fields
+    _validateCommonFields(data);
+
+    // New fields validation
+    _validateNewFields(data);
+
+    // Business logic validation
+    _validateBusinessLogic(data);
+  }
+
+  void _validateDoctorFields(SignupData data) {
+    if (data.surname.isEmpty) {
+      throw AppException(
+        'Surname is required for doctors',
+        translationKey: 'errors.signup.surname_required',
+      );
+    }
+
+    if (data.sex.isEmpty) {
+      throw AppException(
+        'Sex is required for doctors',
+        translationKey: 'errors.signup.sex_required',
+      );
+    }
+
+    if (!['M', 'F', 'Male', 'Female'].contains(data.sex)) {
+      throw AppException(
+        'Sex must be M, F, Male, or Female',
+        translationKey: 'errors.signup.invalid_sex',
+      );
+    }
+
+    if (data.vatNumber.isEmpty) {
+      throw AppException(
+        'VAT number is required for doctors',
+        translationKey: 'errors.signup.vat_required',
+      );
+    }
+
+    // VAT number format validation (basic)
+    if (data.vatNumber.length < 8) {
+      throw AppException(
+        'VAT number must be at least 8 characters',
+        translationKey: 'errors.signup.vat_invalid_format',
+      );
+    }
+
+    if (data.fiscalCode.isEmpty) {
+      throw AppException(
+        'Fiscal code is required for doctors',
+        translationKey: 'errors.signup.fiscal_code_required',
+      );
+    }
+
+    // Italian fiscal code validation (basic)
+    if (!RegExp(r'^[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]$').hasMatch(data.fiscalCode.toUpperCase())) {
+      throw AppException(
+        'Invalid fiscal code format',
+        translationKey: 'errors.signup.fiscal_code_invalid',
+      );
+    }
+  }
+
+  void _validateClinicFields(SignupData data) {
+    if (data.fiscalCode.isEmpty) {
+      throw AppException(
+        'Fiscal code is required for clinics',
+        translationKey: 'errors.signup.fiscal_code_required',
+      );
+    }
+
+    if (data.ragioneSociale.isEmpty) {
+      throw AppException(
+        'Business name (Ragione Sociale) is required for clinics',
+        translationKey: 'errors.signup.ragione_sociale_required',
+      );
+    }
+
+    if (data.ragioneSociale.length < 2) {
+      throw AppException(
+        'Business name must be at least 2 characters',
+        translationKey: 'errors.signup.ragione_sociale_too_short',
+      );
+    }
+  }
+
+  void _validateCommonFields(SignupData data) {
     if (data.specialty.isEmpty) {
       throw AppException(
         'Specialty is required',
@@ -414,10 +503,117 @@ The Longeviva Team
       );
     }
 
+    // Phone number format validation (basic)
+    if (!RegExp(r'^\+?[\d\s\-\(\)]{8,}$').hasMatch(data.phoneNumber)) {
+      throw AppException(
+        'Invalid phone number format',
+        translationKey: 'errors.signup.phone_invalid',
+      );
+    }
+
     if (data.cityOfWork.isEmpty) {
       throw AppException(
         'City of work is required',
         translationKey: 'errors.signup.city_required',
+      );
+    }
+  }
+
+  void _validateNewFields(SignupData data) {
+    if (data.address.isEmpty) {
+      throw AppException(
+        'Address is required',
+        translationKey: 'errors.signup.address_required',
+      );
+    }
+
+    if (data.address.length < 10) {
+      throw AppException(
+        'Address must be at least 10 characters',
+        translationKey: 'errors.signup.address_too_short',
+      );
+    }
+
+    if (data.languagesSpoken.isEmpty) {
+      throw AppException(
+        'At least one language must be specified',
+        translationKey: 'errors.signup.languages_required',
+      );
+    }
+
+    // Validate language entries
+    for (String language in data.languagesSpoken) {
+      if (language.trim().isEmpty) {
+        throw AppException(
+          'Language entries cannot be empty',
+          translationKey: 'errors.signup.languages_empty_entry',
+        );
+      }
+      if (language.length < 2) {
+        throw AppException(
+          'Language entries must be at least 2 characters',
+          translationKey: 'errors.signup.languages_too_short',
+        );
+      }
+    }
+
+    if (data.organization.isEmpty) {
+      throw AppException(
+        'Organization is required',
+        translationKey: 'errors.signup.organization_required',
+      );
+    }
+
+    if (data.organization.length < 2) {
+      throw AppException(
+        'Organization name must be at least 2 characters',
+        translationKey: 'errors.signup.organization_too_short',
+      );
+    }
+  }
+
+  void _validateBusinessLogic(SignupData data) {
+    // Validate birthdate if provided (for doctors)
+    if (data.role == 'DOCTOR' && data.birthdate != null) {
+      final now = DateTime.now();
+      final age = now.year - data.birthdate!.year;
+
+      if (age < 18) {
+        throw AppException(
+          'Doctor must be at least 18 years old',
+          translationKey: 'errors.signup.age_too_young',
+        );
+      }
+
+      if (age > 100) {
+        throw AppException(
+          'Please verify the birthdate',
+          translationKey: 'errors.signup.age_too_old',
+        );
+      }
+
+      if (data.birthdate!.isAfter(now)) {
+        throw AppException(
+          'Birthdate cannot be in the future',
+          translationKey: 'errors.signup.birthdate_future',
+        );
+      }
+    }
+
+    // Check for reasonable language count
+    if (data.languagesSpoken.length > 20) {
+      throw AppException(
+        'Maximum 20 languages can be specified',
+        translationKey: 'errors.signup.too_many_languages',
+      );
+    }
+
+    // Check for duplicate languages
+    final uniqueLanguages = data.languagesSpoken.map((lang) => lang.trim().toLowerCase()).toSet();
+    if (uniqueLanguages.length != data.languagesSpoken.length) {
+      throw AppException(
+        'Duplicate languages are not allowed',
+        translationKey: 'errors.signup.duplicate_languages',
       );
     }
   }

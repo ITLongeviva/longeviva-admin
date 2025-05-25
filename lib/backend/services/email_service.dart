@@ -113,11 +113,12 @@ class EmailService {
     }
   }
 
-  /// Generate the email body with form data
+  /// Generate the email body with form data including new fields
   String _generateEmailBody(SignupData data) {
     final formatter = DateFormat('yyyy-MM-dd');
 
     String body = 'Registration Request for Longeviva\n\n';
+    body += '=== BASIC INFORMATION ===\n';
     body += 'Role: ${data.role}\n';
     body += 'Name: ${data.name}\n';
 
@@ -126,18 +127,32 @@ class EmailService {
       body += 'Sex: ${data.sex}\n';
       body += 'Birthdate: ${data.birthdate != null ? formatter.format(data.birthdate!) : "N/A"}\n';
       body += 'VAT Number: ${data.vatNumber}\n';
+      body += 'Fiscal Code: ${data.fiscalCode}\n';
     } else {
-      body += 'Fiscal Code/Social Number: ${data.fiscalCode}\n';
+      body += 'Business Name (Ragione Sociale): ${data.ragioneSociale}\n';
+      body += 'Fiscal Code: ${data.fiscalCode}\n';
     }
 
+    body += '\n=== PROFESSIONAL INFORMATION ===\n';
     body += 'Specialty: ${data.specialty}\n';
-    body += 'Phone Number: ${data.phoneNumber}\n';
+    body += 'Organization: ${data.organization}\n';
     body += 'City of Work: ${data.cityOfWork}\n';
-    body += 'Email: ${data.email}\n';
-    body += 'Google Email: ${data.googleEmail}\n\n';
 
-    body += 'Please review and process this registration request.\n';
-    body += 'Thank you.';
+    body += '\n=== CONTACT INFORMATION ===\n';
+    body += 'Phone Number: ${data.phoneNumber}\n';
+    body += 'Email: ${data.email}\n';
+    body += 'Google Email: ${data.googleEmail}\n';
+    body += 'Address: ${data.address}\n';
+
+    body += '\n=== ADDITIONAL INFORMATION ===\n';
+    body += 'Languages Spoken: ${data.languagesSpoken.join(", ")}\n';
+
+    body += '\n=== ADMIN ACTION REQUIRED ===\n';
+    body += 'Please review and process this registration request in the admin portal.\n';
+    body += 'All fields have been validated and the request is ready for approval.\n\n';
+
+    body += 'Thank you.\n';
+    body += '-- Longeviva Admin System';
 
     return body;
   }
