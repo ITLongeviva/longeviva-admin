@@ -94,7 +94,8 @@ class SignupRequestController {
 
   Future<bool> approveSignupRequestWithPassword(String id, String temporaryPassword) async {
     try {
-      ErrorHandler.logDebug('Approving signup request with ID and temporary password: $id');
+      ErrorHandler.logDebug('Approving signup request with ID: $id');
+      ErrorHandler.logDebug('Temporary password: $temporaryPassword');
 
       final request = await _repository.getSignupRequestById(id);
       if (request == null) {
@@ -104,21 +105,44 @@ class SignupRequestController {
         );
       }
 
+      ErrorHandler.logDebug('Found signup request for email: ${request.email}');
+      ErrorHandler.logDebug('Request status: ${request.status}');
+      ErrorHandler.logDebug('Request role: ${request.role}');
+
       if (request.status != 'pending') {
         throw AppException(
-          'Cannot approve a request that is not pending',
+          'Cannot approve a request that is not pending. Current status: ${request.status}',
           translationKey: 'errors.signup.request_not_pending',
         );
       }
 
-      if (temporaryPassword.isEmpty) {
+      // Validate temporary password
+      if (temporaryPassword.isEmpty || temporaryPassword.length < 6) {
         temporaryPassword = _generateRandomPassword(10);
-        ErrorHandler.logWarning('Empty temporary password provided, generated a random one: $temporaryPassword');
+        ErrorHandler.logWarning('Invalid temporary password provided, generated a new one: $temporaryPassword');
       }
 
       ErrorHandler.logDebug('Using temporary password for approval: $temporaryPassword');
 
       try {
+        // Check if email already exists in Firebase Auth
+        ErrorHandler.logDebug('Checking if email already exists in Firebase Auth');
+        final signInMethods = await FirebaseAuth.instance.fetchSignInMethodsForEmail(request.email);
+
+        if (signInMethods.isNotEmpty) {
+          ErrorHandler.logWarning('Email already exists in Firebase Auth with methods: $signInMethods');
+          // Instead of failing, let's handle this gracefully
+          // We'll still create the Firestore records but skip Firebase Auth creation
+          final success = await _repository.approveSignupRequestWithPassword(id, temporaryPassword);
+          if (success) {
+            await _sendApprovalEmail(request, temporaryPassword);
+          }
+          return success;
+        }
+
+        ErrorHandler.logDebug('Email does not exist in Firebase Auth, proceeding with user creation');
+
+        // Create Firebase Auth user
         final userCredential = await _firebaseAuthService.createUserWithEmailAndPassword(
           email: request.email,
           password: temporaryPassword,
@@ -128,40 +152,79 @@ class SignupRequestController {
 
         if (userCredential.user == null) {
           throw AppException(
-            'Failed to create Firebase Auth user',
+            'Failed to create Firebase Auth user - user credential is null',
             translationKey: 'errors.auth.firebase_auth_user_creation_failed',
-            translationArgs: {'error': 'User creation returned null'},
           );
         }
 
+        ErrorHandler.logDebug('Firebase Auth user created successfully: ${userCredential.user!.uid}');
+
+        // Set custom claims using Cloud Function
         try {
           await _functions.httpsCallable('setUserApprovedClaim').call({
             'uid': userCredential.user!.uid,
             'approved': true,
             'role': request.role,
           });
-
           ErrorHandler.logDebug('Set approved claim for user: ${userCredential.user!.uid}');
         } catch (e) {
-          ErrorHandler.logError('Error setting custom claim', e);
+          ErrorHandler.logError('Error setting custom claim (non-fatal)', e);
+          // Don't fail the entire process for this
         }
 
+        // Update Firestore records
         final success = await _repository.approveSignupRequestWithPassword(id, temporaryPassword);
 
         if (success) {
           await _sendApprovalEmail(request, temporaryPassword);
+          ErrorHandler.logDebug('Signup request approved successfully');
+        } else {
+          ErrorHandler.logError('Failed to update Firestore records after Firebase Auth creation', null);
         }
 
         return success;
+
       } catch (e) {
-        if (e is FirebaseAuthException && e.code == 'email-already-in-use') {
-          ErrorHandler.logWarning('User already exists in Firebase Auth, continuing with Firestore update');
-          final success = await _repository.approveSignupRequestWithPassword(id, temporaryPassword);
-          if (success) {
-            await _sendApprovalEmail(request, temporaryPassword);
+        if (e is FirebaseAuthException) {
+          ErrorHandler.logError('Firebase Auth Exception during approval', e);
+          ErrorHandler.logDebug('Firebase Auth Error Code: ${e.code}');
+          ErrorHandler.logDebug('Firebase Auth Error Message: ${e.message}');
+
+          if (e.code == 'email-already-in-use') {
+            ErrorHandler.logWarning('User already exists in Firebase Auth, continuing with Firestore update');
+            final success = await _repository.approveSignupRequestWithPassword(id, temporaryPassword);
+            if (success) {
+              await _sendApprovalEmail(request, temporaryPassword);
+            }
+            return success;
           }
-          return success;
+
+          // For other Firebase Auth errors, provide specific error messages
+          String errorMessage;
+          switch (e.code) {
+            case 'invalid-email':
+              errorMessage = 'Invalid email address: ${request.email}';
+              break;
+            case 'weak-password':
+              errorMessage = 'Generated password is too weak. Please try again.';
+              break;
+            case 'operation-not-allowed':
+              errorMessage = 'Email/password authentication is not enabled in Firebase Console';
+              break;
+            case 'network-request-failed':
+              errorMessage = 'Network error occurred. Please check your internet connection and try again.';
+              break;
+            default:
+              errorMessage = 'Firebase Auth error: ${e.message ?? e.code}';
+          }
+
+          throw AppException(
+            errorMessage,
+            translationKey: 'errors.auth.firebase_auth_error',
+            originalError: e,
+          );
         }
+
         rethrow;
       }
     } catch (e) {
@@ -170,7 +233,7 @@ class SignupRequestController {
         rethrow;
       }
       throw AppException(
-        'Error approving signup request',
+        'Error approving signup request: ${e.toString()}',
         translationKey: 'errors.signup.approval_failed',
         originalError: e,
       );

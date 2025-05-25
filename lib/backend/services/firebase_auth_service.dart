@@ -156,43 +156,83 @@ class FirebaseAuthService {
     required bool requirePasswordChange,
   }) async {
     try {
+      ErrorHandler.logDebug('Creating Firebase Auth user for email: $email');
+      ErrorHandler.logDebug('Password length: ${password.length}');
+      ErrorHandler.logDebug('Display name: $displayName');
+
+      // Validate input parameters
+      if (email.isEmpty || email.trim().isEmpty) {
+        throw ArgumentError('Email cannot be empty');
+      }
+
+      if (password.isEmpty || password.length < 6) {
+        throw ArgumentError('Password must be at least 6 characters long');
+      }
+
+      // Validate email format
+      final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+      if (!emailRegex.hasMatch(email.trim())) {
+        throw ArgumentError('Invalid email format: $email');
+      }
+
+      ErrorHandler.logDebug('Input validation passed');
+
       // Create the user with Firebase Auth
       final userCredential = await _auth.createUserWithEmailAndPassword(
-          email: email,
+          email: email.trim().toLowerCase(),
           password: password
       );
 
       final user = userCredential.user;
       if (user != null) {
+        ErrorHandler.logDebug('Firebase user created successfully: ${user.uid}');
+
         // Set display name
         await user.updateDisplayName(displayName);
+        ErrorHandler.logDebug('Display name updated successfully');
 
         // Get a fresh ID token to work with custom claims
         await user.getIdToken(true);
+        ErrorHandler.logDebug('ID token refreshed successfully');
+      } else {
+        throw Exception('User creation returned null');
       }
 
       return userCredential;
     } on FirebaseAuthException catch (e) {
-      ErrorHandler.logError('Error creating user account', e);
-      String errorMessage;
+      ErrorHandler.logError('Firebase Auth Exception during user creation', e);
+      ErrorHandler.logDebug('Firebase Auth Error Code: ${e.code}');
+      ErrorHandler.logDebug('Firebase Auth Error Message: ${e.message}');
 
+      String errorMessage;
       switch (e.code) {
         case 'email-already-in-use':
-          errorMessage = 'Email already in use. Please use a different email.';
+          errorMessage = 'Email already in use: $email';
           break;
         case 'invalid-email':
-          errorMessage = 'Invalid email format.';
+          errorMessage = 'Invalid email format: $email';
           break;
         case 'weak-password':
-          errorMessage = 'Password is too weak. Please use a stronger password.';
+          errorMessage = 'Password is too weak. Must be at least 6 characters with good complexity.';
+          break;
+        case 'operation-not-allowed':
+          errorMessage = 'Email/password authentication is not enabled in Firebase Console';
+          break;
+        case 'network-request-failed':
+          errorMessage = 'Network error occurred. Please check your internet connection.';
+          break;
+        case 'too-many-requests':
+          errorMessage = 'Too many requests. Please try again later.';
           break;
         default:
-          errorMessage = 'Error creating account: ${e.message}';
+          errorMessage = 'Error creating account: ${e.message ?? e.code}';
       }
 
       throw Exception(errorMessage);
     } catch (e) {
       ErrorHandler.logError('Unexpected error creating account', e);
+      ErrorHandler.logDebug('Error type: ${e.runtimeType}');
+      ErrorHandler.logDebug('Error details: $e');
       throw Exception('Error creating account: ${e.toString()}');
     }
   }
