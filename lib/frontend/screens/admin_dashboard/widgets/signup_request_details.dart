@@ -8,11 +8,14 @@ import '../../../../backend/bloc/signup_request_bloc.dart';
 import '../../../../backend/models/signup_request_model.dart';
 import '../../../../shared/utils/colors.dart';
 import '../../../../shared/utils/context_extensions.dart';
+import '../../../../shared/utils/secure_password_generator.dart';
+import '../../../../shared/widgets/password_validation_widget.dart';
 
 class SignupRequestDetails extends StatefulWidget {
   final SignupRequest request;
 
-  const SignupRequestDetails({Key? key, required this.request}) : super(key: key);
+  const SignupRequestDetails({Key? key, required this.request})
+      : super(key: key);
 
   @override
   State<SignupRequestDetails> createState() => _SignupRequestDetailsState();
@@ -21,13 +24,6 @@ class SignupRequestDetails extends StatefulWidget {
 class _SignupRequestDetailsState extends State<SignupRequestDetails> {
   final TextEditingController _tempPasswordController = TextEditingController();
   bool _passwordVisible = false;
-
-  @override
-  void initState() {
-    super.initState();
-    // Generate a random password on initialization
-    _tempPasswordController.text = _generateRandomPassword(12);
-  }
 
   @override
   void dispose() {
@@ -111,11 +107,15 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
                           _buildDetailRow('Sex', widget.request.sex),
                           if (widget.request.birthdate != null)
                             _buildDetailRow(
-                                'Birthdate', DateFormat('MMMM dd, yyyy').format(widget.request.birthdate!)),
+                                'Birthdate',
+                                DateFormat('MMMM dd, yyyy')
+                                    .format(widget.request.birthdate!)),
                         ],
-                        _buildDetailRow('Fiscal Code', widget.request.fiscalCode),
+                        _buildDetailRow(
+                            'Fiscal Code', widget.request.fiscalCode),
                         if (widget.request.role == 'DOCTOR')
-                          _buildDetailRow('VAT Number', widget.request.vatNumber),
+                          _buildDetailRow(
+                              'VAT Number', widget.request.vatNumber),
                       ],
                     ),
 
@@ -128,10 +128,13 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
                       children: [
                         _buildDetailRow('Role', widget.request.role),
                         _buildDetailRow('Specialty', widget.request.specialty),
-                        _buildDetailRow('Organization', widget.request.organization),
+                        _buildDetailRow(
+                            'Organization', widget.request.organization),
                         if (widget.request.role == 'CLINIC')
-                          _buildDetailRow('Business Name', widget.request.ragioneSociale),
-                        _buildDetailRow('City of Work', widget.request.cityOfWork),
+                          _buildDetailRow(
+                              'Business Name', widget.request.ragioneSociale),
+                        _buildDetailRow(
+                            'City of Work', widget.request.cityOfWork),
                       ],
                     ),
 
@@ -143,7 +146,8 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
                       icon: Icons.contact_mail,
                       children: [
                         _buildDetailRow('Email', widget.request.email),
-                        _buildDetailRow('Google Email', widget.request.googleEmail),
+                        _buildDetailRow(
+                            'Google Email', widget.request.googleEmail),
                         _buildDetailRow('Phone', widget.request.phoneNumber),
                         _buildDetailRow('Address', widget.request.address),
                       ],
@@ -156,8 +160,12 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
                       title: 'Additional Information',
                       icon: Icons.info_outline,
                       children: [
-                        _buildLanguagesRow('Languages Spoken', widget.request.languagesSpoken),
-                        _buildDetailRow('Request Date', DateFormat('MMMM dd, yyyy \'at\' HH:mm').format(widget.request.requestedAt)),
+                        _buildLanguagesRow(
+                            'Languages Spoken', widget.request.languagesSpoken),
+                        _buildDetailRow(
+                            'Request Date',
+                            DateFormat('MMMM dd, yyyy \'at\' HH:mm')
+                                .format(widget.request.requestedAt)),
                       ],
                     ),
 
@@ -182,7 +190,8 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () => _showRejectDialog(context),
-                      icon: const Icon(Icons.cancel, color: CustomColors.rossoSimone),
+                      icon: const Icon(Icons.cancel,
+                          color: CustomColors.rossoSimone),
                       label: const Text(
                         'Reject Request',
                         style: TextStyle(
@@ -420,34 +429,39 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
           Expanded(
             child: languages.isNotEmpty
                 ? Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: languages.map((language) => Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: CustomColors.verdeMare.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: CustomColors.verdeMare.withOpacity(0.3)),
-                ),
-                child: Text(
-                  language,
-                  style: const TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontSize: 12,
-                    color: CustomColors.verdeAbisso,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              )).toList(),
-            )
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: languages
+                        .map((language) => Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: CustomColors.verdeMare.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                    color: CustomColors.verdeMare
+                                        .withOpacity(0.3)),
+                              ),
+                              child: Text(
+                                language,
+                                style: const TextStyle(
+                                  fontFamily: 'Montserrat',
+                                  fontSize: 12,
+                                  color: CustomColors.verdeAbisso,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ))
+                        .toList(),
+                  )
                 : Text(
-              'Not provided',
-              style: TextStyle(
-                fontFamily: 'Montserrat',
-                color: Colors.grey,
-                fontSize: 14,
-              ),
-            ),
+                    'Not provided',
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      color: Colors.grey,
+                      fontSize: 14,
+                    ),
+                  ),
           ),
         ],
       ),
@@ -463,9 +477,11 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
       children: [
         _buildDetailRow(
           'Processed Date',
-          DateFormat('MMMM dd, yyyy \'at\' HH:mm').format(widget.request.processedAt!),
+          DateFormat('MMMM dd, yyyy \'at\' HH:mm')
+              .format(widget.request.processedAt!),
         ),
-        if (widget.request.status == 'rejected' && widget.request.rejectionReason != null)
+        if (widget.request.status == 'rejected' &&
+            widget.request.rejectionReason != null)
           _buildDetailRow('Rejection Reason', widget.request.rejectionReason!),
         if (widget.request.temporaryPassword != null)
           _buildDetailRow('Temp Password Sent', 'Yes'),
@@ -473,143 +489,124 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
     );
   }
 
+  @override
+  void initState() {
+    super.initState();
+    _tempPasswordController.text =
+        PasswordValidationHelper.generateValidatedPassword(length: 12);
+  }
+
   void _showApprovalDialog(BuildContext context) {
-    // Capture the bloc reference before showing dialog
     final signupRequestBloc = context.read<SignupRequestBloc>();
 
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: const Text(
-            'Approve Registration Request',
-            style: TextStyle(
-              fontFamily: 'Montserrat',
-              fontWeight: FontWeight.bold,
-              color: CustomColors.verdeAbisso,
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Approve registration for ${_getFullName()}?',
-                style: const TextStyle(
-                  fontFamily: 'Montserrat',
-                  fontWeight: FontWeight.w500,
-                  fontSize: 16,
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Set a temporary password:',
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text(
+                'Approve Registration Request',
                 style: TextStyle(
                   fontFamily: 'Montserrat',
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.bold,
+                  color: CustomColors.verdeAbisso,
                 ),
               ),
-              const SizedBox(height: 8),
-              Row(
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _tempPasswordController,
-                      obscureText: !_passwordVisible,
-                      decoration: InputDecoration(
-                        labelText: 'Temporary Password',
-                        border: const OutlineInputBorder(),
-                        suffixIcon: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: Icon(_passwordVisible ? Icons.visibility_off : Icons.visibility),
-                              onPressed: () {
-                                setState(() {
-                                  _passwordVisible = !_passwordVisible;
-                                });
-                              },
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.refresh),
-                              onPressed: () {
-                                setState(() {
-                                  _tempPasswordController.text = _generateRandomPassword(12);
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
+                  Text(
+                    'Approve registration for ${_getFullName()}?',
+                    style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontWeight: FontWeight.w500,
+                      fontSize: 16,
                     ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Set a temporary password:',
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Use the unified password validation widget
+                  PasswordValidationWidget(
+                    passwordController: _tempPasswordController,
+                    onRegeneratePassword: () {
+                      setState(() {
+                        _tempPasswordController.text =
+                            PasswordValidationHelper.generateValidatedPassword(
+                                length: 12);
+                      });
+                    },
+                    showPasswordRequirements: false,
+                    // Show compact version in dialog
+                    helperText:
+                        'User will be required to change on first login',
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text(
-                  'The user will be prompted to change this password on first login. An email with login credentials will be sent to both email addresses.',
-                  style: TextStyle(fontSize: 12, color: Colors.blue),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(
-                      fontFamily: 'Montserrat',
-                      color: Colors.grey,
-                    ),
-                  ),
-                ),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    if (_tempPasswordController.text.trim().isEmpty) {
-                      context.showErrorAlert('Please enter a temporary password');
-                      return;
-                    }
-
-                    Navigator.of(dialogContext).pop();
-                    Navigator.of(context).pop(); // Close the details dialog
-
-                    // Use the captured bloc reference
-                    signupRequestBloc.add(
-                      ApproveSignupRequestWithPassword(
-                        id: widget.request.id,
-                        temporaryPassword: _tempPasswordController.text.trim(),
+              actions: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(
+                          fontFamily: 'Montserrat',
+                          color: Colors.grey,
+                        ),
                       ),
-                    );
-                  },
-                  icon: const Icon(Icons.check_circle, color: Colors.white),
-                  label: const Text(
-                    'Approve & Send Credentials',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontFamily: 'Montserrat',
                     ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: CustomColors.verdeMare,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        // Use unified validation helper
+                        if (!PasswordValidationHelper.validateAndShowError(
+                            context, _tempPasswordController.text.trim())) {
+                          return;
+                        }
+
+                        Navigator.of(dialogContext).pop();
+                        Navigator.of(context).pop(); // Close the details dialog
+
+                        // Use the captured bloc reference
+                        signupRequestBloc.add(
+                          ApproveSignupRequestWithPassword(
+                            id: widget.request.id,
+                            temporaryPassword:
+                                _tempPasswordController.text.trim(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.check_circle, color: Colors.white),
+                      label: const Text(
+                        'Approve & Send Credentials',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontFamily: 'Montserrat',
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: CustomColors.verdeMare,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ],
-            ),
-          ],
+            );
+          },
         );
       },
     );
@@ -651,7 +648,8 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
                 decoration: const InputDecoration(
                   labelText: 'Rejection Reason',
                   border: OutlineInputBorder(),
-                  hintText: 'e.g., Incomplete documentation, Invalid credentials...',
+                  hintText:
+                      'e.g., Incomplete documentation, Invalid credentials...',
                 ),
                 maxLines: 3,
               ),
@@ -686,7 +684,8 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
                 OutlinedButton.icon(
                   onPressed: () {
                     if (reasonController.text.trim().isEmpty) {
-                      context.showErrorAlert('Please provide a reason for rejection');
+                      context.showErrorAlert(
+                          'Please provide a reason for rejection');
                       return;
                     }
 
@@ -701,7 +700,8 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
                       ),
                     );
                   },
-                  icon: const Icon(Icons.cancel, color: CustomColors.rossoSimone),
+                  icon:
+                      const Icon(Icons.cancel, color: CustomColors.rossoSimone),
                   label: const Text(
                     'Reject & Notify',
                     style: TextStyle(
@@ -722,12 +722,5 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
         );
       },
     );
-  }
-
-  // Helper method to generate random password
-  String _generateRandomPassword(int length) {
-    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#\$%^&*()';
-    final random = Random.secure();
-    return List.generate(length, (_) => chars[random.nextInt(chars.length)]).join();
   }
 }

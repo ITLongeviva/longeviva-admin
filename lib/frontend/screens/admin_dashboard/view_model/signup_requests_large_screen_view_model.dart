@@ -9,6 +9,8 @@ import '../../../../../shared/utils/colors.dart';
 import '../../../../../shared/utils/context_extensions.dart';
 import '../../../../../shared/widgets/custom_progress_indicator.dart';
 import '../../../../backend/bloc/signup_request_bloc.dart';
+import '../../../../shared/utils/secure_password_generator.dart';
+import '../../../../shared/widgets/password_validation_widget.dart';
 import '../widgets/signup_request_details.dart';
 
 class SignupRequestsLargeScreenViewModel extends StatefulWidget {
@@ -618,91 +620,99 @@ class _SignupRequestsLargeScreenViewModelState extends State<SignupRequestsLarge
 
   void _showApproveConfirmation(BuildContext context, String requestId) {
     final temporaryPasswordController = TextEditingController();
-    temporaryPasswordController.text = _generateRandomPassword(10);
+    // Use the unified password generator with validation
+    temporaryPasswordController.text = PasswordValidationHelper.generateValidatedPassword(length: 12);
 
     // Capture the bloc before showing dialog
     final signupRequestBloc = context.read<SignupRequestBloc>();
 
     context.showAnimatedDialog(
-      dialogBuilder: (dialogContext) => AlertDialog(
-        title: const Text(
-          'Confirm Approval',
-          style: TextStyle(
-            fontFamily: 'Montserrat',
-            fontWeight: FontWeight.bold,
-            color: CustomColors.verdeAbisso,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Are you sure you want to approve this signup request? This will create a new user account.',
-              style: TextStyle(fontFamily: 'Montserrat'),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: temporaryPasswordController,
-              decoration: InputDecoration(
-                labelText: 'Temporary Password',
-                helperText: 'User will be required to change on first login',
-                border: const OutlineInputBorder(),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.refresh),
-                  onPressed: () {
-                    temporaryPasswordController.text = _generateRandomPassword(10);
-                  },
-                ),
+      dialogBuilder: (dialogContext) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text(
+              'Confirm Approval',
+              style: TextStyle(
+                fontFamily: 'Montserrat',
+                fontWeight: FontWeight.bold,
+                color: CustomColors.verdeAbisso,
               ),
             ),
-          ],
-        ),
-        actions: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text(
-                  'Cancel',
-                  style: TextStyle(
-                    fontFamily: 'Montserrat',
-                    color: Colors.grey,
-                  ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Are you sure you want to approve this signup request? This will create a new user account.',
+                  style: TextStyle(fontFamily: 'Montserrat'),
                 ),
-              ),
-              ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.of(dialogContext).pop();
+                const SizedBox(height: 16),
 
-                  // Use the captured bloc reference
-                  signupRequestBloc.add(
-                    ApproveSignupRequestWithPassword(
-                      id: requestId,
-                      temporaryPassword: temporaryPasswordController.text,
+                // Use the unified password validation widget
+                PasswordValidationWidget(
+                  passwordController: temporaryPasswordController,
+                  onRegeneratePassword: () {
+                    setState(() {
+                      temporaryPasswordController.text = PasswordValidationHelper.generateValidatedPassword(length: 12);
+                    });
+                  },
+                  showPasswordRequirements: false, // Compact version for dialog
+                  helperText: 'User will be required to change on first login',
+                ),
+              ],
+            ),
+            actions: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        color: Colors.grey,
+                      ),
                     ),
-                  );
-                },
-                icon: const Icon(Icons.check_circle, color: Colors.white),
-                label: const Text(
-                  'Approve',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontFamily: 'Montserrat',
                   ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: CustomColors.verdeMare,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      // Use unified validation helper - same as in details dialog!
+                      if (!PasswordValidationHelper.validateAndShowError(context, temporaryPasswordController.text.trim())) {
+                        return;
+                      }
+
+                      Navigator.of(dialogContext).pop();
+
+                      // Use the captured bloc reference
+                      signupRequestBloc.add(
+                        ApproveSignupRequestWithPassword(
+                          id: requestId,
+                          temporaryPassword: temporaryPasswordController.text,
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.check_circle, color: Colors.white),
+                    label: const Text(
+                      'Approve',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontFamily: 'Montserrat',
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: CustomColors.verdeMare,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ],
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -788,12 +798,5 @@ class _SignupRequestsLargeScreenViewModelState extends State<SignupRequestsLarge
         ],
       ),
     );
-  }
-
-// Helper function to generate random password
-  String _generateRandomPassword(int length) {
-    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#\$%^&*()';
-    final random = Random.secure();
-    return List.generate(length, (_) => chars[random.nextInt(chars.length)]).join();
   }
 }

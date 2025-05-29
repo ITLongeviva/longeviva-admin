@@ -2,6 +2,8 @@ import 'dart:math';
 import 'package:intl/intl.dart';
 
 import '../../shared/utils/error_handler.dart';
+import '../../shared/utils/secure_password_generator.dart';
+import '../../shared/widgets/password_validation_widget.dart';
 import '../models/doctor/sign_up_data.dart';
 import '../models/signup_request_model.dart';
 import '../repositories/signup_request_repository.dart';
@@ -95,7 +97,6 @@ class SignupRequestController {
   Future<bool> approveSignupRequestWithPassword(String id, String temporaryPassword) async {
     try {
       ErrorHandler.logDebug('Approving signup request with ID: $id');
-      ErrorHandler.logDebug('Temporary password: $temporaryPassword');
 
       final request = await _repository.getSignupRequestById(id);
       if (request == null) {
@@ -116,13 +117,35 @@ class SignupRequestController {
         );
       }
 
-      // Validate temporary password
-      if (temporaryPassword.isEmpty || temporaryPassword.length < 6) {
-        temporaryPassword = _generateRandomPassword(10);
-        ErrorHandler.logWarning('Invalid temporary password provided, generated a new one: $temporaryPassword');
+      // Use unified password validation and generation
+      String finalPassword = temporaryPassword.trim();
+
+      if (finalPassword.isEmpty) {
+        // Generate a new secure password using the unified helper
+        finalPassword = PasswordValidationHelper.generateValidatedPassword(length: 12);
+        ErrorHandler.logDebug('Empty temporary password provided, generated a secure validated one');
+      } else {
+        // Validate the provided password using the unified system
+        final validation = SecurePasswordGenerator.validatePasswordForUI(finalPassword);
+        if (!validation['isValid']) {
+          // If provided password doesn't meet requirements, generate a new one
+          finalPassword = PasswordValidationHelper.generateValidatedPassword(length: 12);
+          ErrorHandler.logWarning('Provided password does not meet security requirements: ${validation['errorMessage']}');
+          ErrorHandler.logDebug('Generated new secure password instead');
+        }
       }
 
-      ErrorHandler.logDebug('Using temporary password for approval: $temporaryPassword');
+      // Double-check the final password with explicit validation
+      final finalValidation = SecurePasswordGenerator.validatePasswordForUI(finalPassword);
+      if (!finalValidation['isValid']) {
+        throw AppException(
+          'Critical error: Generated password failed validation - ${finalValidation['errorMessage']}',
+          translationKey: 'errors.auth.password_generation_failed',
+        );
+      }
+
+      ErrorHandler.logDebug('Using validated secure temporary password (length: ${finalPassword.length})');
+      ErrorHandler.logDebug('Password strength: ${finalValidation['strengthDescription']} (${finalValidation['strength']}/100)');
 
       try {
         // Check if email already exists in Firebase Auth
@@ -131,21 +154,20 @@ class SignupRequestController {
 
         if (signInMethods.isNotEmpty) {
           ErrorHandler.logWarning('Email already exists in Firebase Auth with methods: $signInMethods');
-          // Instead of failing, let's handle this gracefully
-          // We'll still create the Firestore records but skip Firebase Auth creation
-          final success = await _repository.approveSignupRequestWithPassword(id, temporaryPassword);
+          // Handle gracefully - update Firestore records but skip Firebase Auth creation
+          final success = await _repository.approveSignupRequestWithPassword(id, finalPassword);
           if (success) {
-            await _sendApprovalEmail(request, temporaryPassword);
+            await _sendApprovalEmail(request, finalPassword);
           }
           return success;
         }
 
         ErrorHandler.logDebug('Email does not exist in Firebase Auth, proceeding with user creation');
 
-        // Create Firebase Auth user
+        // Create Firebase Auth user with the validated secure password
         final userCredential = await _firebaseAuthService.createUserWithEmailAndPassword(
           email: request.email,
-          password: temporaryPassword,
+          password: finalPassword,
           displayName: '${request.name} ${request.surname}',
           requirePasswordChange: true,
         );
@@ -173,11 +195,11 @@ class SignupRequestController {
         }
 
         // Update Firestore records
-        final success = await _repository.approveSignupRequestWithPassword(id, temporaryPassword);
+        final success = await _repository.approveSignupRequestWithPassword(id, finalPassword);
 
         if (success) {
-          await _sendApprovalEmail(request, temporaryPassword);
-          ErrorHandler.logDebug('Signup request approved successfully');
+          await _sendApprovalEmail(request, finalPassword);
+          ErrorHandler.logDebug('Signup request approved successfully with secure validated password');
         } else {
           ErrorHandler.logError('Failed to update Firestore records after Firebase Auth creation', null);
         }
@@ -187,26 +209,25 @@ class SignupRequestController {
       } catch (e) {
         if (e is FirebaseAuthException) {
           ErrorHandler.logError('Firebase Auth Exception during approval', e);
-          ErrorHandler.logDebug('Firebase Auth Error Code: ${e.code}');
-          ErrorHandler.logDebug('Firebase Auth Error Message: ${e.message}');
 
           if (e.code == 'email-already-in-use') {
             ErrorHandler.logWarning('User already exists in Firebase Auth, continuing with Firestore update');
-            final success = await _repository.approveSignupRequestWithPassword(id, temporaryPassword);
+            final success = await _repository.approveSignupRequestWithPassword(id, finalPassword);
             if (success) {
-              await _sendApprovalEmail(request, temporaryPassword);
+              await _sendApprovalEmail(request, finalPassword);
             }
             return success;
           }
 
-          // For other Firebase Auth errors, provide specific error messages
+          // Handle other Firebase Auth errors
           String errorMessage;
           switch (e.code) {
             case 'invalid-email':
               errorMessage = 'Invalid email address: ${request.email}';
               break;
             case 'weak-password':
-              errorMessage = 'Generated password is too weak. Please try again.';
+            // This should NEVER happen with our new unified system
+              errorMessage = 'CRITICAL: Generated password was rejected as weak by Firebase - this should not happen!';
               break;
             case 'operation-not-allowed':
               errorMessage = 'Email/password authentication is not enabled in Firebase Console';
@@ -329,17 +350,28 @@ class SignupRequestController {
   }
 
   Future<void> _sendApprovalEmail(SignupRequest request, String temporaryPassword) async {
+    final passwordValidation = SecurePasswordGenerator.validatePasswordForUI(temporaryPassword);
     final subject = 'Your Longeviva Registration Request Has Been Approved';
     final body = '''
 Dear ${request.name} ${request.surname},
 
 We are pleased to inform you that your registration request for Longeviva has been approved.
 
-You can now log in to the platform using the following credentials:
+LOGIN CREDENTIALS:
 Email: ${request.email}
 Temporary Password: $temporaryPassword
 
-Please note that you will be prompted to change your password upon your first login.
+SECURITY INFORMATION:
+✓ This password meets all security requirements
+✓ Strength Level: ${passwordValidation['strengthDescription']} (${passwordValidation['strength']}/100)
+✓ Contains: uppercase, lowercase, numbers, and special characters
+✓ You MUST change this password on your first login
+
+IMPORTANT SECURITY NOTICE:
+- Keep these credentials secure and confidential
+- Do not share your login information with anyone
+- Delete this email after successfully logging in and changing your password
+- Your temporary password will expire if not used within 30 days
 
 Your Profile Summary:
 - Role: ${request.role}
@@ -348,15 +380,19 @@ Your Profile Summary:
 - City of Work: ${request.cityOfWork}
 
 Next Steps:
-1. Log in using your temporary password
+1. Log in using your temporary credentials
 2. Complete your profile setup
-3. Update your password
-4. Begin using the platform
+3. Change your password (required on first login)
+4. Begin using the platform securely
 
-Thank you for joining Longeviva. We look forward to supporting your healthcare practice.
+Thank you for joining Longeviva. We look forward to supporting your healthcare practice with our secure platform.
 
 Best regards,
-The Longeviva Team
+The Longeviva Security Team
+
+---
+SECURITY REMINDER: For your protection, we generate strong passwords and require immediate password changes on first login.
+If you encounter any issues, contact: longeviva.app@gmail.com
 ''';
 
     await _emailService.sendCustomEmail(
@@ -365,6 +401,7 @@ The Longeviva Team
       body: body,
     );
 
+    // Send to Google email if different
     if (request.googleEmail != request.email) {
       await _emailService.sendCustomEmail(
         to: request.googleEmail,
@@ -679,11 +716,5 @@ The Longeviva Team
         translationKey: 'errors.signup.duplicate_languages',
       );
     }
-  }
-
-  String _generateRandomPassword(int length) {
-    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#\$%^&*()';
-    final random = Random.secure();
-    return List.generate(length, (_) => chars[random.nextInt(chars.length)]).join();
   }
 }
