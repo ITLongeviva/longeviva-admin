@@ -187,7 +187,7 @@ class SignupRequestRepository {
       final doctorsCollection = _firestore.collection('doctors');
       final newDoctorRef = doctorsCollection.doc(); // Auto-generate ID
 
-      // Common fields that apply to both doctor and clinic with FHIR compliance
+      // Common fields that apply to all roles with FHIR compliance
       final commonFields = {
         'createdAt': FieldValue.serverTimestamp(),
         'signupRequestId': requestId,
@@ -208,7 +208,10 @@ class SignupRequestRepository {
 
       ErrorHandler.logDebug('Setting requiredPasswordChange to true and storing temporary password: $temporaryPassword');
 
-      if (requestData['role'] == 'DOCTOR') {
+      final role = requestData['role'];
+
+      // Handle all practitioner roles (individual healthcare providers)
+      if (role == 'DOCTOR' || role == 'MEDICO' || role == 'TECNICO_AUDIOPROTESISTA') {
         // Create FHIR-compliant Doctor (Practitioner) record
         batch.set(newDoctorRef, {
           // Basic FHIR Practitioner fields
@@ -231,13 +234,15 @@ class SignupRequestRepository {
           'areaOfInterest': '', // Extension of specialty - to be set later
 
           // Application-specific fields
-          'role': 'DOCTOR',
+          'role': role, // Store the actual role
           'hourlyFees': 0.0, // To be set later
-          'isDoctor': true,
+          'isDoctor': true, // This is a practitioner, not an organization
 
           ...commonFields,
         });
-      } else if (requestData['role'] == 'CLINIC') {
+      }
+      // Handle all organization/clinic roles
+      else if (role == 'CLINIC' || role == 'CENTRO_ACUSTICO' || role == 'CENTRO_OTOLOGIA') {
         // Create FHIR-compliant Organization record stored as Doctor entity
         // Note: In proper FHIR, this should be a separate Organization resource
         batch.set(newDoctorRef, {
@@ -250,7 +255,7 @@ class SignupRequestRepository {
           'email': requestData['email'] ?? '', // FHIR Organization.telecom
 
           // FHIR Organization.identifier fields
-          'vatNumber': '', // Not applicable for clinics in this context
+          'vatNumber': requestData['vatNumber'] ?? '', // Organization VAT number
           'fiscalCode': requestData['fiscalCode'] ?? '', // Organization tax identifier
           'licenseNumber': requestData['ragioneSociale'] ?? '', // Business name stored as license
 
@@ -261,9 +266,34 @@ class SignupRequestRepository {
           'areaOfInterest': '', // Service areas - to be set later
 
           // Application-specific fields
-          'role': 'CLINIC',
+          'role': role, // Store the actual role
           'hourlyFees': 0.0, // Service rates - to be set later
           'isDoctor': false, // This is an organization, not an individual practitioner
+
+          ...commonFields,
+        });
+      }
+      // If we get an unknown role, log error but still create a basic record
+      else {
+        ErrorHandler.logWarning('Unknown role encountered: $role. Creating basic practitioner record.');
+        batch.set(newDoctorRef, {
+          // Basic fields
+          'name': requestData['name'] ?? '',
+          'surname': requestData['surname'] ?? '',
+          'sex': requestData['sex'] ?? '',
+          'phoneNumber': requestData['phoneNumber'] ?? '',
+          'birthdate': requestData['birthdate'],
+          'email': requestData['email'] ?? '',
+          'vatNumber': requestData['vatNumber'] ?? '',
+          'fiscalCode': requestData['fiscalCode'] ?? '',
+          'licenseNumber': '',
+          'specialty': requestData['specialty'] ?? '',
+          'placeOfWork': '',
+          'cityOfWork': requestData['cityOfWork'] ?? '',
+          'areaOfInterest': '',
+          'role': role, // Store the actual role
+          'hourlyFees': 0.0,
+          'isDoctor': true, // Default to practitioner
 
           ...commonFields,
         });
@@ -278,7 +308,7 @@ class SignupRequestRepository {
         requestData['email'],
         temporaryPassword,
         '${requestData['name']} ${requestData['surname'] ?? ''}',
-        requestData['role'],
+        role, // Pass the actual role
       );
 
       return true;

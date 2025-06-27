@@ -8,6 +8,10 @@ class Doctor { //Practioner
   // Role constants
   static const String ROLE_DOCTOR = "DOCTOR";
   static const String ROLE_CLINIC = "CLINIC";
+  static const String ROLE_CENTRO_ACUSTICO = "CENTRO_ACUSTICO";
+  static const String ROLE_TECNICO_AUDIOPROTESISTA = "TECNICO_AUDIOPROTESISTA";
+  static const String ROLE_CENTRO_OTOLOGIA = "CENTRO_OTOLOGIA";
+  static const String ROLE_MEDICO = "MEDICO";
 
   final String id; // FHIR: Practioner.id e Practitioner.identifier[0]
   final String name; // Practitioner.name[0].given, .family
