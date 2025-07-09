@@ -1,123 +1,45 @@
 {
   "project_info": {
-    "project_number": "423905918553",
-    "project_id": "longeviva-app",
-    "storage_bucket": "longeviva-app.firebasestorage.app"
+    "project_number": "471375608487",
+    "project_id": "longeviva-web-app-dev",
+    "storage_bucket": "longeviva-web-app-dev.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:423905918553:android:3202acf92d9d20b59c3b48",
-        "android_client_info": {
-          "package_name": "com.example.app"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "423905918553-h3dcd5ip8a72g7tfua6ek7pvnodn7r36.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyAUHN0lxUY2Xcb65oUWkM2CyGzjnfB74Mc"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "423905918553-h3dcd5ip8a72g7tfua6ek7pvnodn7r36.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:423905918553:android:070767eddbdae9149c3b48",
+        "mobilesdk_app_id": "1:471375608487:android:7417c85f3a03419fe8b982",
         "android_client_info": {
           "package_name": "com.example.longeviva_admin"
         }
       },
-      "oauth_client": [
-        {
-          "client_id": "423905918553-h3dcd5ip8a72g7tfua6ek7pvnodn7r36.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
+      "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAUHN0lxUY2Xcb65oUWkM2CyGzjnfB74Mc"
+          "current_key": "AIzaSyCZPr0H8J_gWL41ELH5VbczjHgajFJl81I"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "423905918553-h3dcd5ip8a72g7tfua6ek7pvnodn7r36.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
+          "other_platform_oauth_client": []
         }
       }
     },
     {
       "client_info": {
-        "mobilesdk_app_id": "1:423905918553:android:5979ea2a89dc48b59c3b48",
-        "android_client_info": {
-          "package_name": "com.example.longeviva_client_v1"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "423905918553-h3dcd5ip8a72g7tfua6ek7pvnodn7r36.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyAUHN0lxUY2Xcb65oUWkM2CyGzjnfB74Mc"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "423905918553-h3dcd5ip8a72g7tfua6ek7pvnodn7r36.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:423905918553:android:78ad8da9f5c2e37a9c3b48",
+        "mobilesdk_app_id": "1:471375608487:android:cffb837b28327b91e8b982",
         "android_client_info": {
           "package_name": "com.example.longeviva_v1"
         }
       },
-      "oauth_client": [
-        {
-          "client_id": "423905918553-h3dcd5ip8a72g7tfua6ek7pvnodn7r36.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
+      "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAUHN0lxUY2Xcb65oUWkM2CyGzjnfB74Mc"
+          "current_key": "AIzaSyCZPr0H8J_gWL41ELH5VbczjHgajFJl81I"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "423905918553-h3dcd5ip8a72g7tfua6ek7pvnodn7r36.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
+          "other_platform_oauth_client": []
         }
       }
     }
