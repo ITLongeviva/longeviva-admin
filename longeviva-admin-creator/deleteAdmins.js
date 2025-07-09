@@ -1,12 +1,8 @@
 // deleteAdmin.js
 const admin = require('firebase-admin');
 const readline = require('readline');
-const serviceAccount = require('./serviceAccountKey.json');
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  projectId: 'longeviva-app'
-});
+admin.initializeApp();
 
 const auth = admin.auth();
 const db = admin.firestore();
