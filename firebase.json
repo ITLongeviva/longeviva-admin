@@ -1,1 +1,45 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"longeviva-app","appId":"1:423905918553:android:070767eddbdae9149c3b48","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"longeviva-app","configurations":{"android":"1:423905918553:android:070767eddbdae9149c3b48","ios":"1:423905918553:ios:f89a32a5d0d6720d9c3b48","macos":"1:423905918553:ios:f89a32a5d0d6720d9c3b48","web":"1:423905918553:web:d67a7d3071f563c79c3b48","windows":"1:423905918553:web:313a05ac35b4ae689c3b48"}}}}},"functions":[{"source":"functions","codebase":"default","ignore":["node_modules",".git",".runtimeconfig.json","firebase-debug.log","firebase-debug.*.log","*.local"]}],"firestore":{"rules":"firestore.rules","indexes":"firestore.indexes.json"},"storage":{"rules":"storage.rules"}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "longeviva-web-app-dev",
+          "appId": "1:471375608487:android:7417c85f3a03419fe8b982",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "longeviva-web-app-dev",
+          "configurations": {
+            "android": "1:471375608487:android:7417c85f3a03419fe8b982",
+            "ios": "1:471375608487:ios:63b8854bddb8d094e8b982",
+            "macos": "1:471375608487:ios:63b8854bddb8d094e8b982",
+            "web": "1:471375608487:web:72cb8657d2d401c6e8b982",
+            "windows": "1:471375608487:web:a2ef2330f2c85b49e8b982"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "my-firebase-functions/functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ]
+    }
+  ],
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  }
+}
