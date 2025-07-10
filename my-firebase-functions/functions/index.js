@@ -1,32 +1,55 @@
 // functions/index.js
-
 const admin = require('firebase-admin');
-const functions = require('firebase-functions'); // Importa il modulo di Firebase Functions
+// IMPORTANTE: Importa da v2/https per Gen 2
+const { onRequest } = require('firebase-functions/v2/https');
+const { setGlobalOptions } = require('firebase-functions/v2');
 
-// Inizializza Firebase Admin.
-// NESSUN argomento qui! Le credenziali verranno fornite automaticamente
-// dall'ambiente della Cloud Function. Questa è la magia!
+// Inizializza Firebase Admin
 admin.initializeApp();
 
 const auth = admin.auth();
 const db = admin.firestore();
 
-// Definisci la tua Cloud Function. La esporteremo come 'createAdminUser'.
-// Questa funzione sarà attivata da una richiesta HTTP (POST).
-exports.createAdminUser = functions.https.onRequest(async (req, res) => {
-  // 1. Controlla il metodo HTTP: Solo richieste POST sono permesse per sicurezza.
+// Imposta opzioni globali (opzionale)
+setGlobalOptions({
+  region: 'us-central1', // o la tua regione preferita
+  maxInstances: 10,
+});
+
+// Definisci la funzione Gen 2 con configurazione
+exports.createAdminUser = onRequest({
+  // Configurazioni Gen 2
+  cors: true, // Abilita CORS automaticamente
+  maxInstances: 10,
+  minInstances: 0,
+  concurrency: 80, // Vantaggio di Gen 2 - gestisce più richieste per istanza
+
+  // IMPORTANTE: Per controllare chi può invocare la funzione
+  // Opzioni:
+  // - Non specificare nulla = pubblico di default
+  // - invoker: "private" = solo service account autorizzati
+  // - invoker: ["user:email@example.com"] = utenti specifici
+
+  // Per ora lascialo pubblico per il deploy iniziale
+  // Poi potrai configurarlo come privato
+}, async (req, res) => {
+
+  // CORS è già gestito da Gen 2 con l'opzione cors: true
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
   if (req.method !== 'POST') {
-    // Se non è POST, restituisci un errore 405 (Method Not Allowed)
     console.warn('Metodo HTTP non consentito:', req.method);
     return res.status(405).send('Metodo non consentito. Usa POST.');
   }
 
-  // 2. Ottieni i dati dall'input: Le Cloud Functions HTTP ricevono i dati nel corpo della richiesta.
-  // Ci aspettiamo un JSON con name, email e password.
   const { name, email, password } = req.body;
 
   try {
-    // 3. Validazione base dei dati (come nel tuo script originale)
+    // Validazione
     if (!name || !email || !password) {
       throw new Error('Tutti i campi (name, email, password) sono obbligatori.');
     }
@@ -37,9 +60,9 @@ exports.createAdminUser = functions.https.onRequest(async (req, res) => {
       throw new Error('Email non valida.');
     }
 
-    console.log(`Inizio creazione admin per: ${email}`); // Log utile per il debugging in Cloud Logs
+    console.log(`Inizio creazione admin per: ${email}`);
 
-    // 4. Crea utente in Firebase Auth (il tuo codice originale, che ora funzionerà!)
+    // Crea utente
     const userRecord = await auth.createUser({
       email: email.trim(),
       password: password,
@@ -48,14 +71,14 @@ exports.createAdminUser = functions.https.onRequest(async (req, res) => {
     });
     console.log('Utente creato con UID:', userRecord.uid);
 
-    // 5. Imposta custom claims per l'admin
+    // Imposta custom claims
     await auth.setCustomUserClaims(userRecord.uid, {
       admin: true,
       role: 'ADMIN'
     });
     console.log('Permessi admin assegnati');
 
-    // 6. Crea profilo in admin_profiles e admins collection usando una batch write per efficienza
+    // Crea profili in Firestore
     const batch = db.batch();
     batch.set(db.collection('admin_profiles').doc(userRecord.uid), {
       name: name.trim(),
@@ -67,13 +90,12 @@ exports.createAdminUser = functions.https.onRequest(async (req, res) => {
       id: userRecord.uid,
       name: name.trim(),
       email: email.trim(),
-      password: '', // Non salviamo la password in chiaro
+      password: '', // Mai salvare password in chiaro
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
     await batch.commit();
     console.log('Profili Firestore creati/aggiornati');
 
-    // 7. Risposta di successo: Invia una risposta JSON al chiamante.
     console.log('Admin creato con successo!');
     res.status(200).json({
       message: 'Admin creato con successo!',
@@ -83,41 +105,37 @@ exports.createAdminUser = functions.https.onRequest(async (req, res) => {
     });
 
   } catch (error) {
-    // 8. Gestione degli errori: Cattura e rispondi con un messaggio di errore.
-    console.error('Errore durante la creazione admin:', error); // Log l'errore completo per il debugging
+    console.error('Errore durante la creazione admin:', error);
     let errorMessage = 'Errore sconosciuto durante la creazione admin.';
-    let statusCode = 500; // Internal Server Error di default
+    let statusCode = 500;
 
-    // Gestione errori specifici di Firebase Auth per messaggi più chiari
     if (error.code) {
       switch (error.code) {
         case 'auth/email-already-exists':
           errorMessage = 'L\'email specificata è già registrata nel sistema.';
-          statusCode = 409; // Conflict
+          statusCode = 409;
           break;
         case 'auth/invalid-email':
           errorMessage = 'L\'email specificata non è valida.';
-          statusCode = 400; // Bad Request
+          statusCode = 400;
           break;
         case 'auth/weak-password':
           errorMessage = 'La password è troppo debole (min. 6 caratteri per Firebase Auth).';
-          statusCode = 400; // Bad Request
+          statusCode = 400;
           break;
         case 'auth/operation-not-allowed':
-          errorMessage = 'La creazione di account email/password non è abilitata per il tuo progetto. Abilitale nella console Firebase sotto "Authentication" -> "Sign-in method".';
-          statusCode = 403; // Forbidden
+          errorMessage = 'La creazione di account email/password non è abilitata.';
+          statusCode = 403;
           break;
         default:
           errorMessage = `Errore Firebase Auth: ${error.message}`;
           statusCode = 500;
       }
     } else {
-      // Errori di validazione o altri errori generici dal tuo codice
       errorMessage = error.message;
-      statusCode = 400; // Bad Request
+      statusCode = 400;
     }
 
-    // Invia la risposta di errore al chiamante
     res.status(statusCode).json({ error: errorMessage });
   }
 });
