@@ -210,72 +210,7 @@ class SignupRequestRepository {
 
       final role = requestData['role'];
 
-      // Handle all practitioner roles (individual healthcare providers)
-      if (role == 'DOCTOR' || role == 'MEDICO' || role == 'TECNICO_AUDIOPROTESISTA') {
-        // Create FHIR-compliant Doctor (Practitioner) record
-        batch.set(newDoctorRef, {
-          // Basic FHIR Practitioner fields
-          'name': requestData['name'] ?? '',
-          'surname': requestData['surname'] ?? '',
-          'sex': requestData['sex'] ?? '', // FHIR gender
-          'phoneNumber': requestData['phoneNumber'] ?? '', // FHIR telecom
-          'birthdate': requestData['birthdate'], // FHIR birthDate
-          'email': requestData['email'] ?? '', // FHIR telecom
-
-          // FHIR Practitioner.identifier fields
-          'vatNumber': requestData['vatNumber'] ?? '', // Business identifier
-          'fiscalCode': requestData['fiscalCode'] ?? '', // National identifier
-          'licenseNumber': '', // FHIR qualification.identifier - to be set later
-
-          // FHIR PractitionerRole fields (specialty is role-specific)
-          'specialty': requestData['specialty'] ?? '', // FHIR PractitionerRole.specialty
-          'placeOfWork': '', // FHIR PractitionerRole.location - to be completed
-          'cityOfWork': requestData['cityOfWork'] ?? '', // Part of location address
-          'areaOfInterest': '', // Extension of specialty - to be set later
-
-          // Application-specific fields
-          'role': role, // Store the actual role
-          'hourlyFees': 0.0, // To be set later
-          'isDoctor': true, // This is a practitioner, not an organization
-
-          ...commonFields,
-        });
-      }
-      // Handle all organization/clinic roles
-      else if (role == 'CLINIC' || role == 'CENTRO_ACUSTICO' || role == 'CENTRO_OTOLOGIA') {
-        // Create FHIR-compliant Organization record stored as Doctor entity
-        // Note: In proper FHIR, this should be a separate Organization resource
-        batch.set(newDoctorRef, {
-          // Organization basic info
-          'name': requestData['name'] ?? '',
-          'surname': '', // Organizations don't have surnames
-          'sex': '', // Organizations don't have gender
-          'phoneNumber': requestData['phoneNumber'] ?? '', // FHIR Organization.telecom
-          'birthdate': null, // Organizations don't have birthdates
-          'email': requestData['email'] ?? '', // FHIR Organization.telecom
-
-          // FHIR Organization.identifier fields
-          'vatNumber': requestData['vatNumber'] ?? '', // Organization VAT number
-          'fiscalCode': requestData['fiscalCode'] ?? '', // Organization tax identifier
-          'licenseNumber': requestData['ragioneSociale'] ?? '', // Business name stored as license
-
-          // Service-related fields
-          'specialty': requestData['specialty'] ?? '', // Services provided
-          'placeOfWork': '', // To be completed
-          'cityOfWork': requestData['cityOfWork'] ?? '', // FHIR Organization.address
-          'areaOfInterest': '', // Service areas - to be set later
-
-          // Application-specific fields
-          'role': role, // Store the actual role
-          'hourlyFees': 0.0, // Service rates - to be set later
-          'isDoctor': false, // This is an organization, not an individual practitioner
-
-          ...commonFields,
-        });
-      }
-      // If we get an unknown role, log error but still create a basic record
-      else {
-        ErrorHandler.logWarning('Unknown role encountered: $role. Creating basic practitioner record.');
+      {
         batch.set(newDoctorRef, {
           // Basic fields
           'name': requestData['name'] ?? '',
