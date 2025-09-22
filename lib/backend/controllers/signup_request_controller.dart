@@ -58,6 +58,38 @@ class SignupRequestController {
     }
   }
 
+  // NEW: Get signup requests by role
+  Future<List<SignupRequest>> getSignupRequestsByRole(String role) async {
+    try {
+      ErrorHandler.logDebug('Getting signup requests with role: $role');
+      return await _repository.getSignupRequestsByRole(role);
+    } catch (e) {
+      ErrorHandler.logError('Error getting signup requests by role', e);
+      throw AppException(
+        'Error retrieving signup requests with role: $role',
+        translationKey: 'errors.general.operation_failed',
+        translationArgs: {'error': 'retrieve signup requests by role'},
+        originalError: e,
+      );
+    }
+  }
+
+  // NEW: Get signup statistics by role
+  Future<Map<String, int>> getSignupRequestsStatsByRole() async {
+    try {
+      ErrorHandler.logDebug('Getting signup requests statistics by role');
+      return await _repository.getSignupRequestsStatsByRole();
+    } catch (e) {
+      ErrorHandler.logError('Error getting signup requests statistics', e);
+      throw AppException(
+        'Error retrieving signup requests statistics',
+        translationKey: 'errors.general.operation_failed',
+        translationArgs: {'error': 'retrieve signup statistics'},
+        originalError: e,
+      );
+    }
+  }
+
   Future<SignupRequest?> getSignupRequestById(String id) async {
     try {
       ErrorHandler.logDebug('Getting signup request with ID: $id');
@@ -73,12 +105,19 @@ class SignupRequestController {
     }
   }
 
+  // UPDATED: Enhanced validation for new SignupData structure
   Future<SignupRequest> createSignupRequest(SignupData data) async {
     try {
-      ErrorHandler.logDebug('Creating signup request for: ${data.email}');
+      ErrorHandler.logDebug('Creating signup request for: ${data.email} with roles: ${data.roles}');
+
+      // UPDATED: Enhanced validation
       _validateSignupData(data);
+
       final signupRequest = await _repository.createSignupRequest(data);
+
+      // UPDATED: Send email with role information
       await _emailService.sendSignupEmail(data);
+
       return signupRequest;
     } catch (e) {
       ErrorHandler.logError('Error creating signup request', e);
@@ -94,6 +133,7 @@ class SignupRequestController {
     }
   }
 
+  // UPDATED: Enhanced approval with role support
   Future<bool> approveSignupRequestWithPassword(String id, String temporaryPassword) async {
     try {
       ErrorHandler.logDebug('Approving signup request with ID: $id');
@@ -108,7 +148,7 @@ class SignupRequestController {
 
       ErrorHandler.logDebug('Found signup request for email: ${request.email}');
       ErrorHandler.logDebug('Request status: ${request.status}');
-      ErrorHandler.logDebug('Request role: ${request.role}');
+      ErrorHandler.logDebug('Request roles: ${request.roles}');
 
       if (request.status != 'pending') {
         throw AppException(
@@ -181,16 +221,16 @@ class SignupRequestController {
 
         ErrorHandler.logDebug('Firebase Auth user created successfully: ${userCredential.user!.uid}');
 
-        // Set custom claims using Cloud Function
+        // UPDATED: Set custom claims for multiple roles
         try {
           await _functions.httpsCallable('setUserApprovedClaim').call({
             'uid': userCredential.user!.uid,
             'approved': true,
-            'role': request.role,
+            'roles': _getUserRoles(request), // UPDATED: Support multiple roles
           });
-          ErrorHandler.logDebug('Set approved claim for user: ${userCredential.user!.uid}');
+          ErrorHandler.logDebug('Set approved claims for user: ${userCredential.user!.uid}');
         } catch (e) {
-          ErrorHandler.logError('Error setting custom claim (non-fatal)', e);
+          ErrorHandler.logError('Error setting custom claims (non-fatal)', e);
           // Don't fail the entire process for this
         }
 
@@ -300,38 +340,27 @@ class SignupRequestController {
     }
   }
 
-  Future<Map<String, Map<String, bool>>> checkDetailedEmailsExist(String email, String googleEmail) async {
+  // UPDATED: Removed googleEmail parameter
+  Future<Map<String, Map<String, bool>>> checkDetailedEmailsExist(String email) async {
     try {
-      ErrorHandler.logDebug('Checking email existence for: $email, $googleEmail');
+      ErrorHandler.logDebug('Checking email existence for: $email');
 
       bool primaryEmailExistsInAuth = false;
-      bool googleEmailExistsInAuth = false;
 
       try {
         final methods = await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
         primaryEmailExistsInAuth = methods.isNotEmpty;
-
-        if (email.toLowerCase() != googleEmail.toLowerCase()) {
-          final googleMethods = await FirebaseAuth.instance.fetchSignInMethodsForEmail(googleEmail);
-          googleEmailExistsInAuth = googleMethods.isNotEmpty;
-        } else {
-          googleEmailExistsInAuth = primaryEmailExistsInAuth;
-        }
       } catch (e) {
         ErrorHandler.logWarning('Error checking email in Firebase Auth: $e');
       }
 
-      final firestoreResults = await _repository.checkDetailedEmailsExist(email, googleEmail);
+      final firestoreResults = await _repository.checkDetailedEmailsExist(email);
 
       final result = {
         'primaryEmail': {
           ...firestoreResults['primaryEmail'] ?? {},
           'existsInFirebaseAuth': primaryEmailExistsInAuth,
         },
-        'googleEmail': {
-          ...firestoreResults['googleEmail'] ?? {},
-          'existsInFirebaseAuth': googleEmailExistsInAuth,
-        }
       };
 
       return result;
@@ -349,8 +378,60 @@ class SignupRequestController {
     }
   }
 
+  // NEW: Batch approve multiple requests
+  Future<List<String>> batchApproveSignupRequests(List<String> requestIds, String defaultPassword) async {
+    try {
+      ErrorHandler.logDebug('Batch approving ${requestIds.length} signup requests');
+      return await _repository.batchApproveSignupRequests(requestIds, defaultPassword);
+    } catch (e) {
+      ErrorHandler.logError('Error in batch approval', e);
+      throw AppException(
+        'Error in batch approval process',
+        translationKey: 'errors.signup.batch_approval_failed',
+        originalError: e,
+      );
+    }
+  }
+
+  // NEW: Update professional information
+  Future<bool> updateSignupRequestProfessionalInfo(String requestId, Map<String, dynamic> professionalInfo) async {
+    try {
+      ErrorHandler.logDebug('Updating professional info for request: $requestId');
+      return await _repository.updateSignupRequestProfessionalInfo(requestId, professionalInfo);
+    } catch (e) {
+      ErrorHandler.logError('Error updating professional information', e);
+      throw AppException(
+        'Error updating professional information',
+        translationKey: 'errors.signup.update_professional_info_failed',
+        originalError: e,
+      );
+    }
+  }
+
+  // NEW: Get validation errors for signup data
+  List<String> getSignupDataValidationErrors(SignupData data) {
+    final errors = <String>[];
+
+    try {
+      _validateSignupData(data);
+    } catch (e) {
+      if (e is AppException) {
+        errors.add(e.message);
+      }
+    }
+
+    // Additional validation errors from SignupData model
+    errors.addAll(data.validationErrors);
+
+    return errors;
+  }
+
+  // UPDATED: Enhanced approval email with role information
   Future<void> _sendApprovalEmail(SignupRequest request, String temporaryPassword) async {
     final passwordValidation = SecurePasswordGenerator.validatePasswordForUI(temporaryPassword);
+    final roles = _getUserRoles(request);
+    final rolesString = roles.join(', ');
+
     final subject = 'Your Longeviva Registration Request Has Been Approved';
     final body = '''
 Dear ${request.name} ${request.surname},
@@ -360,6 +441,8 @@ We are pleased to inform you that your registration request for Longeviva has be
 LOGIN CREDENTIALS:
 Email: ${request.email}
 Temporary Password: $temporaryPassword
+
+PROFESSIONAL ROLE(S): $rolesString
 
 SECURITY INFORMATION:
 ✓ This password meets all security requirements
@@ -374,16 +457,19 @@ IMPORTANT SECURITY NOTICE:
 - Your temporary password will expire if not used within 30 days
 
 Your Profile Summary:
-- Role: ${request.role}
+- Role(s): $rolesString
 - Specialty: ${request.specialty}
 - Organization: ${request.organization}
 - City of Work: ${request.cityOfWork}
+${request.professionalRegistrationSummary.isNotEmpty ? '- Professional Registration: ${request.professionalRegistrationSummary}' : ''}
 
 Next Steps:
 1. Log in using your temporary credentials
 2. Complete your profile setup
 3. Change your password (required on first login)
 4. Begin using the platform securely
+
+Based on your professional role(s), you will have access to the appropriate features and tools within the Longeviva platform.
 
 Thank you for joining Longeviva. We look forward to supporting your healthcare practice with our secure platform.
 
@@ -400,18 +486,11 @@ If you encounter any issues, contact: longeviva.app@gmail.com
       subject: subject,
       body: body,
     );
-
-    // Send to Google email if different
-    if (request.googleEmail != request.email) {
-      await _emailService.sendCustomEmail(
-        to: request.googleEmail,
-        subject: subject,
-        body: body,
-      );
-    }
   }
 
   Future<void> _sendRejectionEmail(SignupRequest request, String reason) async {
+    final rolesString = _getUserRoles(request).join(', ');
+
     final subject = 'Your Longeviva Registration Request Update';
     final body = '''
 Dear ${request.name} ${request.surname},
@@ -419,7 +498,7 @@ Dear ${request.name} ${request.surname},
 We regret to inform you that your registration request for Longeviva has been declined.
 
 Application Details:
-- Role: ${request.role}
+- Role(s): $rolesString
 - Specialty: ${request.specialty}
 - Organization: ${request.organization}
 - Application Date: ${DateFormat('MMMM d, yyyy').format(request.requestedAt)}
@@ -441,16 +520,20 @@ The Longeviva Team
       subject: subject,
       body: body,
     );
-
-    if (request.googleEmail != request.email) {
-      await _emailService.sendCustomEmail(
-        to: request.googleEmail,
-        subject: subject,
-        body: body,
-      );
-    }
   }
 
+  // NEW: Helper method to get user roles from request
+  List<String> _getUserRoles(SignupRequest request) {
+    // Try to get roles from new field first, fallback to legacy single role
+    if (request.roles.isNotEmpty) {
+      return request.roles;
+    } else if (request.role != null && request.role!.isNotEmpty) {
+      return [request.role!]; // Legacy single role
+    }
+    return ['UNKNOWN']; // Fallback
+  }
+
+  // UPDATED: Enhanced validation with role-specific requirements
   void _validateSignupData(SignupData data) {
     // Basic field validation
     if (data.email.isEmpty) {
@@ -467,132 +550,10 @@ The Longeviva Team
       );
     }
 
-    if (data.googleEmail.isEmpty) {
-      throw AppException(
-        'Google email is required',
-        translationKey: 'errors.signup.google_email_required',
-      );
-    }
-
-    if (!data.googleEmail.toLowerCase().endsWith('@gmail.com')) {
-      throw AppException(
-        'Google email must be a Gmail address',
-        translationKey: 'errors.signup.google_email_must_be_gmail',
-      );
-    }
-
     if (data.name.isEmpty) {
       throw AppException(
         'Name is required',
         translationKey: 'errors.signup.name_required',
-      );
-    }
-
-    if (data.role != 'DOCTOR' && data.role != 'CLINIC') {
-      throw AppException(
-        'Role must be either DOCTOR or CLINIC',
-        translationKey: 'errors.signup.role_invalid',
-      );
-    }
-
-    // Role-specific validation
-    if (data.role == 'DOCTOR') {
-      _validateDoctorFields(data);
-    } else {
-      _validateClinicFields(data);
-    }
-
-    // Common required fields
-    _validateCommonFields(data);
-
-    // New fields validation
-    _validateNewFields(data);
-
-    // Business logic validation
-    _validateBusinessLogic(data);
-  }
-
-  void _validateDoctorFields(SignupData data) {
-    if (data.surname.isEmpty) {
-      throw AppException(
-        'Surname is required for doctors',
-        translationKey: 'errors.signup.surname_required',
-      );
-    }
-
-    if (data.sex.isEmpty) {
-      throw AppException(
-        'Sex is required for doctors',
-        translationKey: 'errors.signup.sex_required',
-      );
-    }
-
-    if (!['M', 'F', 'Male', 'Female'].contains(data.sex)) {
-      throw AppException(
-        'Sex must be M, F, Male, or Female',
-        translationKey: 'errors.signup.invalid_sex',
-      );
-    }
-
-    if (data.vatNumber.isEmpty) {
-      throw AppException(
-        'VAT number is required for doctors',
-        translationKey: 'errors.signup.vat_required',
-      );
-    }
-
-    // VAT number format validation (basic)
-    if (data.vatNumber.length < 8) {
-      throw AppException(
-        'VAT number must be at least 8 characters',
-        translationKey: 'errors.signup.vat_invalid_format',
-      );
-    }
-
-    if (data.fiscalCode.isEmpty) {
-      throw AppException(
-        'Fiscal code is required for doctors',
-        translationKey: 'errors.signup.fiscal_code_required',
-      );
-    }
-
-    // Italian fiscal code validation (basic)
-    if (!RegExp(r'^[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]$').hasMatch(data.fiscalCode.toUpperCase())) {
-      throw AppException(
-        'Invalid fiscal code format',
-        translationKey: 'errors.signup.fiscal_code_invalid',
-      );
-    }
-  }
-
-  void _validateClinicFields(SignupData data) {
-    if (data.fiscalCode.isEmpty) {
-      throw AppException(
-        'Fiscal code is required for clinics',
-        translationKey: 'errors.signup.fiscal_code_required',
-      );
-    }
-
-    if (data.ragioneSociale.isEmpty) {
-      throw AppException(
-        'Business name (Ragione Sociale) is required for clinics',
-        translationKey: 'errors.signup.ragione_sociale_required',
-      );
-    }
-
-    if (data.ragioneSociale.length < 2) {
-      throw AppException(
-        'Business name must be at least 2 characters',
-        translationKey: 'errors.signup.ragione_sociale_too_short',
-      );
-    }
-  }
-
-  void _validateCommonFields(SignupData data) {
-    if (data.specialty.isEmpty) {
-      throw AppException(
-        'Specialty is required',
-        translationKey: 'errors.signup.specialty_required',
       );
     }
 
@@ -603,6 +564,144 @@ The Longeviva Team
       );
     }
 
+    if (data.cityOfWork.isEmpty) {
+      throw AppException(
+        'City of work is required',
+        translationKey: 'errors.signup.city_required',
+      );
+    }
+
+    if (data.fiscalCode.isEmpty) {
+      throw AppException(
+        'Fiscal code is required',
+        translationKey: 'errors.signup.fiscal_code_required',
+      );
+    }
+
+    // NEW: Role validation
+    if (data.roles.isEmpty) {
+      throw AppException(
+        'At least one professional role must be selected',
+        translationKey: 'errors.signup.roles_required',
+      );
+    }
+
+    // NEW: Role-specific validation
+    _validateRoleSpecificRequirements(data);
+
+    // Location validation
+    if (data.address.isEmpty) {
+      throw AppException(
+        'Address is required',
+        translationKey: 'errors.signup.address_required',
+      );
+    }
+
+    if (data.languagesSpoken.isEmpty) {
+      throw AppException(
+        'At least one language must be specified',
+        translationKey: 'errors.signup.languages_required',
+      );
+    }
+
+    // Common fields validation
+    _validateCommonFields(data);
+
+    // Business logic validation
+    _validateBusinessLogic(data);
+  }
+
+  // NEW: Role-specific validation method
+  void _validateRoleSpecificRequirements(SignupData data) {
+    // Validate nutritionist and psychologist requirements
+    if (data.isNutritionist || data.isPsychologist) {
+      if (data.numero_iscrizione_albo == null || data.numero_iscrizione_albo!.isEmpty) {
+        final roleNames = <String>[];
+        if (data.isNutritionist) roleNames.add('Nutritionist');
+        if (data.isPsychologist) roleNames.add('Psychologist');
+
+        throw AppException(
+          'Professional registration number (albo) is required for ${roleNames.join(" and ")} role(s)',
+          translationKey: 'errors.signup.albo_registration_required',
+          translationArgs: {'roles': roleNames.join(' and ')},
+        );
+      }
+
+      if (data.issuer.isEmpty) {
+        throw AppException(
+          'Professional qualification issuer is required for albo-registered professionals',
+          translationKey: 'errors.signup.issuer_required',
+        );
+      }
+
+      // Validate surname for roles that require personal info
+      if (data.surname.isEmpty) {
+        throw AppException(
+          'Surname is required for professional roles',
+          translationKey: 'errors.signup.surname_required',
+        );
+      }
+
+      if (data.sex.isEmpty) {
+        throw AppException(
+          'Sex is required for professional roles',
+          translationKey: 'errors.signup.sex_required',
+        );
+      }
+
+      if (!['M', 'F', 'Male', 'Female'].contains(data.sex)) {
+        throw AppException(
+          'Sex must be M, F, Male, or Female',
+          translationKey: 'errors.signup.invalid_sex',
+        );
+      }
+    }
+
+    // Validate personal trainer requirements
+    if (data.isPersonalTrainer) {
+      if (data.numero_iscrizione_ente == null || data.numero_iscrizione_ente!.isEmpty) {
+        throw AppException(
+          'Professional registration number (ente) is required for Personal Trainer role',
+          translationKey: 'errors.signup.ente_registration_required',
+        );
+      }
+
+      if (data.issuer.isEmpty) {
+        throw AppException(
+          'Certifying organization is required for Personal Trainer role',
+          translationKey: 'errors.signup.issuer_required',
+        );
+      }
+    }
+
+    // Validate specialty for certain roles
+    if ((data.isNutritionist || data.isPsychologist) &&
+        (data.specialty == null || data.specialty!.isEmpty)) {
+      throw AppException(
+        'Professional specialty is required for this role',
+        translationKey: 'errors.signup.specialty_required_for_role',
+      );
+    }
+
+    // VAT number validation for professional roles
+    if ((data.isNutritionist || data.isPsychologist) && data.vatNumber.isEmpty) {
+      throw AppException(
+        'VAT number is required for professional roles',
+        translationKey: 'errors.signup.vat_required',
+      );
+    }
+
+    // Fiscal code format validation for Italian professionals
+    if (data.fiscalCode.isNotEmpty &&
+        !RegExp(r'^[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]$').hasMatch(data.fiscalCode.toUpperCase())) {
+      throw AppException(
+        'Invalid fiscal code format',
+        translationKey: 'errors.signup.fiscal_code_invalid',
+      );
+    }
+  }
+
+  void _validateCommonFields(SignupData data) {
     // Phone number format validation (basic)
     if (!RegExp(r'^\+?[\d\s\-\(\)]{8,}$').hasMatch(data.phoneNumber)) {
       throw AppException(
@@ -611,33 +710,26 @@ The Longeviva Team
       );
     }
 
-    if (data.cityOfWork.isEmpty) {
+    // Address validation
+    if (data.address.length < 5) {
       throw AppException(
-        'City of work is required',
-        translationKey: 'errors.signup.city_required',
-      );
-    }
-  }
-
-  void _validateNewFields(SignupData data) {
-    if (data.address.isEmpty) {
-      throw AppException(
-        'Address is required',
-        translationKey: 'errors.signup.address_required',
-      );
-    }
-
-    if (data.address.length < 10) {
-      throw AppException(
-        'Address must be at least 10 characters',
+        'Address must be at least 5 characters',
         translationKey: 'errors.signup.address_too_short',
       );
     }
 
-    if (data.languagesSpoken.isEmpty) {
+    // Organization validation
+    if (data.organization.isEmpty) {
       throw AppException(
-        'At least one language must be specified',
-        translationKey: 'errors.signup.languages_required',
+        'Organization is required',
+        translationKey: 'errors.signup.organization_required',
+      );
+    }
+
+    if (data.organization.length < 2) {
+      throw AppException(
+        'Organization name must be at least 2 characters',
+        translationKey: 'errors.signup.organization_too_short',
       );
     }
 
@@ -657,30 +749,24 @@ The Longeviva Team
       }
     }
 
-    if (data.organization.isEmpty) {
+    // VAT number format validation (basic)
+    if (data.vatNumber.isNotEmpty && data.vatNumber.length < 8) {
       throw AppException(
-        'Organization is required',
-        translationKey: 'errors.signup.organization_required',
-      );
-    }
-
-    if (data.organization.length < 2) {
-      throw AppException(
-        'Organization name must be at least 2 characters',
-        translationKey: 'errors.signup.organization_too_short',
+        'VAT number must be at least 8 characters',
+        translationKey: 'errors.signup.vat_invalid_format',
       );
     }
   }
 
   void _validateBusinessLogic(SignupData data) {
-    // Validate birthdate if provided (for doctors)
-    if (data.role == 'DOCTOR' && data.birthdate != null) {
+    // Validate birthdate if provided
+    if (data.birthdate != null) {
       final now = DateTime.now();
       final age = now.year - data.birthdate!.year;
 
       if (age < 18) {
         throw AppException(
-          'Doctor must be at least 18 years old',
+          'Professional must be at least 18 years old',
           translationKey: 'errors.signup.age_too_young',
         );
       }
@@ -715,6 +801,76 @@ The Longeviva Team
         'Duplicate languages are not allowed',
         translationKey: 'errors.signup.duplicate_languages',
       );
+    }
+
+    // Validate qualification validity if provided
+    if (data.qualificationValidity != null) {
+      final now = DateTime.now();
+      if (data.qualificationValidity!.isBefore(now)) {
+        throw AppException(
+          'Professional qualification has expired',
+          translationKey: 'errors.signup.qualification_expired',
+        );
+      }
+    }
+
+    // Validate role-specific business logic
+    _validateRoleSpecificBusinessLogic(data);
+  }
+
+  // NEW: Role-specific business logic validation
+  void _validateRoleSpecificBusinessLogic(SignupData data) {
+    // Validate professional registration numbers format
+    if (data.numero_iscrizione_albo != null && data.numero_iscrizione_albo!.isNotEmpty) {
+      if (!_validateRegistrationNumber(data.numero_iscrizione_albo!, 'albo')) {
+        throw AppException(
+          'Invalid professional registration number (albo) format',
+          translationKey: 'errors.signup.albo_number_invalid',
+        );
+      }
+    }
+
+    if (data.numero_iscrizione_ente != null && data.numero_iscrizione_ente!.isNotEmpty) {
+      if (!_validateRegistrationNumber(data.numero_iscrizione_ente!, 'ente')) {
+        throw AppException(
+          'Invalid professional registration number (ente) format',
+          translationKey: 'errors.signup.ente_number_invalid',
+        );
+      }
+    }
+
+    // Check for conflicting role requirements
+    if (data.roles.length > 1) {
+      // Ensure compatible roles are selected together
+      final hasAlboRole = data.isNutritionist || data.isPsychologist;
+      final hasEnteRole = data.isPersonalTrainer;
+
+      if (hasAlboRole && hasEnteRole) {
+        // Both albo and ente roles - ensure both registrations are provided
+        if ((data.numero_iscrizione_albo == null || data.numero_iscrizione_albo!.isEmpty) ||
+            (data.numero_iscrizione_ente == null || data.numero_iscrizione_ente!.isEmpty)) {
+          throw AppException(
+            'Multiple professional roles require all corresponding registration numbers',
+            translationKey: 'errors.signup.multiple_roles_registration_required',
+          );
+        }
+      }
+    }
+  }
+
+  // NEW: Validate professional registration numbers
+  bool _validateRegistrationNumber(String number, String type) {
+    if (number.isEmpty) return false;
+
+    switch (type) {
+      case 'albo':
+      // Basic validation for albo numbers (adjust based on actual requirements)
+        return number.length >= 3 && RegExp(r'^[A-Z0-9]+$').hasMatch(number.toUpperCase());
+      case 'ente':
+      // Basic validation for ente numbers (adjust based on actual requirements)
+        return number.length >= 3;
+      default:
+        return true;
     }
   }
 }

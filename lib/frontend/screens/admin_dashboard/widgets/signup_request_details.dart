@@ -1,21 +1,16 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../../../backend/bloc/signup_request_bloc.dart';
 import '../../../../backend/models/signup_request_model.dart';
 import '../../../../shared/utils/colors.dart';
 import '../../../../shared/utils/context_extensions.dart';
-import '../../../../shared/utils/secure_password_generator.dart';
 import '../../../../shared/widgets/password_validation_widget.dart';
 
 class SignupRequestDetails extends StatefulWidget {
   final SignupRequest request;
 
-  const SignupRequestDetails({Key? key, required this.request})
-      : super(key: key);
+  const SignupRequestDetails({super.key, required this.request});
 
   @override
   State<SignupRequestDetails> createState() => _SignupRequestDetailsState();
@@ -23,12 +18,18 @@ class SignupRequestDetails extends StatefulWidget {
 
 class _SignupRequestDetailsState extends State<SignupRequestDetails> {
   final TextEditingController _tempPasswordController = TextEditingController();
-  bool _passwordVisible = false;
 
   @override
   void dispose() {
     _tempPasswordController.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _tempPasswordController.text =
+        PasswordValidationHelper.generateValidatedPassword(length: 12);
   }
 
   @override
@@ -55,9 +56,8 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        widget.request.role == 'DOCTOR'
-                            ? 'Doctor Registration Request'
-                            : 'Clinic Registration Request',
+                        // Utilizza primaryRoleDisplayName per il titolo principale
+                        '${widget.request.primaryRoleDisplayName} Registration Request',
                         style: const TextStyle(
                           fontFamily: 'Montserrat',
                           fontSize: 20,
@@ -65,6 +65,18 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
                           color: CustomColors.verdeAbisso,
                         ),
                       ),
+                      if (widget.request.roles.length > 1) // Mostra ruoli aggiuntivi se presenti
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4.0),
+                          child: Text(
+                            'Roles: ${widget.request.rolesFormatted}',
+                            style: TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 12,
+                              color: Colors.grey[700],
+                            ),
+                          ),
+                        ),
                       const SizedBox(height: 4),
                       Text(
                         'Request ID: ${widget.request.id}',
@@ -103,17 +115,20 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
                       icon: Icons.person,
                       children: [
                         _buildDetailRow('Full Name', _getFullName()),
-                        if (widget.request.role == 'DOCTOR') ...[
+                        // Condiziona la visualizzazione di Sesso e Data di nascita
+                        // in base alla presenza di ruoli che tipicamente li richiedono
+                        // o se il campo è effettivamente compilato.
+                        if (widget.request.sex.isNotEmpty && (widget.request.isDoctor || widget.request.isNutritionist || widget.request.isPersonalTrainer || widget.request.isPsychologist))
                           _buildDetailRow('Sex', widget.request.sex),
-                          if (widget.request.birthdate != null)
-                            _buildDetailRow(
-                                'Birthdate',
-                                DateFormat('MMMM dd, yyyy')
-                                    .format(widget.request.birthdate!)),
-                        ],
+                        if (widget.request.birthdate != null)
+                          _buildDetailRow(
+                              'Birthdate',
+                              DateFormat('MMMM dd, yyyy')
+                                  .format(widget.request.birthdate!)),
                         _buildDetailRow(
                             'Fiscal Code', widget.request.fiscalCode),
-                        if (widget.request.role == 'DOCTOR')
+                        // Mostra Partita IVA se non è vuota
+                        if (widget.request.vatNumber.isNotEmpty)
                           _buildDetailRow(
                               'VAT Number', widget.request.vatNumber),
                       ],
@@ -126,15 +141,29 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
                       title: 'Professional Information',
                       icon: Icons.work,
                       children: [
-                        _buildDetailRow('Role', widget.request.role),
-                        _buildDetailRow('Specialty', widget.request.specialty),
-                        _buildDetailRow(
-                            'Organization', widget.request.organization),
-                        if (widget.request.role == 'CLINIC')
+                        _buildDetailRow('Roles', widget.request.rolesFormatted),
+                        if (widget.request.specialty.isNotEmpty)
+                          _buildDetailRow('Specialty', widget.request.specialty),
+                        if (widget.request.organization.isNotEmpty)
+                          _buildDetailRow(
+                              'Organization', widget.request.organization),
+                        // Mostra Ragione Sociale se non è vuota (tipico per Cliniche)
+                        if (widget.request.ragioneSociale.isNotEmpty)
                           _buildDetailRow(
                               'Business Name', widget.request.ragioneSociale),
                         _buildDetailRow(
                             'City of Work', widget.request.cityOfWork),
+                        _buildDetailRow(
+                            'Country of Work', widget.request.countryOfWork),
+                        // Mostra informazioni di registrazione professionale se rilevanti
+                        if (widget.request.requiresProfessionalRegistration) ...[
+                          const SizedBox(height: 8),
+                          _buildDetailRow('Professional Registration', widget.request.professionalRegistrationSummary),
+                          if(widget.request.areaOfInterest != null && widget.request.areaOfInterest!.isNotEmpty)
+                            _buildDetailRow('Area of Interest', widget.request.areaOfInterest!),
+                          if(widget.request.qualificationValidity != null)
+                            _buildDetailRow('Qualification Validity', DateFormat('MMMM dd, yyyy').format(widget.request.qualificationValidity!)),
+                        ]
                       ],
                     ),
 
@@ -146,10 +175,13 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
                       icon: Icons.contact_mail,
                       children: [
                         _buildDetailRow('Email', widget.request.email),
-                        _buildDetailRow(
-                            'Google Email', widget.request.googleEmail),
+                        // `googleEmail` non è più presente nel modello SignupData fornito,
+                        // quindi è stato rimosso dalla visualizzazione. Se necessario, riaggiungerlo.
+                        // _buildDetailRow(
+                        // 'Google Email', widget.request.googleEmail ?? 'Not provided'),
                         _buildDetailRow('Phone', widget.request.phoneNumber),
-                        _buildDetailRow('Address', widget.request.address),
+                        if (widget.request.address.isNotEmpty)
+                          _buildDetailRow('Address', widget.request.address),
                       ],
                     ),
 
@@ -264,11 +296,12 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
   }
 
   String _getFullName() {
-    if (widget.request.role == 'DOCTOR') {
-      return '${widget.request.name} ${widget.request.surname}';
-    } else {
+    // Se è una clinica o un'organizzazione, il "nome" è probabilmente il nome dell'entità.
+    // Altrimenti, combina nome e cognome per le persone.
+    if (widget.request.isClinic || widget.request.organization.isNotEmpty && widget.request.surname.isEmpty) {
       return widget.request.name;
     }
+    return '${widget.request.name} ${widget.request.surname}'.trim();
   }
 
   Color _getStatusColor() {
@@ -277,7 +310,7 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
         return Colors.green;
       case 'rejected':
         return CustomColors.rossoSimone;
-      default:
+      default: // 'pending' or other
         return Colors.orange;
     }
   }
@@ -288,8 +321,8 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
         return Icons.check_circle;
       case 'rejected':
         return Icons.cancel;
-      default:
-        return Icons.pending;
+      default: // 'pending' or other
+        return Icons.pending_actions; // Changed for better clarity
     }
   }
 
@@ -375,14 +408,15 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
+  Widget _buildDetailRow(String label, String? value) { // Value can be null
+    final displayValue = (value != null && value.isNotEmpty) ? value : 'Not provided';
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 120,
+            width: 120, // Adjust as needed
             child: Text(
               label + ':',
               style: const TextStyle(
@@ -395,10 +429,10 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
           ),
           Expanded(
             child: Text(
-              value.isNotEmpty ? value : 'Not provided',
+              displayValue,
               style: TextStyle(
                 fontFamily: 'Montserrat',
-                color: value.isNotEmpty ? Colors.black87 : Colors.grey,
+                color: (value != null && value.isNotEmpty) ? Colors.black87 : Colors.grey,
                 fontSize: 14,
               ),
             ),
@@ -415,9 +449,9 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 120,
+            width: 120, // Adjust as needed
             child: Text(
-              label + ':',
+              '$label:',
               style: const TextStyle(
                 fontFamily: 'Montserrat',
                 fontWeight: FontWeight.w600,
@@ -429,39 +463,39 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
           Expanded(
             child: languages.isNotEmpty
                 ? Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: languages
-                        .map((language) => Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: CustomColors.verdeMare.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                    color: CustomColors.verdeMare
-                                        .withOpacity(0.3)),
-                              ),
-                              child: Text(
-                                language,
-                                style: const TextStyle(
-                                  fontFamily: 'Montserrat',
-                                  fontSize: 12,
-                                  color: CustomColors.verdeAbisso,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ))
-                        .toList(),
-                  )
-                : Text(
-                    'Not provided',
-                    style: TextStyle(
-                      fontFamily: 'Montserrat',
-                      color: Colors.grey,
-                      fontSize: 14,
-                    ),
+              spacing: 8,
+              runSpacing: 4,
+              children: languages
+                  .map((language) => Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: CustomColors.verdeMare.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color: CustomColors.verdeMare
+                          .withOpacity(0.3)),
+                ),
+                child: Text(
+                  language,
+                  style: const TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 12,
+                    color: CustomColors.verdeAbisso,
+                    fontWeight: FontWeight.w500,
                   ),
+                ),
+              ))
+                  .toList(),
+            )
+                : Text(
+              'Not provided',
+              style: TextStyle(
+                fontFamily: 'Montserrat',
+                color: Colors.grey,
+                fontSize: 14,
+              ),
+            ),
           ),
         ],
       ),
@@ -481,20 +515,15 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
               .format(widget.request.processedAt!),
         ),
         if (widget.request.status == 'rejected' &&
-            widget.request.rejectionReason != null)
+            widget.request.rejectionReason != null &&
+            widget.request.rejectionReason!.isNotEmpty) // Check if not empty
           _buildDetailRow('Rejection Reason', widget.request.rejectionReason!),
-        if (widget.request.temporaryPassword != null)
+        if (widget.request.temporaryPassword != null && widget.request.temporaryPassword!.isNotEmpty) // Check if not empty
           _buildDetailRow('Temp Password Sent', 'Yes'),
       ],
     );
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _tempPasswordController.text =
-        PasswordValidationHelper.generateValidatedPassword(length: 12);
-  }
 
   void _showApprovalDialog(BuildContext context) {
     final signupRequestBloc = context.read<SignupRequestBloc>();
@@ -505,9 +534,9 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: const Text(
-                'Approve Registration Request',
-                style: TextStyle(
+              title: Text(
+                'Approve ${widget.request.primaryRoleDisplayName} Request',
+                style: const TextStyle(
                   fontFamily: 'Montserrat',
                   fontWeight: FontWeight.bold,
                   color: CustomColors.verdeAbisso,
@@ -518,7 +547,7 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Approve registration for ${_getFullName()}?',
+                    'Approve registration for ${_getFullName()} (${widget.request.rolesFormatted})?',
                     style: const TextStyle(
                       fontFamily: 'Montserrat',
                       fontWeight: FontWeight.w500,
@@ -534,8 +563,6 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
                     ),
                   ),
                   const SizedBox(height: 8),
-
-                  // Use the unified password validation widget
                   PasswordValidationWidget(
                     passwordController: _tempPasswordController,
                     onRegeneratePassword: () {
@@ -546,9 +573,8 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
                       });
                     },
                     showPasswordRequirements: false,
-                    // Show compact version in dialog
                     helperText:
-                        'User will be required to change on first login',
+                    'User will be required to change on first login',
                   ),
                 ],
               ),
@@ -568,21 +594,19 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
                     ),
                     ElevatedButton.icon(
                       onPressed: () {
-                        // Use unified validation helper
                         if (!PasswordValidationHelper.validateAndShowError(
                             context, _tempPasswordController.text.trim())) {
                           return;
                         }
 
                         Navigator.of(dialogContext).pop();
-                        Navigator.of(context).pop(); // Close the details dialog
+                        Navigator.of(context).pop();
 
-                        // Use the captured bloc reference
                         signupRequestBloc.add(
                           ApproveSignupRequestWithPassword(
                             id: widget.request.id,
                             temporaryPassword:
-                                _tempPasswordController.text.trim(),
+                            _tempPasswordController.text.trim(),
                           ),
                         );
                       },
@@ -613,7 +637,6 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
   }
 
   void _showRejectDialog(BuildContext context) {
-    // Capture the bloc reference before showing dialog
     final signupRequestBloc = context.read<SignupRequestBloc>();
     final reasonController = TextEditingController();
 
@@ -621,9 +644,9 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          title: const Text(
-            'Reject Registration Request',
-            style: TextStyle(
+          title: Text(
+            'Reject ${widget.request.primaryRoleDisplayName} Request',
+            style: const TextStyle(
               fontFamily: 'Montserrat',
               fontWeight: FontWeight.bold,
               color: CustomColors.verdeAbisso,
@@ -634,7 +657,7 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Reject registration for ${_getFullName()}?',
+                'Reject registration for ${_getFullName()} (${widget.request.rolesFormatted})?',
                 style: const TextStyle(
                   fontFamily: 'Montserrat',
                   fontWeight: FontWeight.w500,
@@ -649,7 +672,7 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
                   labelText: 'Rejection Reason',
                   border: OutlineInputBorder(),
                   hintText:
-                      'e.g., Incomplete documentation, Invalid credentials...',
+                  'e.g., Incomplete documentation, Invalid credentials...',
                 ),
                 maxLines: 3,
               ),
@@ -690,9 +713,8 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
                     }
 
                     Navigator.of(dialogContext).pop();
-                    Navigator.of(context).pop(); // Close the details dialog
+                    Navigator.of(context).pop();
 
-                    // Use the captured bloc reference
                     signupRequestBloc.add(
                       RejectSignupRequestWithReason(
                         id: widget.request.id,
@@ -701,7 +723,7 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
                     );
                   },
                   icon:
-                      const Icon(Icons.cancel, color: CustomColors.rossoSimone),
+                  const Icon(Icons.cancel, color: CustomColors.rossoSimone),
                   label: const Text(
                     'Reject & Notify',
                     style: TextStyle(

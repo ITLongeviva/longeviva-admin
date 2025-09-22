@@ -141,7 +141,6 @@ class EmailService {
     body += '\n=== CONTACT INFORMATION ===\n';
     body += 'Phone Number: ${data.phoneNumber}\n';
     body += 'Email: ${data.email}\n';
-    body += 'Google Email: ${data.googleEmail}\n';
     body += 'Address: ${data.address}\n';
 
     body += '\n=== ADDITIONAL INFORMATION ===\n';

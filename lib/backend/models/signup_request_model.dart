@@ -1,8 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+/// UPDATED: Admin SignupRequest model with multiple roles and professional registration support
+/// Maintains compatibility with existing googleEmail field and admin functionality
 class SignupRequest {
   final String id;
-  final String role; // DOCTOR or CLINIC
+
+  // UPDATED: Support for multiple roles with backward compatibility
+  final List<String> roles; // NEW: Multiple roles support
+  final String? role; // LEGACY: Kept for backward compatibility
+
   final String name;
   final String surname;
   final String sex;
@@ -10,16 +16,25 @@ class SignupRequest {
   final String specialty;
   final String phoneNumber;
   final String cityOfWork;
+  final String countryOfWork; // NEW: Country of work
   final String email;
-  final String googleEmail;
   final String vatNumber;
   final String fiscalCode;
-  // New fields
+
+  // Existing location and organization fields
   final String address;
   final List<String> languagesSpoken;
   final String organization;
   final String ragioneSociale;
-  // Status fields
+
+  // NEW: Professional registration fields
+  final String? numeroIscrizioneAlbo; // For nutritionists, psychologists
+  final String? numeroIscrizioneEnte; // For personal trainers
+  final String issuer; // Professional qualification issuer
+  final String? areaOfInterest; // Area of professional interest
+  final DateTime? qualificationValidity; // Qualification expiry date
+
+  // Status fields - UNCHANGED
   final String status; // 'pending', 'approved', 'rejected'
   final DateTime requestedAt;
   final DateTime? processedAt;
@@ -29,7 +44,8 @@ class SignupRequest {
 
   SignupRequest({
     required this.id,
-    required this.role,
+    this.roles = const [], // NEW: Multiple roles with default empty list
+    this.role, // LEGACY: Single role for backward compatibility
     required this.name,
     required this.surname,
     required this.sex,
@@ -37,15 +53,25 @@ class SignupRequest {
     required this.specialty,
     required this.phoneNumber,
     required this.cityOfWork,
+    this.countryOfWork = 'Italy', // NEW: Default country
     required this.email,
-    required this.googleEmail,
     required this.vatNumber,
     required this.fiscalCode,
-    // New fields with defaults
+
+    // Existing fields with defaults
     this.address = '',
     this.languagesSpoken = const [],
     this.organization = '',
     this.ragioneSociale = '',
+
+    // NEW: Professional registration fields with defaults
+    this.numeroIscrizioneAlbo,
+    this.numeroIscrizioneEnte,
+    this.issuer = '',
+    this.areaOfInterest,
+    this.qualificationValidity,
+
+    // Status fields - UNCHANGED
     required this.status,
     required this.requestedAt,
     this.processedAt,
@@ -54,56 +80,89 @@ class SignupRequest {
     this.rejectionReason,
   });
 
+  // UPDATED: Enhanced factory constructor for admin compatibility
   factory SignupRequest.fromJson(Map<String, dynamic> json, String docId) {
+    // Handle both old single role and new multiple roles format
+    List<String> parsedRoles = [];
+    String? legacyRole;
+
+    if (json['roles'] != null && json['roles'] is List) {
+      // NEW: Multiple roles format
+      parsedRoles = List<String>.from(json['roles']);
+    } else if (json['role'] != null) {
+      // LEGACY: Single role format
+      legacyRole = json['role'] as String;
+      parsedRoles = [legacyRole]; // Convert single role to list
+    }
+
     return SignupRequest(
       id: docId,
-      role: json['role'] ?? 'DOCTOR',
+      roles: parsedRoles, // NEW: Multiple roles
+      role: legacyRole ?? (parsedRoles.isNotEmpty ? parsedRoles.first : null), // LEGACY: Backward compatibility
       name: json['name'] ?? '',
       surname: json['surname'] ?? '',
       sex: json['sex'] ?? '',
-      birthdate: json['birthdate'] != null ?
-      (json['birthdate'] is Timestamp ?
-      (json['birthdate'] as Timestamp).toDate() :
-      DateTime.parse(json['birthdate'])) :
-      null,
+      birthdate: json['birthdate'] != null
+          ? (json['birthdate'] is Timestamp
+          ? (json['birthdate'] as Timestamp).toDate()
+          : DateTime.parse(json['birthdate']))
+          : null,
       specialty: json['specialty'] ?? '',
       phoneNumber: json['phoneNumber'] ?? '',
       cityOfWork: json['cityOfWork'] ?? '',
+      countryOfWork: json['countryOfWork'] ?? 'Italy', // NEW: Country field
       email: json['email'] ?? '',
-      googleEmail: json['googleEmail'] ?? '',
       vatNumber: json['vatNumber'] ?? '',
       fiscalCode: json['fiscalCode'] ?? '',
-      // New fields
+
+      // Existing fields
       address: json['address'] ?? '',
       languagesSpoken: json['languagesSpoken'] != null
           ? List<String>.from(json['languagesSpoken'])
           : [],
       organization: json['organization'] ?? '',
       ragioneSociale: json['ragioneSociale'] ?? '',
+
+      // NEW: Professional registration fields
+      numeroIscrizioneAlbo: json['numero_iscrizione_albo'] as String?,
+      numeroIscrizioneEnte: json['numero_iscrizione_ente'] as String?,
+      issuer: json['issuer'] ?? '',
+      areaOfInterest: json['areaOfInterest'] as String?,
+      qualificationValidity: json['qualificationValidity'] != null
+          ? (json['qualificationValidity'] is Timestamp
+          ? (json['qualificationValidity'] as Timestamp).toDate()
+          : DateTime.parse(json['qualificationValidity']))
+          : null,
+
+      // Status fields - UNCHANGED
       status: json['status'] ?? 'pending',
-      requestedAt: json['requestedAt'] != null ?
-      (json['requestedAt'] is Timestamp ?
-      (json['requestedAt'] as Timestamp).toDate() :
-      DateTime.parse(json['requestedAt'])) :
-      DateTime.now(),
-      processedAt: json['processedAt'] != null ?
-      (json['processedAt'] is Timestamp ?
-      (json['processedAt'] as Timestamp).toDate() :
-      DateTime.parse(json['processedAt'])) :
-      null,
-      deleteAt: json['deleteAt'] != null ?
-      (json['deleteAt'] is Timestamp ?
-      (json['deleteAt'] as Timestamp).toDate() :
-      DateTime.parse(json['deleteAt'])) :
-      null,
+      requestedAt: json['requestedAt'] != null
+          ? (json['requestedAt'] is Timestamp
+          ? (json['requestedAt'] as Timestamp).toDate()
+          : DateTime.parse(json['requestedAt']))
+          : DateTime.now(),
+      processedAt: json['processedAt'] != null
+          ? (json['processedAt'] is Timestamp
+          ? (json['processedAt'] as Timestamp).toDate()
+          : DateTime.parse(json['processedAt']))
+          : null,
+      deleteAt: json['deleteAt'] != null
+          ? (json['deleteAt'] is Timestamp
+          ? (json['deleteAt'] as Timestamp).toDate()
+          : DateTime.parse(json['deleteAt']))
+          : null,
       temporaryPassword: json['temporaryPassword'],
       rejectionReason: json['rejectionReason'],
     );
   }
 
+  // UPDATED: Enhanced toJson with new fields and existing googleEmail
   Map<String, dynamic> toJson() {
     return {
-      'role': role,
+      // UPDATED: Include both formats for compatibility
+      'roles': roles, // NEW: Multiple roles
+      'role': role ?? (roles.isNotEmpty ? roles.first : null), // LEGACY: Single role for backward compatibility
+
       'name': name,
       'surname': surname,
       'sex': sex,
@@ -111,15 +170,25 @@ class SignupRequest {
       'specialty': specialty,
       'phoneNumber': phoneNumber,
       'cityOfWork': cityOfWork,
+      'countryOfWork': countryOfWork, // NEW: Country field
       'email': email,
-      'googleEmail': googleEmail,
       'vatNumber': vatNumber,
       'fiscalCode': fiscalCode,
-      // New fields
+
+      // Existing fields
       'address': address,
       'languagesSpoken': languagesSpoken,
       'organization': organization,
       'ragioneSociale': ragioneSociale,
+
+      // NEW: Professional registration fields
+      'numero_iscrizione_albo': numeroIscrizioneAlbo,
+      'numero_iscrizione_ente': numeroIscrizioneEnte,
+      'issuer': issuer,
+      'areaOfInterest': areaOfInterest,
+      'qualificationValidity': qualificationValidity?.toIso8601String(),
+
+      // Status fields - UNCHANGED
       'status': status,
       'requestedAt': requestedAt.toIso8601String(),
       'processedAt': processedAt?.toIso8601String(),
@@ -129,10 +198,11 @@ class SignupRequest {
     };
   }
 
-  // Create a copy with updated fields
+  // UPDATED: Enhanced copyWith method with new fields and googleEmail
   SignupRequest copyWith({
     String? id,
-    String? role,
+    List<String>? roles, // NEW: Multiple roles
+    String? role, // LEGACY: Single role
     String? name,
     String? surname,
     String? sex,
@@ -140,23 +210,37 @@ class SignupRequest {
     String? specialty,
     String? phoneNumber,
     String? cityOfWork,
+    String? countryOfWork, // NEW: Country field
     String? email,
-    String? googleEmail,
+    String? googleEmail, // EXISTING: Google email for admin
     String? vatNumber,
     String? fiscalCode,
-    // New fields
+
+    // Existing fields
     String? address,
     List<String>? languagesSpoken,
     String? organization,
     String? ragioneSociale,
+
+    // NEW: Professional registration fields
+    String? numeroIscrizioneAlbo,
+    String? numeroIscrizioneEnte,
+    String? issuer,
+    String? areaOfInterest,
+    DateTime? qualificationValidity,
+
+    // Status fields
     String? status,
     DateTime? requestedAt,
     DateTime? processedAt,
     DateTime? deleteAt,
+    String? temporaryPassword,
+    String? rejectionReason,
   }) {
     return SignupRequest(
       id: id ?? this.id,
-      role: role ?? this.role,
+      roles: roles ?? this.roles, // NEW: Multiple roles
+      role: role ?? this.role, // LEGACY: Single role
       name: name ?? this.name,
       surname: surname ?? this.surname,
       sex: sex ?? this.sex,
@@ -164,19 +248,219 @@ class SignupRequest {
       specialty: specialty ?? this.specialty,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       cityOfWork: cityOfWork ?? this.cityOfWork,
+      countryOfWork: countryOfWork ?? this.countryOfWork, // NEW: Country field
       email: email ?? this.email,
-      googleEmail: googleEmail ?? this.googleEmail,
       vatNumber: vatNumber ?? this.vatNumber,
       fiscalCode: fiscalCode ?? this.fiscalCode,
-      // New fields
+
+      // Existing fields
       address: address ?? this.address,
       languagesSpoken: languagesSpoken ?? this.languagesSpoken,
       organization: organization ?? this.organization,
       ragioneSociale: ragioneSociale ?? this.ragioneSociale,
+
+      // NEW: Professional registration fields
+      numeroIscrizioneAlbo: numeroIscrizioneAlbo ?? this.numeroIscrizioneAlbo,
+      numeroIscrizioneEnte: numeroIscrizioneEnte ?? this.numeroIscrizioneEnte,
+      issuer: issuer ?? this.issuer,
+      areaOfInterest: areaOfInterest ?? this.areaOfInterest,
+      qualificationValidity: qualificationValidity ?? this.qualificationValidity,
+
+      // Status fields
       status: status ?? this.status,
       requestedAt: requestedAt ?? this.requestedAt,
       processedAt: processedAt ?? this.processedAt,
       deleteAt: deleteAt ?? this.deleteAt,
+      temporaryPassword: temporaryPassword ?? this.temporaryPassword,
+      rejectionReason: rejectionReason ?? this.rejectionReason,
     );
+  }
+
+  // NEW: Helper methods for role checking (admin-specific)
+  bool hasRole(String roleToCheck) => roles.contains(roleToCheck);
+  bool get isNutritionist => hasRole('NUTRITIONIST');
+  bool get isPersonalTrainer => hasRole('PERSONAL TRAINER');
+  bool get isPsychologist => hasRole('PSYCHOLOGIST');
+
+  // LEGACY: For backward compatibility with existing admin code
+  bool get isDoctor => role == 'DOCTOR' || hasRole('DOCTOR');
+  bool get isClinic => role == 'CLINIC' || hasRole('CLINIC');
+
+  // NEW: Get appropriate registration number based on roles
+  String? get professionalRegistrationNumber {
+    if ((isNutritionist || isPsychologist) && numeroIscrizioneAlbo != null) {
+      return numeroIscrizioneAlbo;
+    } else if (isPersonalTrainer && numeroIscrizioneEnte != null) {
+      return numeroIscrizioneEnte;
+    }
+    return null;
+  }
+
+  // NEW: Check if this request requires professional registration
+  bool get requiresProfessionalRegistration => isNutritionist || isPsychologist || isPersonalTrainer;
+
+  // NEW: Get role-specific registration type
+  String get registrationType {
+    if (isNutritionist || isPsychologist) {
+      return 'albo';
+    } else if (isPersonalTrainer) {
+      return 'ente';
+    }
+    return 'none';
+  }
+
+  // NEW: Get user-friendly role names for admin display
+  List<String> get roleDisplayNames {
+    const roleMap = {
+      'NUTRITIONIST': 'Nutrizionista',
+      'PERSONAL TRAINER': 'Personal Trainer',
+      'PSYCHOLOGIST': 'Psicologo',
+      'DOCTOR': 'Dottore',
+      'CLINIC': 'Clinica',
+    };
+    return roles.map((role) => roleMap[role] ?? role).toList();
+  }
+
+  // NEW: Get single role display name for admin UI
+  String get primaryRoleDisplayName {
+    if (roleDisplayNames.isNotEmpty) {
+      return roleDisplayNames.first;
+    }
+    return role ?? 'Sconosciuto';
+  }
+
+  // NEW: Get formatted roles string for admin tables
+  String get rolesFormatted {
+    if (roleDisplayNames.isEmpty) {
+      return role ?? 'Non specificato';
+    }
+    return roleDisplayNames.join(', ');
+  }
+
+  // NEW: Validation helper for admin approval process
+  bool get hasValidProfessionalRegistration {
+    if (!requiresProfessionalRegistration) return true;
+
+    if ((isNutritionist || isPsychologist) &&
+        (numeroIscrizioneAlbo == null || numeroIscrizioneAlbo!.isEmpty)) {
+      return false;
+    }
+
+    if (isPersonalTrainer &&
+        (numeroIscrizioneEnte == null || numeroIscrizioneEnte!.isEmpty)) {
+      return false;
+    }
+
+    if (requiresProfessionalRegistration && issuer.isEmpty) {
+      return false;
+    }
+
+    return true;
+  }
+
+  // NEW: Get validation errors for admin review
+  List<String> get validationErrors {
+    final errors = <String>[];
+
+    if (roles.isEmpty && (role == null || role!.isEmpty)) {
+      errors.add('At least one role must be selected');
+    }
+    if (name.isEmpty) errors.add('Name is required');
+    if (phoneNumber.isEmpty) errors.add('Phone number is required');
+    if (email.isEmpty) errors.add('Email is required');
+    if (fiscalCode.isEmpty) errors.add('Fiscal code is required');
+    if (cityOfWork.isEmpty) errors.add('City of work is required');
+
+    // Role-specific validation
+    if ((isNutritionist || isPsychologist) &&
+        (numeroIscrizioneAlbo == null || numeroIscrizioneAlbo!.isEmpty)) {
+      final roleNames = <String>[];
+      if (isNutritionist) roleNames.add('Nutritionist');
+      if (isPsychologist) roleNames.add('Psychologist');
+      errors.add('Professional registration number (albo) is required for ${roleNames.join(" and ")} role(s)');
+    }
+
+    if (isPersonalTrainer &&
+        (numeroIscrizioneEnte == null || numeroIscrizioneEnte!.isEmpty)) {
+      errors.add('Professional registration number (ente) is required for Personal Trainer role');
+    }
+
+    if (requiresProfessionalRegistration && issuer.isEmpty) {
+      errors.add('Professional qualification issuer is required');
+    }
+
+    return errors;
+  }
+
+  // NEW: Admin-specific status helpers
+  bool get isPending => status == 'pending';
+  bool get isApproved => status == 'approved';
+  bool get isRejected => status == 'rejected';
+
+  // NEW: Get status display color for admin UI
+  String get statusColor {
+    switch (status) {
+      case 'pending':
+        return '#FFA500'; // Orange
+      case 'approved':
+        return '#008000'; // Green
+      case 'rejected':
+        return '#FF0000'; // Red
+      default:
+        return '#808080'; // Gray
+    }
+  }
+
+  // NEW: Get professional registration summary for admin display
+  String get professionalRegistrationSummary {
+    if (!requiresProfessionalRegistration) {
+      return 'Non richiesta registrazione professionale';
+    }
+
+    final parts = <String>[];
+
+    if (isNutritionist || isPsychologist) {
+      parts.add('Albo: ${numeroIscrizioneAlbo ?? "Non specificato"}');
+    }
+
+    if (isPersonalTrainer) {
+      parts.add('Ente: ${numeroIscrizioneEnte ?? "Non specificato"}');
+    }
+
+    if (issuer.isNotEmpty) {
+      parts.add('Rilasciato da: $issuer');
+    }
+
+    return parts.isEmpty ? 'Dati registrazione incompleti' : parts.join(' | ');
+  }
+
+  // NEW: Check if request has complete information for admin approval
+  bool get isReadyForApproval {
+    return validationErrors.isEmpty && hasValidProfessionalRegistration;
+  }
+
+  @override
+  String toString() {
+    return 'SignupRequest{id: $id, roles: $roles, name: $name, surname: $surname, email: $email, status: $status}';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is SignupRequest &&
+        other.id == id &&
+        other.roles.toString() == roles.toString() &&
+        other.name == name &&
+        other.surname == surname &&
+        other.email == email;
+  }
+
+  @override
+  int get hashCode {
+    return id.hashCode ^
+    roles.hashCode ^
+    name.hashCode ^
+    surname.hashCode ^
+    email.hashCode;
   }
 }

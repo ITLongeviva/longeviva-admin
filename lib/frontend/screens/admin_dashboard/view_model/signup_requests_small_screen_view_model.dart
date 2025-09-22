@@ -17,13 +17,16 @@ class SignupRequestsSmallScreenViewModel extends StatefulWidget {
   const SignupRequestsSmallScreenViewModel({super.key});
 
   @override
-  State<SignupRequestsSmallScreenViewModel> createState() => _SignupRequestsSmallScreenViewModelState();
+  State<SignupRequestsSmallScreenViewModel> createState() =>
+      _SignupRequestsSmallScreenViewModelState();
 }
 
-class _SignupRequestsSmallScreenViewModelState extends State<SignupRequestsSmallScreenViewModel> {
+class _SignupRequestsSmallScreenViewModelState
+    extends State<SignupRequestsSmallScreenViewModel> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _statusFilter = 'all'; // 'all', 'pending', 'approved', 'rejected'
+  String _roleFilter = 'all'; // NEW: Role filter
 
   @override
   void dispose() {
@@ -38,19 +41,21 @@ class _SignupRequestsSmallScreenViewModelState extends State<SignupRequestsSmall
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Search field
+          // UPDATED: Search field
           TextField(
             controller: _searchController,
             decoration: InputDecoration(
-              hintText: 'Search by name or email...',
-              prefixIcon: const Icon(Icons.search, color: CustomColors.verdeAbisso),
+              hintText: 'Search by name, email, role, or registration...', // UPDATED HINT
+              prefixIcon:
+              const Icon(Icons.search, color: CustomColors.verdeAbisso),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: const BorderSide(color: CustomColors.verdeAbisso),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: CustomColors.verdeAbisso, width: 2),
+                borderSide:
+                const BorderSide(color: CustomColors.verdeAbisso, width: 2),
               ),
               contentPadding: const EdgeInsets.symmetric(vertical: 10),
             ),
@@ -64,32 +69,39 @@ class _SignupRequestsSmallScreenViewModelState extends State<SignupRequestsSmall
 
           const SizedBox(height: 16),
 
-          // Filter and refresh controls
+          // UPDATED: Filter and refresh controls
           Row(
             children: [
               Expanded(
                 child: _buildStatusFilterDropdown(),
               ),
-              const SizedBox(width: 16),
-              ElevatedButton.icon(
-                onPressed: () {
-                  // Refresh using SignupRequestBloc
-                  context.read<SignupRequestBloc>().add(FetchAllSignupRequests());
-                },
-                icon: const Icon(Icons.refresh, color: Colors.white),
-                label: const Text(
-                  'Refresh',
-                  style: TextStyle(color: Colors.white, fontFamily: 'Montserrat'),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: CustomColors.verdeAbisso,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
+              const SizedBox(width: 8), // Adjusted spacing for small screen
+              Expanded(
+                child: _buildRoleFilterDropdown(), // NEW: Role filter dropdown
               ),
             ],
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: () {
+              context
+                  .read<SignupRequestBloc>()
+                  .add(FetchAllSignupRequests());
+            },
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            label: const Text(
+              'Refresh',
+              style: TextStyle(color: Colors.white, fontFamily: 'Montserrat'),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: CustomColors.verdeAbisso,
+              minimumSize: const Size(double.infinity, 48), // Make button full width
+              padding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
           ),
 
           const SizedBox(height: 16),
@@ -99,9 +111,11 @@ class _SignupRequestsSmallScreenViewModelState extends State<SignupRequestsSmall
             child: BlocConsumer<SignupRequestBloc, SignupRequestState>(
               listener: (context, state) {
                 if (state is SignupRequestApproved) {
-                  context.showSuccessAlert('Signup request approved successfully');
+                  context.showSuccessAlert(
+                      'Signup request approved successfully');
                 } else if (state is SignupRequestRejected) {
-                  context.showSuccessAlert('Signup request rejected successfully');
+                  context.showSuccessAlert(
+                      'Signup request rejected successfully');
                 } else if (state is SignupRequestError) {
                   context.showErrorAlert(state.message);
                 }
@@ -115,17 +129,32 @@ class _SignupRequestsSmallScreenViewModelState extends State<SignupRequestsSmall
                     ),
                   );
                 } else if (state is SignupRequestsLoaded) {
-                  // Filter requests based on search query and status filter
+                  // UPDATED: Enhanced filtering logic
                   final filteredRequests = state.requests.where((request) {
                     // Apply search filter
-                    final name = ('${request.name} ${request.surname}').toLowerCase();
+                    final name =
+                    ('${request.name} ${request.surname}').toLowerCase();
                     final email = request.email.toLowerCase();
-                    final matchesSearch = name.contains(_searchQuery) || email.contains(_searchQuery);
+                    final roles = request.rolesFormatted.toLowerCase(); // NEW
+                    final professionalReg = request.professionalRegistrationSummary.toLowerCase(); // NEW
+
+                    final matchesSearch = name.contains(_searchQuery) ||
+                        email.contains(_searchQuery) ||
+                        roles.contains(_searchQuery) || // NEW
+                        professionalReg.contains(_searchQuery); // NEW
 
                     // Apply status filter
-                    final matchesStatus = _statusFilter == 'all' || request.status == _statusFilter;
+                    final matchesStatus =
+                        _statusFilter == 'all' || request.status == _statusFilter;
 
-                    return matchesSearch && matchesStatus;
+                    // NEW: Apply role filter
+                    final matchesRole = _roleFilter == 'all' ||
+                        request.hasRole(_roleFilter) ||
+                        (_roleFilter == 'DOCTOR' && request.role == 'DOCTOR') || // Maintain old role for backward compatibility if needed
+                        (_roleFilter == 'CLINIC' && request.role == 'CLINIC');
+
+
+                    return matchesSearch && matchesStatus && matchesRole;
                   }).toList();
 
                   if (filteredRequests.isEmpty) {
@@ -136,12 +165,12 @@ class _SignupRequestsSmallScreenViewModelState extends State<SignupRequestsSmall
                     itemCount: filteredRequests.length,
                     itemBuilder: (context, index) {
                       final request = filteredRequests[index];
+                      // Use the updated card method
                       return _buildRequestCardSmall(context, request);
                     },
                   );
                 }
 
-                // Default state or error state
                 return const Center(
                   child: Text(
                     'No data available',
@@ -176,13 +205,17 @@ class _SignupRequestsSmallScreenViewModelState extends State<SignupRequestsSmall
             ),
           ),
           const SizedBox(height: 8),
-          if (_searchQuery.isNotEmpty || _statusFilter != 'all')
+          // UPDATED: Condition for showing clear filters button
+          if (_searchQuery.isNotEmpty ||
+              _statusFilter != 'all' ||
+              _roleFilter != 'all')
             ElevatedButton.icon(
               onPressed: () {
                 setState(() {
                   _searchController.clear();
                   _searchQuery = '';
                   _statusFilter = 'all';
+                  _roleFilter = 'all'; // NEW: Reset role filter
                 });
               },
               icon: const Icon(Icons.clear),
@@ -223,13 +256,13 @@ class _SignupRequestsSmallScreenViewModelState extends State<SignupRequestsSmall
               value: 'all',
               child: Row(
                 children: [
-                  Icon(Icons.filter_list, size: 20, color: CustomColors.verdeAbisso),
+                  Icon(Icons.filter_list,
+                      size: 20, color: CustomColors.verdeAbisso),
                   const SizedBox(width: 8),
-                  const Text(
+                  Text(
                     'All Statuses',
                     style: TextStyle(
-                      fontFamily: 'Montserrat',
-                    ),
+                        fontFamily: 'Montserrat', color: Colors.grey[700]),
                   ),
                 ],
               ),
@@ -258,7 +291,8 @@ class _SignupRequestsSmallScreenViewModelState extends State<SignupRequestsSmall
               value: 'rejected',
               child: Row(
                 children: [
-                  Icon(Icons.cancel, size: 20, color: CustomColors.rossoSimone),
+                  Icon(Icons.cancel,
+                      size: 20, color: CustomColors.rossoSimone),
                   SizedBox(width: 8),
                   Text('Rejected', style: TextStyle(fontFamily: 'Montserrat')),
                 ],
@@ -270,9 +304,107 @@ class _SignupRequestsSmallScreenViewModelState extends State<SignupRequestsSmall
     );
   }
 
+  // NEW: Role filter dropdown (Identical to Large Screen version)
+  Widget _buildRoleFilterDropdown() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: CustomColors.verdeAbisso.withOpacity(0.3)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _roleFilter,
+          isExpanded: true, // Important for small screen layout
+          onChanged: (value) {
+            if (value != null) {
+              setState(() {
+                _roleFilter = value;
+              });
+            }
+          },
+          items: [
+            DropdownMenuItem<String>(
+              value: 'all',
+              child: Row(
+                children: [
+                  Icon(Icons.group, size: 20, color: CustomColors.verdeAbisso),
+                  const SizedBox(width: 8),
+                  Text(
+                    'All Roles',
+                    style: TextStyle(
+                      color: Colors.grey[700],
+                      fontFamily: 'Montserrat',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const DropdownMenuItem<String>(
+              value: 'NUTRITIONIST',
+              child: Row(
+                children: [
+                  Icon(Icons.restaurant_menu, size: 20, color: Colors.green),
+                  SizedBox(width: 8),
+                  Text('Nutritionist',
+                      style: TextStyle(fontFamily: 'Montserrat')),
+                ],
+              ),
+            ),
+            const DropdownMenuItem<String>(
+              value: 'PERSONAL TRAINER',
+              child: Row(
+                children: [
+                  Icon(Icons.fitness_center, size: 20, color: Colors.orange),
+                  SizedBox(width: 8),
+                  Text('Personal Trainer',
+                      style: TextStyle(fontFamily: 'Montserrat')),
+                ],
+              ),
+            ),
+            const DropdownMenuItem<String>(
+              value: 'PSYCHOLOGIST',
+              child: Row(
+                children: [
+                  Icon(Icons.psychology, size: 20, color: Colors.purple),
+                  SizedBox(width: 8),
+                  Text('Psychologist',
+                      style: TextStyle(fontFamily: 'Montserrat')),
+                ],
+              ),
+            ),
+            const DropdownMenuItem<String>(
+              value: 'DOCTOR',
+              child: Row(
+                children: [
+                  Icon(Icons.medical_services,
+                      size: 20, color: CustomColors.verdeMare),
+                  SizedBox(width: 8),
+                  Text('Doctor', style: TextStyle(fontFamily: 'Montserrat')),
+                ],
+              ),
+            ),
+            const DropdownMenuItem<String>(
+              value: 'CLINIC',
+              child: Row(
+                children: [
+                  Icon(Icons.local_hospital,
+                      size: 20, color: CustomColors.verdeAbisso),
+                  SizedBox(width: 8),
+                  Text('Clinic', style: TextStyle(fontFamily: 'Montserrat')),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // UPDATED: Enhanced request card for small screen
   Widget _buildRequestCardSmall(BuildContext context, SignupRequest request) {
     final status = request.status;
-    final role = request.role;
+    final primaryRole = request.primaryRoleDisplayName; // Use primary role for icon/color
 
     Color statusColor;
     IconData statusIcon;
@@ -297,7 +429,9 @@ class _SignupRequestsSmallScreenViewModelState extends State<SignupRequestsSmall
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: status == 'pending' ? CustomColors.verdeAbisso.withOpacity(0.3) : Colors.transparent,
+          color: status == 'pending'
+              ? CustomColors.verdeAbisso.withOpacity(0.3)
+              : Colors.transparent,
           width: 2,
         ),
       ),
@@ -314,13 +448,13 @@ class _SignupRequestsSmallScreenViewModelState extends State<SignupRequestsSmall
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Status and role badge
+              // Status and timestamp
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Status indicator
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: statusColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(16),
@@ -342,22 +476,12 @@ class _SignupRequestsSmallScreenViewModelState extends State<SignupRequestsSmall
                       ],
                     ),
                   ),
-
-                  // Role badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: role == 'DOCTOR' ? CustomColors.verdeMare.withOpacity(0.1) : CustomColors.verdeAbisso.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      role,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'Montserrat',
-                        color: role == 'DOCTOR' ? CustomColors.verdeMare : CustomColors.verdeAbisso,
-                      ),
+                  Text(
+                    'On ${DateFormat('MMM d, yy').format(request.requestedAt)}', // Shorter date
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 12,
+                      fontFamily: 'Montserrat',
                     ),
                   ),
                 ],
@@ -365,27 +489,24 @@ class _SignupRequestsSmallScreenViewModelState extends State<SignupRequestsSmall
 
               const SizedBox(height: 12),
 
-              // Name and date
+              // Name, icon, and roles
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Icon
                   Container(
-                    width: 40,
-                    height: 40,
+                    width: 48, // Slightly larger icon container
+                    height: 48,
                     decoration: BoxDecoration(
-                      color: role == 'DOCTOR' ? CustomColors.verdeMare.withOpacity(0.2) : CustomColors.verdeAbisso.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
+                      color: _getRoleColor(primaryRole).withOpacity(0.2), // Use helper
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
-                      role == 'DOCTOR' ? Icons.medical_services : Icons.local_hospital,
-                      color: role == 'DOCTOR' ? CustomColors.verdeMare : CustomColors.verdeAbisso,
-                      size: 24,
+                      _getRoleIcon(primaryRole), // Use helper
+                      color: _getRoleColor(primaryRole), // Use helper
+                      size: 28,
                     ),
                   ),
-
                   const SizedBox(width: 12),
-
-                  // Name
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -394,22 +515,32 @@ class _SignupRequestsSmallScreenViewModelState extends State<SignupRequestsSmall
                           '${request.name} ${request.surname}',
                           style: const TextStyle(
                             fontFamily: 'Montserrat',
-                            fontSize: 16,
+                            fontSize: 17, // Slightly larger name
                             fontWeight: FontWeight.bold,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
-
                         const SizedBox(height: 4),
-
-                        // Date
-                        Text(
-                          'Requested on ${DateFormat('MMM d, yyyy').format(request.requestedAt)}',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 12,
-                            fontFamily: 'Montserrat',
-                          ),
+                        // UPDATED: Multiple roles display
+                        Wrap(
+                          spacing: 4,
+                          runSpacing: 4,
+                          children: request.roleDisplayNames.map((role) => Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), // Smaller padding
+                            decoration: BoxDecoration(
+                              color: _getRoleColor(role).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              role,
+                              style: TextStyle(
+                                fontSize: 11, // Smaller font for roles
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'Montserrat',
+                                color: _getRoleColor(role),
+                              ),
+                            ),
+                          )).toList(),
                         ),
                       ],
                     ),
@@ -417,88 +548,79 @@ class _SignupRequestsSmallScreenViewModelState extends State<SignupRequestsSmall
                 ],
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
 
-              // Specialty and email
+              // Specialty
               if (request.specialty.isNotEmpty)
-                Row(
-                  children: [
-                    const Icon(Icons.medical_services_outlined, size: 16, color: CustomColors.verdeAbisso),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        request.specialty,
-                        style: TextStyle(
-                          color: Colors.grey[700],
-                          fontStyle: FontStyle.italic,
-                          fontFamily: 'Montserrat',
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
+                _buildInfoRow(
+                    icon: Icons.medical_services_outlined,
+                    text: request.specialty,
+                    isItalic: true),
+
+              // Email
+              _buildInfoRow(icon: Icons.email, text: request.email),
+
+              // Phone
+              if (request.phoneNumber.isNotEmpty)
+                _buildInfoRow(icon: Icons.phone, text: request.phoneNumber),
+
+              // Location
+              if (request.cityOfWork.isNotEmpty)
+                _buildInfoRow(
+                    icon: Icons.location_city,
+                    text: '${request.cityOfWork}${request.countryOfWork != 'Italy' ? ', ${request.countryOfWork}' : ''}'
                 ),
 
-              const SizedBox(height: 4),
+              // Professional Registration / VAT
+              if (request.requiresProfessionalRegistration)
+                _buildInfoRow(
+                    icon: Icons.badge,
+                    text: request.professionalRegistrationNumber ?? 'Registration pending')
+              else if (request.vatNumber.isNotEmpty)
+                _buildInfoRow(
+                    icon: Icons.badge,
+                    text: 'VAT: ${request.vatNumber}'),
 
-              Row(
-                children: [
-                  const Icon(Icons.email, size: 16, color: CustomColors.verdeAbisso),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      request.email,
-                      style: TextStyle(
-                        color: Colors.grey[700],
-                        fontFamily: 'Montserrat',
-                        fontSize: 13,
+              // Organization
+              if (request.organization.isNotEmpty)
+                _buildInfoRow(icon: Icons.business, text: request.organization),
+
+              // Professional Validation Status
+              if (request.requiresProfessionalRegistration)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6, left: 4), // Adjusted padding
+                  child: Row(
+                    children: [
+                      Icon(
+                        request.hasValidProfessionalRegistration
+                            ? Icons.verified
+                            : Icons.warning_amber_rounded, // Different icon for warning
+                        size: 16,
+                        color: request.hasValidProfessionalRegistration
+                            ? Colors.green
+                            : Colors.orange,
                       ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          request.hasValidProfessionalRegistration
+                              ? 'Professional validation complete'
+                              : 'Professional validation required',
+                          style: TextStyle(
+                            color: request.hasValidProfessionalRegistration
+                                ? Colors.green
+                                : Colors.orange,
+                            fontFamily: 'Montserrat',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-
-              if (request.phoneNumber.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(Icons.phone, size: 16, color: CustomColors.verdeAbisso),
-                    const SizedBox(width: 8),
-                    Text(
-                      request.phoneNumber,
-                      style: TextStyle(
-                        color: Colors.grey[700],
-                        fontFamily: 'Montserrat',
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
                 ),
-              ],
 
-              if (request.cityOfWork.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(Icons.location_city, size: 16, color: CustomColors.verdeAbisso),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        request.cityOfWork,
-                        style: TextStyle(
-                          color: Colors.grey[700],
-                          fontFamily: 'Montserrat',
-                          fontSize: 13,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-
-              // Action buttons - only show for pending requests
+              // Action buttons
               if (status == 'pending') ...[
                 const SizedBox(height: 16),
                 Row(
@@ -508,7 +630,8 @@ class _SignupRequestsSmallScreenViewModelState extends State<SignupRequestsSmall
                         onPressed: () {
                           _showRejectConfirmation(context, request.id);
                         },
-                        icon: const Icon(Icons.cancel, color: CustomColors.rossoSimone),
+                        icon: const Icon(Icons.cancel,
+                            color: CustomColors.rossoSimone),
                         label: const Text(
                           'Reject',
                           style: TextStyle(
@@ -517,7 +640,8 @@ class _SignupRequestsSmallScreenViewModelState extends State<SignupRequestsSmall
                           ),
                         ),
                         style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: CustomColors.rossoSimone),
+                          side:
+                          const BorderSide(color: CustomColors.rossoSimone),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -527,19 +651,22 @@ class _SignupRequestsSmallScreenViewModelState extends State<SignupRequestsSmall
                     const SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: () {
+                        // UPDATED: Disable button if not ready for approval
+                        onPressed: request.isReadyForApproval ? () {
                           _showApproveConfirmation(context, request.id);
-                        },
+                        } : null,
                         icon: const Icon(Icons.check_circle, color: Colors.white),
-                        label: const Text(
-                          'Approve',
-                          style: TextStyle(
+                        label: Text(
+                          request.isReadyForApproval ? 'Approve' : 'Validate', // UPDATED LABEL
+                          style: const TextStyle(
                             color: Colors.white,
                             fontFamily: 'Montserrat',
                           ),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: CustomColors.verdeMare,
+                          backgroundColor: request.isReadyForApproval
+                              ? CustomColors.verdeMare
+                              : Colors.grey, // Grey out if disabled
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
@@ -557,12 +684,81 @@ class _SignupRequestsSmallScreenViewModelState extends State<SignupRequestsSmall
     );
   }
 
+  // Helper for info rows to reduce repetition
+  Widget _buildInfoRow({required IconData icon, required String text, bool isItalic = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4.0),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: CustomColors.verdeAbisso.withOpacity(0.8)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                color: Colors.grey[700],
+                fontFamily: 'Montserrat',
+                fontSize: 13,
+                fontStyle: isItalic ? FontStyle.italic : FontStyle.normal,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+  // NEW: Helper methods for role-specific styling (Identical to Large Screen version)
+  Color _getRoleColor(String role) {
+    switch (role.toUpperCase()) {
+      case 'NUTRITIONIST':
+      case 'NUTRIZIONISTA':
+        return Colors.green;
+      case 'PERSONAL TRAINER':
+        return Colors.orange;
+      case 'PSYCHOLOGIST':
+      case 'PSICOLOGO':
+        return Colors.purple;
+      case 'DOCTOR':
+      case 'DOTTORE':
+        return CustomColors.verdeMare;
+      case 'CLINIC':
+      case 'CLINICA':
+        return CustomColors.verdeAbisso;
+      default:
+        return CustomColors.verdeAbisso;
+    }
+  }
+
+  IconData _getRoleIcon(String role) {
+    switch (role.toUpperCase()) {
+      case 'NUTRITIONIST':
+      case 'NUTRIZIONISTA':
+        return Icons.restaurant_menu;
+      case 'PERSONAL TRAINER':
+        return Icons.fitness_center;
+      case 'PSYCHOLOGIST':
+      case 'PSICOLOGO':
+        return Icons.psychology;
+      case 'DOCTOR':
+      case 'DOTTORE':
+        return Icons.medical_services;
+      case 'CLINIC':
+      case 'CLINICA':
+        return Icons.local_hospital;
+      default:
+        return Icons.person; // Default icon
+    }
+  }
+
+  // --- DIALOGS (Identical to Large Screen version) ---
   void _showApproveConfirmation(BuildContext context, String requestId) {
     final temporaryPasswordController = TextEditingController();
-    // Use the unified password generator with validation
-    temporaryPasswordController.text = PasswordValidationHelper.generateValidatedPassword(length: 12);
+    temporaryPasswordController.text =
+        PasswordValidationHelper.generateValidatedPassword(length: 12);
 
-    // Capture the bloc before showing dialog
     final signupRequestBloc = context.read<SignupRequestBloc>();
 
     context.showAnimatedDialog(
@@ -586,16 +782,16 @@ class _SignupRequestsSmallScreenViewModelState extends State<SignupRequestsSmall
                   style: TextStyle(fontFamily: 'Montserrat'),
                 ),
                 const SizedBox(height: 16),
-
-                // Use the unified password validation widget - IDENTICAL to large screen
                 PasswordValidationWidget(
                   passwordController: temporaryPasswordController,
                   onRegeneratePassword: () {
                     setState(() {
-                      temporaryPasswordController.text = PasswordValidationHelper.generateValidatedPassword(length: 12);
+                      temporaryPasswordController.text =
+                          PasswordValidationHelper.generateValidatedPassword(
+                              length: 12);
                     });
                   },
-                  showPasswordRequirements: false, // Compact version for dialog
+                  showPasswordRequirements: false,
                   helperText: 'User will be required to change on first login',
                 ),
               ],
@@ -616,22 +812,21 @@ class _SignupRequestsSmallScreenViewModelState extends State<SignupRequestsSmall
                   ),
                   ElevatedButton.icon(
                     onPressed: () {
-                      // Use unified validation helper - IDENTICAL validation logic!
-                      if (!PasswordValidationHelper.validateAndShowError(context, temporaryPasswordController.text.trim())) {
+                      if (!PasswordValidationHelper.validateAndShowError(
+                          context, temporaryPasswordController.text.trim())) {
                         return;
                       }
-
                       Navigator.of(dialogContext).pop();
-
-                      // Use the captured bloc reference
                       signupRequestBloc.add(
                         ApproveSignupRequestWithPassword(
                           id: requestId,
-                          temporaryPassword: temporaryPasswordController.text,
+                          temporaryPassword:
+                          temporaryPasswordController.text,
                         ),
                       );
                     },
-                    icon: const Icon(Icons.check_circle, color: Colors.white),
+                    icon:
+                    const Icon(Icons.check_circle, color: Colors.white),
                     label: const Text(
                       'Approve',
                       style: TextStyle(
@@ -656,11 +851,8 @@ class _SignupRequestsSmallScreenViewModelState extends State<SignupRequestsSmall
     );
   }
 
-
   void _showRejectConfirmation(BuildContext context, String requestId) {
     final reasonController = TextEditingController();
-
-    // Capture the bloc before showing dialog
     final signupRequestBloc = context.read<SignupRequestBloc>();
 
     context.showAnimatedDialog(
@@ -709,8 +901,6 @@ class _SignupRequestsSmallScreenViewModelState extends State<SignupRequestsSmall
               OutlinedButton.icon(
                 onPressed: () {
                   Navigator.of(dialogContext).pop();
-
-                  // Use the captured bloc reference
                   signupRequestBloc.add(
                     RejectSignupRequestWithReason(
                       id: requestId,
@@ -718,7 +908,8 @@ class _SignupRequestsSmallScreenViewModelState extends State<SignupRequestsSmall
                     ),
                   );
                 },
-                icon: const Icon(Icons.cancel, color: CustomColors.rossoSimone),
+                icon: const Icon(Icons.cancel,
+                    color: CustomColors.rossoSimone),
                 label: const Text(
                   'Reject',
                   style: TextStyle(
