@@ -129,13 +129,11 @@ class EmailService {
       body += 'VAT Number: ${data.vatNumber}\n';
       body += 'Fiscal Code: ${data.fiscalCode}\n';
     } else {
-      body += 'Business Name (Ragione Sociale): ${data.ragioneSociale}\n';
       body += 'Fiscal Code: ${data.fiscalCode}\n';
     }
 
     body += '\n=== PROFESSIONAL INFORMATION ===\n';
     body += 'Specialty: ${data.specialty}\n';
-    body += 'Organization: ${data.organization}\n';
     body += 'City of Work: ${data.cityOfWork}\n';
 
     body += '\n=== CONTACT INFORMATION ===\n';

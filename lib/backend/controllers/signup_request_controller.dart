@@ -90,6 +90,22 @@ class SignupRequestController {
     }
   }
 
+  // NEW: Get hourly fees statistics by role
+  Future<Map<String, Map<String, double>>> getHourlyFeesStatsByRole() async {
+    try {
+      ErrorHandler.logDebug('Getting hourly fees statistics by role');
+      return await _repository.getHourlyFeesStatsByRole();
+    } catch (e) {
+      ErrorHandler.logError('Error getting hourly fees statistics', e);
+      throw AppException(
+        'Error retrieving hourly fees statistics',
+        translationKey: 'errors.general.operation_failed',
+        translationArgs: {'error': 'retrieve hourly fees statistics'},
+        originalError: e,
+      );
+    }
+  }
+
   Future<SignupRequest?> getSignupRequestById(String id) async {
     try {
       ErrorHandler.logDebug('Getting signup request with ID: $id');
@@ -105,17 +121,17 @@ class SignupRequestController {
     }
   }
 
-  // UPDATED: Enhanced validation for new SignupData structure
+  // UPDATED: Enhanced validation for new SignupData structure including hourlyFees
   Future<SignupRequest> createSignupRequest(SignupData data) async {
     try {
-      ErrorHandler.logDebug('Creating signup request for: ${data.email} with roles: ${data.roles}');
+      ErrorHandler.logDebug('Creating signup request for: ${data.email} with roles: ${data.roles} and hourlyFees: ${data.hourlyFees}');
 
-      // UPDATED: Enhanced validation
+      // UPDATED: Enhanced validation including hourlyFees
       _validateSignupData(data);
 
       final signupRequest = await _repository.createSignupRequest(data);
 
-      // UPDATED: Send email with role information
+      // UPDATED: Send email with role and hourly fees information
       await _emailService.sendSignupEmail(data);
 
       return signupRequest;
@@ -149,6 +165,7 @@ class SignupRequestController {
       ErrorHandler.logDebug('Found signup request for email: ${request.email}');
       ErrorHandler.logDebug('Request status: ${request.status}');
       ErrorHandler.logDebug('Request roles: ${request.roles}');
+      ErrorHandler.logDebug('Request hourly fees: ${request.formattedHourlyFees}');
 
       if (request.status != 'pending') {
         throw AppException(
@@ -393,10 +410,22 @@ class SignupRequestController {
     }
   }
 
-  // NEW: Update professional information
+  // UPDATED: Update professional information including hourlyFees
   Future<bool> updateSignupRequestProfessionalInfo(String requestId, Map<String, dynamic> professionalInfo) async {
     try {
       ErrorHandler.logDebug('Updating professional info for request: $requestId');
+
+      // NEW: Validate hourly fees if being updated
+      if (professionalInfo.containsKey('hourlyFees')) {
+        final hourlyFeesValue = professionalInfo['hourlyFees'];
+        if (hourlyFeesValue != null) {
+          final validationError = _validateHourlyFeesValue(hourlyFeesValue);
+          if (validationError != null) {
+            throw AppException(validationError);
+          }
+        }
+      }
+
       return await _repository.updateSignupRequestProfessionalInfo(requestId, professionalInfo);
     } catch (e) {
       ErrorHandler.logError('Error updating professional information', e);
@@ -408,7 +437,7 @@ class SignupRequestController {
     }
   }
 
-  // NEW: Get validation errors for signup data
+  // UPDATED: Get validation errors for signup data including hourlyFees
   List<String> getSignupDataValidationErrors(SignupData data) {
     final errors = <String>[];
 
@@ -426,7 +455,7 @@ class SignupRequestController {
     return errors;
   }
 
-  // UPDATED: Enhanced approval email with role information
+  // UPDATED: Enhanced approval email with role and hourly fees information
   Future<void> _sendApprovalEmail(SignupRequest request, String temporaryPassword) async {
     final passwordValidation = SecurePasswordGenerator.validatePasswordForUI(temporaryPassword);
     final roles = _getUserRoles(request);
@@ -459,15 +488,17 @@ IMPORTANT SECURITY NOTICE:
 Your Profile Summary:
 - Role(s): $rolesString
 - Specialty: ${request.specialty}
-- Organization: ${request.organization}
 - City of Work: ${request.cityOfWork}
-${request.professionalRegistrationSummary.isNotEmpty ? '- Professional Registration: ${request.professionalRegistrationSummary}' : ''}
+- Country: ${request.countryOfWork}
+${request.hasHourlyFeesSet ? '- Hourly Rate: ${request.formattedHourlyFees}' : '- Hourly Rate: Not specified'}
+${request.professionalRegistrationNumber != null ? '- Professional Registration: ${request.professionalRegistrationNumber}' : ''}
 
 Next Steps:
 1. Log in using your temporary credentials
 2. Complete your profile setup
 3. Change your password (required on first login)
-4. Begin using the platform securely
+4. ${request.hasHourlyFeesSet ? 'Review and adjust' : 'Set'} your hourly rates if needed
+5. Begin using the platform securely
 
 Based on your professional role(s), you will have access to the appropriate features and tools within the Longeviva platform.
 
@@ -500,8 +531,9 @@ We regret to inform you that your registration request for Longeviva has been de
 Application Details:
 - Role(s): $rolesString
 - Specialty: ${request.specialty}
-- Organization: ${request.organization}
+- City of Work: ${request.cityOfWork}
 - Application Date: ${DateFormat('MMMM d, yyyy').format(request.requestedAt)}
+${request.hasHourlyFeesSet ? '- Requested Hourly Rate: ${request.formattedHourlyFees}' : ''}
 
 Reason for Decline:
 $reason
@@ -533,7 +565,7 @@ The Longeviva Team
     return ['UNKNOWN']; // Fallback
   }
 
-  // UPDATED: Enhanced validation with role-specific requirements
+  // UPDATED: Enhanced validation with role-specific requirements and hourlyFees
   void _validateSignupData(SignupData data) {
     // Basic field validation
     if (data.email.isEmpty) {
@@ -586,6 +618,9 @@ The Longeviva Team
       );
     }
 
+    // NEW: Hourly fees validation
+    _validateHourlyFees(data.hourlyFees);
+
     // NEW: Role-specific validation
     _validateRoleSpecificRequirements(data);
 
@@ -609,6 +644,61 @@ The Longeviva Team
 
     // Business logic validation
     _validateBusinessLogic(data);
+  }
+
+  // NEW: Hourly fees validation
+  void _validateHourlyFees(double hourlyFees) {
+    if (hourlyFees < 0) {
+      throw AppException(
+        'Hourly fees cannot be negative',
+        translationKey: 'errors.signup.hourly_fees_negative',
+      );
+    }
+
+    if (hourlyFees > 1000) {
+      throw AppException(
+        'Hourly fees cannot exceed €1000',
+        translationKey: 'errors.signup.hourly_fees_too_high',
+      );
+    }
+  }
+
+  // NEW: Validate hourly fees value from various input types
+  String? _validateHourlyFeesValue(dynamic value) {
+    if (value == null) return null;
+
+    double? parsedValue;
+
+    if (value is double) {
+      parsedValue = value;
+    } else if (value is int) {
+      parsedValue = value.toDouble();
+    } else if (value is String) {
+      try {
+        // Handle both comma and dot as decimal separator
+        final cleanValue = value.replaceAll(',', '.');
+        parsedValue = double.parse(cleanValue);
+      } catch (e) {
+        return 'Invalid hourly fees format. Please enter a valid number.';
+      }
+    } else {
+      return 'Invalid hourly fees format. Expected a number.';
+    }
+
+    // Validate the parsed value
+    if (parsedValue < 0) {
+      return 'Hourly fees cannot be negative';
+    }
+
+    if (parsedValue > 1000) {
+      return 'Hourly fees cannot exceed €1000';
+    }
+
+    if (parsedValue > 0 && parsedValue < 5) {
+      return 'Hourly fees should be at least €5 if specified';
+    }
+
+    return null; // Valid
   }
 
   // NEW: Role-specific validation method
@@ -718,21 +808,6 @@ The Longeviva Team
       );
     }
 
-    // Organization validation
-    if (data.organization.isEmpty) {
-      throw AppException(
-        'Organization is required',
-        translationKey: 'errors.signup.organization_required',
-      );
-    }
-
-    if (data.organization.length < 2) {
-      throw AppException(
-        'Organization name must be at least 2 characters',
-        translationKey: 'errors.signup.organization_too_short',
-      );
-    }
-
     // Validate language entries
     for (String language in data.languagesSpoken) {
       if (language.trim().isEmpty) {
@@ -813,7 +888,6 @@ The Longeviva Team
         );
       }
     }
-
     // Validate role-specific business logic
     _validateRoleSpecificBusinessLogic(data);
   }

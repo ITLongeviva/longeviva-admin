@@ -12,11 +12,8 @@ class SignupData {
   final String vatNumber;
   final String fiscalCode;
 
-  // Location and organization fields
   final String address;
   final List<String> languagesSpoken;
-  final String organization;
-  final String ragioneSociale; // Business name/company name
 
   // NEW: Professional registration fields (based on role)
   final String? numero_iscrizione_albo; // For nutritionists, psychologists, etc.
@@ -27,6 +24,9 @@ class SignupData {
   final String? specialty; // Made optional as in new Doctor model
   final String? areaOfInterest; // Made optional as in new Doctor model
   final DateTime? qualificationValidity; // Professional qualification validity
+
+  // NEW: Hourly fees field
+  final double hourlyFees; // Professional hourly rate
 
   SignupData({
     required this.roles, // UPDATED: Now requires list of roles
@@ -41,11 +41,8 @@ class SignupData {
     required this.vatNumber,
     required this.fiscalCode,
 
-    // Location and organization fields with defaults
     this.address = '',
     this.languagesSpoken = const [],
-    this.organization = '',
-    this.ragioneSociale = '',
 
     // NEW: Professional registration fields
     this.numero_iscrizione_albo,
@@ -56,6 +53,9 @@ class SignupData {
     this.specialty,
     this.areaOfInterest,
     this.qualificationValidity,
+
+    // NEW: Hourly fees with default value
+    this.hourlyFees = 0.0,
   });
 
   // LEGACY: Constructor for backward compatibility with single role
@@ -72,11 +72,8 @@ class SignupData {
     required this.vatNumber,
     required this.fiscalCode,
 
-    // Location and organization fields with defaults
     this.address = '',
     this.languagesSpoken = const [],
-    this.organization = '',
-    this.ragioneSociale = '',
 
     // Professional registration fields
     this.numero_iscrizione_albo,
@@ -87,6 +84,9 @@ class SignupData {
     this.specialty,
     this.areaOfInterest,
     this.qualificationValidity,
+
+    // NEW: Hourly fees
+    this.hourlyFees = 0.0,
   }) : roles = [role]; // Convert single role to list
 
   // NEW: Helper methods for role checking
@@ -115,6 +115,9 @@ class SignupData {
     if (email.isEmpty || fiscalCode.isEmpty) return false;
     if (phoneNumber.isEmpty || cityOfWork.isEmpty) return false;
 
+    // NEW: Validate hourly fees
+    if (hourlyFees < 0) return false;
+
     // Role-specific validation
     if (isNutritionist || isPsychologist) {
       if (numero_iscrizione_albo == null || numero_iscrizione_albo!.isEmpty) {
@@ -142,6 +145,10 @@ class SignupData {
     if (fiscalCode.isEmpty) errors.add('Fiscal code is required');
     if (phoneNumber.isEmpty) errors.add('Phone number is required');
     if (cityOfWork.isEmpty) errors.add('City of work is required');
+
+    // NEW: Hourly fees validation
+    if (hourlyFees < 0) errors.add('Hourly fees cannot be negative');
+    if (hourlyFees > 1000) errors.add('Hourly fees cannot exceed €1000');
 
     // Role-specific validation
     if (isNutritionist || isPsychologist) {
@@ -173,11 +180,8 @@ class SignupData {
     String? vatNumber,
     String? fiscalCode,
 
-    // Location and organization fields
     String? address,
     List<String>? languagesSpoken,
-    String? organization,
-    String? ragioneSociale,
 
     // NEW: Professional registration fields
     String? numero_iscrizione_albo,
@@ -188,6 +192,9 @@ class SignupData {
     String? specialty,
     String? areaOfInterest,
     DateTime? qualificationValidity,
+
+    // NEW: Hourly fees
+    double? hourlyFees,
   }) {
     return SignupData(
       roles: roles ?? this.roles,
@@ -202,11 +209,8 @@ class SignupData {
       vatNumber: vatNumber ?? this.vatNumber,
       fiscalCode: fiscalCode ?? this.fiscalCode,
 
-      // Location and organization fields
       address: address ?? this.address,
       languagesSpoken: languagesSpoken ?? this.languagesSpoken,
-      organization: organization ?? this.organization,
-      ragioneSociale: ragioneSociale ?? this.ragioneSociale,
 
       // Professional registration fields
       numero_iscrizione_albo: numero_iscrizione_albo ?? this.numero_iscrizione_albo,
@@ -217,6 +221,9 @@ class SignupData {
       specialty: specialty ?? this.specialty,
       areaOfInterest: areaOfInterest ?? this.areaOfInterest,
       qualificationValidity: qualificationValidity ?? this.qualificationValidity,
+
+      // NEW: Hourly fees
+      hourlyFees: hourlyFees ?? this.hourlyFees,
     );
   }
 
@@ -257,11 +264,9 @@ class SignupData {
       'specialty': specialty,
       'areaOfInterest': areaOfInterest,
       'qualificationValidity': qualificationValidity,
-      'organization': organization,
-      'ragioneSociale': ragioneSociale,
 
-      // Set default values for required Doctor fields
-      'hourlyFees': 0.0,
+      // UPDATED: Use actual hourly fees instead of default 0.0
+      'hourlyFees': hourlyFees,
       'requiredPasswordChange': true,
       'isActive': true,
       'isAlive': true,
@@ -291,8 +296,6 @@ class SignupData {
       languagesSpoken: formData['languagesSpoken'] is List
           ? List<String>.from(formData['languagesSpoken'])
           : [],
-      organization: formData['organization']?.toString() ?? '',
-      ragioneSociale: formData['ragioneSociale']?.toString() ?? '',
       numero_iscrizione_albo: formData['numero_iscrizione_albo']?.toString(),
       numero_iscrizione_ente: formData['numero_iscrizione_ente']?.toString(),
       issuer: formData['issuer']?.toString() ?? '',
@@ -301,12 +304,29 @@ class SignupData {
       qualificationValidity: formData['qualificationValidity'] is DateTime
           ? formData['qualificationValidity']
           : null,
+      // NEW: Parse hourly fees
+      hourlyFees: _parseDoubleFromFormData(formData['hourlyFees']),
     );
+  }
+
+  // NEW: Helper method to parse double from form data
+  static double _parseDoubleFromFormData(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) {
+      try {
+        return double.parse(value);
+      } catch (e) {
+        return 0.0;
+      }
+    }
+    return 0.0;
   }
 
   @override
   String toString() {
-    return 'SignupData{roles: $roles, name: $name, surname: $surname, email: $email, cityOfWork: $cityOfWork}';
+    return 'SignupData{roles: $roles, name: $name, surname: $surname, email: $email, cityOfWork: $cityOfWork, hourlyFees: $hourlyFees}';
   }
 
   @override
@@ -317,7 +337,8 @@ class SignupData {
         other.name == name &&
         other.surname == surname &&
         other.email == email &&
-        other.fiscalCode == fiscalCode;
+        other.fiscalCode == fiscalCode &&
+        other.hourlyFees == hourlyFees;
   }
 
   @override
@@ -326,6 +347,7 @@ class SignupData {
     name.hashCode ^
     surname.hashCode ^
     email.hashCode ^
-    fiscalCode.hashCode;
+    fiscalCode.hashCode ^
+    hourlyFees.hashCode;
   }
 }

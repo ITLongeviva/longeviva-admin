@@ -5,29 +5,32 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 // Infine per descrivere dove il practioner esercita la propria attività e quindi per descrivere la struttura dobbiamo lavorare su Organization
 
 class Doctor { //Practioner
+  // Available roles
+  static const List<String> availableRoles = [
+    "NUTRITIONIST",
+    "PERSONAL TRAINER",
+    "PSYCHOLOGIST"
+  ];
+
   // Role constants
-  static const String ROLE_DOCTOR = "DOCTOR";
-  static const String ROLE_CLINIC = "CLINIC";
-  static const String ROLE_CENTRO_ACUSTICO = "CENTRO_ACUSTICO";
-  static const String ROLE_TECNICO_AUDIOPROTESISTA = "TECNICO_AUDIOPROTESISTA";
-  static const String ROLE_CENTRO_OTOLOGIA = "CENTRO_OTOLOGIA";
-  static const String ROLE_MEDICO = "MEDICO";
+  static const String ROLE_NUTRITIONIST = "NUTRITIONIST";
+  static const String ROLE_PERSONAL_TRAINER = "PERSONAL TRAINER";
+  static const String ROLE_PSYCHOLOGIST = "PSYCHOLOGIST";
 
   final String id; // FHIR: Practioner.id e Practitioner.identifier[0]
   final String name; // Practitioner.name[0].given, .family
   final String surname; // concatenated with name
   final String sex; // Practitioner.gender
-  final String phoneNumber; // Practitioner.telecom[system=phone
-  final DateTime birthdate;
-  final String email; // Practitioner.telecom[system=email]
-  final String googleEmail; // Added Google email from signup request
-  final String areaOfInterest; // Estensione di PractitionerRole.specialty
-  final String role; // Used with ROLE_DOCTOR or ROLE_CLINIC. Vanno separati in due entità diverse Organization e Practitioner
-  final String licenseNumber; // Practitioner.qualification.identifier
-  final String vatNumber; //Practitioner.identifier[system=vatNumber]
+  final String phoneNumber; // Practitioner.telecom[system=phone]
+  final DateTime birthdate; // Data di nascita Doctor
+  final String address; // FHIR address --> segue integrazione con google maps
+  final String cityOfWork; // PractitionerRole.location → Location.address.city
+  final String countryOfWork; // Country of work
   final String fiscalCode; // Added fiscal code from signup request
+  final String email; // Practitioner.telecom[system=email]
+  final List<String> roles; // Multiple roles support
+  final String vatNumber; //Practitioner.identifier[system=vatNumber]
   final double hourlyFees; // Potrebbe servire una nuova estensione
-  final bool isDoctor; // lo deriviamo da practionerRole.code[system=doctor] possiamo eliminarlo
   final bool requiredPasswordChange;
   final DateTime? signupApprovalDate; // Added to track when account was created
   final String? signupRequestId; // Reference to original signup request
@@ -36,17 +39,23 @@ class Doctor { //Practioner
   // New FHIR-compliant fields
   final bool isActive; // FHIR active boolean
   final bool isAlive; // FHIR deceased (da capire come integrare)
-  final String address; //FHIR address --> segue integrazione con google maps
   final List<String> languagesSpoken; // FHIR communication
-  final DateTime? qualificationValidity; // FHIR qualification.validity
-  final String issuer; // FHIR issuer --> emittente per la qualifica del professionista
 
-  /// Da inserire nel PractiotionerRole
-  final String specialty; // PractitionerRole.specialty[0]. La specializzazione è legata al ruolo svolto in un dato contesto. Questo campo va approfondito con entità PractionerRole
-  final String placeOfWork; // PractitionerRole.location → Location.address
-  final String cityOfWork; // PractitionerRole.location → Location.address.city
-  final DateTime? organizationPeriodValidity; // FHIR PractiotionerRole.period
-  final String organization; // FHIR organization
+  /// CAMPI LEGATI ALLA PROFESSIONE
+  // ------------------------------
+  // SE BIOLOGO O NUTRIZIONISTA O DIETISTA O PSICOLOGO
+  final String? numero_iscrizione_albo; // Practitioner.qualification.identifier
+  // SE PERSONAL TRAINER
+  final String? numero_iscrizione_ente;
+  // ------------------------------
+  final String issuer; // FHIR issuer --> ente per la qualifica del professionista
+  final DateTime? qualificationValidity; // FHIR qualification.validity
+  final String? specialty; // PractitionerRole.specialty[0]. La specializzazione è legata al ruolo svolto in un dato contesto. Questo campo va approfondito con entità PractionerRole
+  final String? areaOfInterest; // Estensione di PractitionerRole.specialty
+
+  /// Policy acceptance audit fields
+  final DateTime? termsOfServiceAcceptedAt; // Timestamp when terms of service were accepted
+  final DateTime? privacyPolicyAcceptedAt; // Timestamp when privacy policy was accepted
 
   Doctor({
     required this.id,
@@ -55,18 +64,14 @@ class Doctor { //Practioner
     required this.sex,
     required this.phoneNumber,
     required this.birthdate,
-    required this.specialty,
-    required this.email,
-    this.googleEmail = '', // Default to empty string
-    required this.placeOfWork,
+    required this.address,
     required this.cityOfWork,
-    required this.areaOfInterest,
-    required this.role,
-    required this.licenseNumber,
+    required this.countryOfWork,
+    required this.fiscalCode,
+    required this.email,
+    required this.roles,
     required this.vatNumber,
-    this.fiscalCode = '', // Default to empty string
     required this.hourlyFees,
-    required this.isDoctor,
     this.requiredPasswordChange = false,
     this.signupApprovalDate,
     this.signupRequestId,
@@ -74,12 +79,16 @@ class Doctor { //Practioner
     // New fields with defaults
     this.isActive = true,
     this.isAlive = true,
-    this.address = '',
     this.languagesSpoken = const [],
-    this.qualificationValidity,
+    this.numero_iscrizione_albo,
+    this.numero_iscrizione_ente,
     this.issuer = '',
-    this.organizationPeriodValidity,
-    this.organization = '',
+    this.qualificationValidity,
+    this.specialty,
+    this.areaOfInterest,
+    // Policy acceptance fields
+    this.termsOfServiceAcceptedAt,
+    this.privacyPolicyAcceptedAt,
   });
 
   // Factory constructor to create a Doctor object from a JSON map
@@ -97,18 +106,18 @@ class Doctor { //Practioner
       DateTime.parse(json['birthdate']) :
       json['birthdate'] as DateTime)) :
       DateTime.now(),
-      specialty: json['specialty'] ?? '',
-      email: json['email'] ?? '',
-      googleEmail: json['googleEmail'] ?? '',
-      placeOfWork: json['placeOfWork'] ?? '',
+      address: json['address'] ?? '',
       cityOfWork: json['cityOfWork'] ?? '',
-      areaOfInterest: json['areaOfInterest'] ?? '',
-      role: json['role'] ?? ROLE_DOCTOR,
-      licenseNumber: json['licenseNumber'] ?? '',
-      vatNumber: json['vatNumber'] ?? '',
+      countryOfWork: json['countryOfWork'] ?? '',
       fiscalCode: json['fiscalCode'] ?? '',
+      email: json['email'] ?? '',
+      roles: json['roles'] != null
+          ? (json['roles'] is List
+          ? List<String>.from(json['roles'])
+          : [json['roles'].toString()])
+          : [],
+      vatNumber: json['vatNumber'] ?? '',
       hourlyFees: (json['hourlyFees'] ?? 0.0).toDouble(),
-      isDoctor: json['isDoctor'] ?? false,
       requiredPasswordChange: json['requiredPasswordChange'] ?? false,
       signupApprovalDate: json['signupApprovalDate'] != null ?
       (json['signupApprovalDate'] is Timestamp ?
@@ -119,15 +128,17 @@ class Doctor { //Practioner
       null,
       signupRequestId: json['signupRequestId'],
       profilePictureUrl: json['profilePictureUrl'] ?? '',
-      // New fields with more robust handling for existing users
+      // New fields with robust handling
       isActive: json['isActive'] ?? true,
       isAlive: json['isAlive'] ?? true,
-      address: json['address'] ?? 'To be updated',
       languagesSpoken: json['languagesSpoken'] != null
           ? (json['languagesSpoken'] is List
           ? List<String>.from(json['languagesSpoken'])
-          : ['To be updated'])
-          : ['To be updated'],
+          : [])
+          : [],
+      numero_iscrizione_albo: json['numero_iscrizione_albo'],
+      numero_iscrizione_ente: json['numero_iscrizione_ente'],
+      issuer: json['issuer'] ?? '',
       qualificationValidity: json['qualificationValidity'] != null ?
       (json['qualificationValidity'] is Timestamp ?
       (json['qualificationValidity'] as Timestamp).toDate() :
@@ -135,15 +146,23 @@ class Doctor { //Practioner
       DateTime.parse(json['qualificationValidity']) :
       json['qualificationValidity'] as DateTime)) :
       null,
-      issuer: json['issuer'] ?? '',
-      organizationPeriodValidity: json['organizationPeriodValidity'] != null ?
-      (json['organizationPeriodValidity'] is Timestamp ?
-      (json['organizationPeriodValidity'] as Timestamp).toDate() :
-      (json['organizationPeriodValidity'] is String ?
-      DateTime.parse(json['organizationPeriodValidity']) :
-      json['organizationPeriodValidity'] as DateTime)) :
+      specialty: json['specialty'],
+      areaOfInterest: json['areaOfInterest'],
+      // Policy acceptance fields with proper timestamp handling
+      termsOfServiceAcceptedAt: json['termsOfServiceAcceptedAt'] != null ?
+      (json['termsOfServiceAcceptedAt'] is Timestamp ?
+      (json['termsOfServiceAcceptedAt'] as Timestamp).toDate() :
+      (json['termsOfServiceAcceptedAt'] is String ?
+      DateTime.parse(json['termsOfServiceAcceptedAt']) :
+      json['termsOfServiceAcceptedAt'] as DateTime)) :
       null,
-      organization: json['organization'] ?? 'To be updated',
+      privacyPolicyAcceptedAt: json['privacyPolicyAcceptedAt'] != null ?
+      (json['privacyPolicyAcceptedAt'] is Timestamp ?
+      (json['privacyPolicyAcceptedAt'] as Timestamp).toDate() :
+      (json['privacyPolicyAcceptedAt'] is String ?
+      DateTime.parse(json['privacyPolicyAcceptedAt']) :
+      json['privacyPolicyAcceptedAt'] as DateTime)) :
+      null,
     );
   }
 
@@ -155,42 +174,60 @@ class Doctor { //Practioner
       'surname': surname,
       'sex': sex,
       'phoneNumber': phoneNumber,
-      'birthdate': birthdate.toIso8601String(),
-      'specialty': specialty,
-      'email': email,
-      'googleEmail': googleEmail, // Include Google email
-      'placeOfWork': placeOfWork,
+      'birthdate': Timestamp.fromDate(birthdate),
+      'address': address,
       'cityOfWork': cityOfWork,
-      'areaOfInterest': areaOfInterest,
-      'role': role,
-      'licenseNumber': licenseNumber,
+      'countryOfWork': countryOfWork,
+      'fiscalCode': fiscalCode,
+      'email': email,
+      'roles': roles,
       'vatNumber': vatNumber,
-      'fiscalCode': fiscalCode, // Include fiscal code
       'hourlyFees': hourlyFees,
-      'isDoctor': isDoctor,
       'requiredPasswordChange': requiredPasswordChange,
-      'signupApprovalDate': signupApprovalDate?.toIso8601String(),
+      'signupApprovalDate': signupApprovalDate != null ? Timestamp.fromDate(signupApprovalDate!) : null,
       'signupRequestId': signupRequestId,
       'profilePictureUrl': profilePictureUrl,
       // New fields
       'isActive': isActive,
       'isAlive': isAlive,
-      'address': address,
       'languagesSpoken': languagesSpoken,
-      'qualificationValidity': qualificationValidity?.toIso8601String(),
+      'numero_iscrizione_albo': numero_iscrizione_albo,
+      'numero_iscrizione_ente': numero_iscrizione_ente,
       'issuer': issuer,
-      'organizationPeriodValidity': organizationPeriodValidity?.toIso8601String(),
-      'organization': organization,
+      'qualificationValidity': qualificationValidity != null ? Timestamp.fromDate(qualificationValidity!) : null,
+      'specialty': specialty,
+      'areaOfInterest': areaOfInterest,
+      // Policy acceptance fields
+      'termsOfServiceAcceptedAt': termsOfServiceAcceptedAt != null ? Timestamp.fromDate(termsOfServiceAcceptedAt!) : null,
+      'privacyPolicyAcceptedAt': privacyPolicyAcceptedAt != null ? Timestamp.fromDate(privacyPolicyAcceptedAt!) : null,
     };
   }
 
-  // Helper methods to check role
-  bool isClinic() {
-    return role == ROLE_CLINIC;
+  // Helper methods for role checking
+  bool isNutritionist() {
+    return roles.contains(ROLE_NUTRITIONIST);
   }
 
-  bool isRoleDoctor() {
-    return role == ROLE_DOCTOR;
+  bool isPersonalTrainer() {
+    return roles.contains(ROLE_PERSONAL_TRAINER);
+  }
+
+  bool isPsychologist() {
+    return roles.contains(ROLE_PSYCHOLOGIST);
+  }
+
+  bool hasRole(String role) {
+    return roles.contains(role);
+  }
+
+  // Helper method to get professional registration number based on roles
+  String? get professionalRegistrationNumber {
+    if (isNutritionist() || isPsychologist()) {
+      return numero_iscrizione_albo;
+    } else if (isPersonalTrainer()) {
+      return numero_iscrizione_ente;
+    }
+    return null;
   }
 
   // Create a copy with updated fields
@@ -201,19 +238,14 @@ class Doctor { //Practioner
     String? sex,
     String? phoneNumber,
     DateTime? birthdate,
-    String? specialty,
-    String? email,
-    String? googleEmail,
-    String? password,
-    String? placeOfWork,
+    String? address,
     String? cityOfWork,
-    String? areaOfInterest,
-    String? role,
-    String? licenseNumber,
-    String? vatNumber,
+    String? countryOfWork,
     String? fiscalCode,
+    String? email,
+    List<String>? roles,
+    String? vatNumber,
     double? hourlyFees,
-    bool? isDoctor,
     bool? requiredPasswordChange,
     DateTime? signupApprovalDate,
     String? signupRequestId,
@@ -221,12 +253,16 @@ class Doctor { //Practioner
     // New fields
     bool? isActive,
     bool? isAlive,
-    String? address,
     List<String>? languagesSpoken,
-    DateTime? qualificationValidity,
+    String? numero_iscrizione_albo,
+    String? numero_iscrizione_ente,
     String? issuer,
-    DateTime? organizationPeriodValidity,
-    String? organization,
+    DateTime? qualificationValidity,
+    String? specialty,
+    String? areaOfInterest,
+    // Policy acceptance fields
+    DateTime? termsOfServiceAcceptedAt,
+    DateTime? privacyPolicyAcceptedAt,
   }) {
     return Doctor(
       id: id ?? this.id,
@@ -235,18 +271,14 @@ class Doctor { //Practioner
       sex: sex ?? this.sex,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       birthdate: birthdate ?? this.birthdate,
-      specialty: specialty ?? this.specialty,
-      email: email ?? this.email,
-      googleEmail: googleEmail ?? this.googleEmail,
-      placeOfWork: placeOfWork ?? this.placeOfWork,
+      address: address ?? this.address,
       cityOfWork: cityOfWork ?? this.cityOfWork,
-      areaOfInterest: areaOfInterest ?? this.areaOfInterest,
-      role: role ?? this.role,
-      licenseNumber: licenseNumber ?? this.licenseNumber,
-      vatNumber: vatNumber ?? this.vatNumber,
+      countryOfWork: countryOfWork ?? this.countryOfWork,
       fiscalCode: fiscalCode ?? this.fiscalCode,
+      email: email ?? this.email,
+      roles: roles ?? this.roles,
+      vatNumber: vatNumber ?? this.vatNumber,
       hourlyFees: hourlyFees ?? this.hourlyFees,
-      isDoctor: isDoctor ?? this.isDoctor,
       requiredPasswordChange: requiredPasswordChange ?? this.requiredPasswordChange,
       signupApprovalDate: signupApprovalDate ?? this.signupApprovalDate,
       signupRequestId: signupRequestId ?? this.signupRequestId,
@@ -254,12 +286,37 @@ class Doctor { //Practioner
       // New fields
       isActive: isActive ?? this.isActive,
       isAlive: isAlive ?? this.isAlive,
-      address: address ?? this.address,
       languagesSpoken: languagesSpoken ?? this.languagesSpoken,
-      qualificationValidity: qualificationValidity ?? this.qualificationValidity,
+      numero_iscrizione_albo: numero_iscrizione_albo ?? this.numero_iscrizione_albo,
+      numero_iscrizione_ente: numero_iscrizione_ente ?? this.numero_iscrizione_ente,
       issuer: issuer ?? this.issuer,
-      organizationPeriodValidity: organizationPeriodValidity ?? this.organizationPeriodValidity,
-      organization: organization ?? this.organization,
+      qualificationValidity: qualificationValidity ?? this.qualificationValidity,
+      specialty: specialty ?? this.specialty,
+      areaOfInterest: areaOfInterest ?? this.areaOfInterest,
+      // Policy acceptance fields
+      termsOfServiceAcceptedAt: termsOfServiceAcceptedAt ?? this.termsOfServiceAcceptedAt,
+      privacyPolicyAcceptedAt: privacyPolicyAcceptedAt ?? this.privacyPolicyAcceptedAt,
     );
   }
+
+  // Helper methods to check policy acceptance status
+  bool get hasAcceptedTermsOfService => termsOfServiceAcceptedAt != null;
+  bool get hasAcceptedPrivacyPolicy => privacyPolicyAcceptedAt != null;
+  bool get hasAcceptedAllPolicies => hasAcceptedTermsOfService && hasAcceptedPrivacyPolicy;
+
+  @override
+  String toString() {
+    return 'Doctor{id: $id, name: $name, surname: $surname, email: $email, roles: $roles}';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is Doctor &&
+        other.id == id &&
+        other.email == email;
+  }
+
+  @override
+  int get hashCode => id.hashCode ^ email.hashCode;
 }

@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import './doctor/sign_up_data.dart';
 
-/// UPDATED: Admin SignupRequest model with multiple roles and professional registration support
-/// Maintains compatibility with existing googleEmail field and admin functionality
+/// UPDATED: SignupRequest model with multiple roles and professional registration support + hourlyFees
 class SignupRequest {
   final String id;
 
@@ -21,11 +21,9 @@ class SignupRequest {
   final String vatNumber;
   final String fiscalCode;
 
-  // Existing location and organization fields
+  // Existing fields
   final String address;
   final List<String> languagesSpoken;
-  final String organization;
-  final String ragioneSociale;
 
   // NEW: Professional registration fields
   final String? numeroIscrizioneAlbo; // For nutritionists, psychologists
@@ -33,6 +31,9 @@ class SignupRequest {
   final String issuer; // Professional qualification issuer
   final String? areaOfInterest; // Area of professional interest
   final DateTime? qualificationValidity; // Qualification expiry date
+
+  // NEW: Hourly fees field
+  final double hourlyFees; // Professional hourly rate in Euros
 
   // Status fields - UNCHANGED
   final String status; // 'pending', 'approved', 'rejected'
@@ -61,8 +62,6 @@ class SignupRequest {
     // Existing fields with defaults
     this.address = '',
     this.languagesSpoken = const [],
-    this.organization = '',
-    this.ragioneSociale = '',
 
     // NEW: Professional registration fields with defaults
     this.numeroIscrizioneAlbo,
@@ -70,6 +69,9 @@ class SignupRequest {
     this.issuer = '',
     this.areaOfInterest,
     this.qualificationValidity,
+
+    // NEW: Hourly fees with default
+    this.hourlyFees = 0.0,
 
     // Status fields - UNCHANGED
     required this.status,
@@ -80,7 +82,7 @@ class SignupRequest {
     this.rejectionReason,
   });
 
-  // UPDATED: Enhanced factory constructor for admin compatibility
+  // UPDATED: Factory constructor with enhanced parsing for new fields including hourlyFees
   factory SignupRequest.fromJson(Map<String, dynamic> json, String docId) {
     // Handle both old single role and new multiple roles format
     List<String> parsedRoles = [];
@@ -93,6 +95,22 @@ class SignupRequest {
       // LEGACY: Single role format
       legacyRole = json['role'] as String;
       parsedRoles = [legacyRole]; // Convert single role to list
+    }
+
+    // NEW: Parse hourly fees with fallback to 0.0
+    double parsedHourlyFees = 0.0;
+    if (json['hourlyFees'] != null) {
+      if (json['hourlyFees'] is double) {
+        parsedHourlyFees = json['hourlyFees'];
+      } else if (json['hourlyFees'] is int) {
+        parsedHourlyFees = (json['hourlyFees'] as int).toDouble();
+      } else if (json['hourlyFees'] is String) {
+        try {
+          parsedHourlyFees = double.parse(json['hourlyFees']);
+        } catch (e) {
+          parsedHourlyFees = 0.0;
+        }
+      }
     }
 
     return SignupRequest(
@@ -120,8 +138,6 @@ class SignupRequest {
       languagesSpoken: json['languagesSpoken'] != null
           ? List<String>.from(json['languagesSpoken'])
           : [],
-      organization: json['organization'] ?? '',
-      ragioneSociale: json['ragioneSociale'] ?? '',
 
       // NEW: Professional registration fields
       numeroIscrizioneAlbo: json['numero_iscrizione_albo'] as String?,
@@ -133,6 +149,9 @@ class SignupRequest {
           ? (json['qualificationValidity'] as Timestamp).toDate()
           : DateTime.parse(json['qualificationValidity']))
           : null,
+
+      // NEW: Hourly fees
+      hourlyFees: parsedHourlyFees,
 
       // Status fields - UNCHANGED
       status: json['status'] ?? 'pending',
@@ -156,7 +175,7 @@ class SignupRequest {
     );
   }
 
-  // UPDATED: Enhanced toJson with new fields and existing googleEmail
+  // UPDATED: Enhanced toJson with hourlyFees
   Map<String, dynamic> toJson() {
     return {
       // UPDATED: Include both formats for compatibility
@@ -178,8 +197,6 @@ class SignupRequest {
       // Existing fields
       'address': address,
       'languagesSpoken': languagesSpoken,
-      'organization': organization,
-      'ragioneSociale': ragioneSociale,
 
       // NEW: Professional registration fields
       'numero_iscrizione_albo': numeroIscrizioneAlbo,
@@ -187,6 +204,9 @@ class SignupRequest {
       'issuer': issuer,
       'areaOfInterest': areaOfInterest,
       'qualificationValidity': qualificationValidity?.toIso8601String(),
+
+      // NEW: Hourly fees
+      'hourlyFees': hourlyFees,
 
       // Status fields - UNCHANGED
       'status': status,
@@ -198,7 +218,7 @@ class SignupRequest {
     };
   }
 
-  // UPDATED: Enhanced copyWith method with new fields and googleEmail
+  // UPDATED: Enhanced copyWith method with hourlyFees
   SignupRequest copyWith({
     String? id,
     List<String>? roles, // NEW: Multiple roles
@@ -212,15 +232,12 @@ class SignupRequest {
     String? cityOfWork,
     String? countryOfWork, // NEW: Country field
     String? email,
-    String? googleEmail, // EXISTING: Google email for admin
     String? vatNumber,
     String? fiscalCode,
 
     // Existing fields
     String? address,
     List<String>? languagesSpoken,
-    String? organization,
-    String? ragioneSociale,
 
     // NEW: Professional registration fields
     String? numeroIscrizioneAlbo,
@@ -228,6 +245,9 @@ class SignupRequest {
     String? issuer,
     String? areaOfInterest,
     DateTime? qualificationValidity,
+
+    // NEW: Hourly fees
+    double? hourlyFees,
 
     // Status fields
     String? status,
@@ -256,8 +276,6 @@ class SignupRequest {
       // Existing fields
       address: address ?? this.address,
       languagesSpoken: languagesSpoken ?? this.languagesSpoken,
-      organization: organization ?? this.organization,
-      ragioneSociale: ragioneSociale ?? this.ragioneSociale,
 
       // NEW: Professional registration fields
       numeroIscrizioneAlbo: numeroIscrizioneAlbo ?? this.numeroIscrizioneAlbo,
@@ -265,6 +283,9 @@ class SignupRequest {
       issuer: issuer ?? this.issuer,
       areaOfInterest: areaOfInterest ?? this.areaOfInterest,
       qualificationValidity: qualificationValidity ?? this.qualificationValidity,
+
+      // NEW: Hourly fees
+      hourlyFees: hourlyFees ?? this.hourlyFees,
 
       // Status fields
       status: status ?? this.status,
@@ -276,15 +297,11 @@ class SignupRequest {
     );
   }
 
-  // NEW: Helper methods for role checking (admin-specific)
+  // NEW: Helper methods for role checking
   bool hasRole(String roleToCheck) => roles.contains(roleToCheck);
   bool get isNutritionist => hasRole('NUTRITIONIST');
   bool get isPersonalTrainer => hasRole('PERSONAL TRAINER');
   bool get isPsychologist => hasRole('PSYCHOLOGIST');
-
-  // LEGACY: For backward compatibility with existing admin code
-  bool get isDoctor => role == 'DOCTOR' || hasRole('DOCTOR');
-  bool get isClinic => role == 'CLINIC' || hasRole('CLINIC');
 
   // NEW: Get appropriate registration number based on roles
   String? get professionalRegistrationNumber {
@@ -309,35 +326,31 @@ class SignupRequest {
     return 'none';
   }
 
-  // NEW: Get user-friendly role names for admin display
+  // NEW: Get user-friendly role names
   List<String> get roleDisplayNames {
     const roleMap = {
       'NUTRITIONIST': 'Nutrizionista',
       'PERSONAL TRAINER': 'Personal Trainer',
       'PSYCHOLOGIST': 'Psicologo',
-      'DOCTOR': 'Dottore',
-      'CLINIC': 'Clinica',
     };
     return roles.map((role) => roleMap[role] ?? role).toList();
   }
 
-  // NEW: Get single role display name for admin UI
-  String get primaryRoleDisplayName {
-    if (roleDisplayNames.isNotEmpty) {
-      return roleDisplayNames.first;
+  // NEW: Check if hourly fees is set (non-zero)
+  bool get hasHourlyFeesSet => hourlyFees > 0;
+
+  // NEW: Get formatted hourly fees for display
+  String get formattedHourlyFees {
+    if (hourlyFees == 0.0) {
+      return 'Non specificato';
+    } else if (hourlyFees == hourlyFees.roundToDouble()) {
+      return '€${hourlyFees.round()}';
+    } else {
+      return '€${hourlyFees.toStringAsFixed(2)}';
     }
-    return role ?? 'Sconosciuto';
   }
 
-  // NEW: Get formatted roles string for admin tables
-  String get rolesFormatted {
-    if (roleDisplayNames.isEmpty) {
-      return role ?? 'Non specificato';
-    }
-    return roleDisplayNames.join(', ');
-  }
-
-  // NEW: Validation helper for admin approval process
+  // UPDATED: Validation helper with hourlyFees
   bool get hasValidProfessionalRegistration {
     if (!requiresProfessionalRegistration) return true;
 
@@ -358,18 +371,20 @@ class SignupRequest {
     return true;
   }
 
-  // NEW: Get validation errors for admin review
+  // UPDATED: Get validation errors for this signup request including hourlyFees
   List<String> get validationErrors {
     final errors = <String>[];
 
-    if (roles.isEmpty && (role == null || role!.isEmpty)) {
-      errors.add('At least one role must be selected');
-    }
+    if (roles.isEmpty) errors.add('At least one role must be selected');
     if (name.isEmpty) errors.add('Name is required');
     if (phoneNumber.isEmpty) errors.add('Phone number is required');
     if (email.isEmpty) errors.add('Email is required');
     if (fiscalCode.isEmpty) errors.add('Fiscal code is required');
     if (cityOfWork.isEmpty) errors.add('City of work is required');
+
+    // NEW: Hourly fees validation
+    if (hourlyFees < 0) errors.add('Hourly fees cannot be negative');
+    if (hourlyFees > 1000) errors.add('Hourly fees cannot exceed €1000');
 
     // Role-specific validation
     if ((isNutritionist || isPsychologist) &&
@@ -392,56 +407,44 @@ class SignupRequest {
     return errors;
   }
 
-  // NEW: Admin-specific status helpers
-  bool get isPending => status == 'pending';
-  bool get isApproved => status == 'approved';
-  bool get isRejected => status == 'rejected';
-
-  // NEW: Get status display color for admin UI
-  String get statusColor {
-    switch (status) {
-      case 'pending':
-        return '#FFA500'; // Orange
-      case 'approved':
-        return '#008000'; // Green
-      case 'rejected':
-        return '#FF0000'; // Red
-      default:
-        return '#808080'; // Gray
-    }
-  }
-
-  // NEW: Get professional registration summary for admin display
-  String get professionalRegistrationSummary {
-    if (!requiresProfessionalRegistration) {
-      return 'Non richiesta registrazione professionale';
-    }
-
-    final parts = <String>[];
-
-    if (isNutritionist || isPsychologist) {
-      parts.add('Albo: ${numeroIscrizioneAlbo ?? "Non specificato"}');
-    }
-
-    if (isPersonalTrainer) {
-      parts.add('Ente: ${numeroIscrizioneEnte ?? "Non specificato"}');
-    }
-
-    if (issuer.isNotEmpty) {
-      parts.add('Rilasciato da: $issuer');
-    }
-
-    return parts.isEmpty ? 'Dati registrazione incompleti' : parts.join(' | ');
-  }
-
-  // NEW: Check if request has complete information for admin approval
-  bool get isReadyForApproval {
-    return validationErrors.isEmpty && hasValidProfessionalRegistration;
+  // UPDATED: Create from SignupData with hourlyFees
+  factory SignupRequest.fromSignupData(
+      SignupData signupData,
+      String requestId,
+      String status,
+      ) {
+    return SignupRequest(
+      id: requestId,
+      roles: signupData.roles,
+      role: signupData.roles.isNotEmpty ? signupData.roles.first : null, // Backward compatibility
+      name: signupData.name,
+      surname: signupData.surname,
+      sex: signupData.sex,
+      birthdate: signupData.birthdate,
+      specialty: signupData.specialty ?? '',
+      phoneNumber: signupData.phoneNumber,
+      cityOfWork: signupData.cityOfWork,
+      countryOfWork: signupData.countryOfWork,
+      email: signupData.email,
+      vatNumber: signupData.vatNumber,
+      fiscalCode: signupData.fiscalCode,
+      address: signupData.address,
+      languagesSpoken: signupData.languagesSpoken,
+      numeroIscrizioneAlbo: signupData.numero_iscrizione_albo,
+      numeroIscrizioneEnte: signupData.numero_iscrizione_ente,
+      issuer: signupData.issuer,
+      areaOfInterest: signupData.areaOfInterest,
+      qualificationValidity: signupData.qualificationValidity,
+      // NEW: Include hourly fees from signup data
+      hourlyFees: signupData.hourlyFees,
+      status: status,
+      requestedAt: DateTime.now(),
+    );
   }
 
   @override
   String toString() {
-    return 'SignupRequest{id: $id, roles: $roles, name: $name, surname: $surname, email: $email, status: $status}';
+    return 'SignupRequest{id: $id, roles: $roles, name: $name, surname: $surname, email: $email, status: $status, hourlyFees: $hourlyFees}';
   }
 
   @override
@@ -452,7 +455,8 @@ class SignupRequest {
         other.roles.toString() == roles.toString() &&
         other.name == name &&
         other.surname == surname &&
-        other.email == email;
+        other.email == email &&
+        other.hourlyFees == hourlyFees;
   }
 
   @override
@@ -461,6 +465,7 @@ class SignupRequest {
     roles.hashCode ^
     name.hashCode ^
     surname.hashCode ^
-    email.hashCode;
+    email.hashCode ^
+    hourlyFees.hashCode;
   }
 }

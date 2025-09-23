@@ -51,57 +51,6 @@ class SignupRequestRepository {
     }
   }
 
-  /// NEW: Get signup requests filtered by role
-  Future<List<SignupRequest>> getSignupRequestsByRole(String role) async {
-    try {
-      final querySnapshot = await _firestore
-          .collection(_collectionPath)
-          .where('roles', arrayContains: role)
-          .orderBy('requestedAt', descending: true)
-          .get();
-
-      return querySnapshot.docs.map((doc) {
-        return SignupRequest.fromJson(doc.data(), doc.id);
-      }).toList();
-    } catch (e) {
-      ErrorHandler.logError('Error fetching signup requests by role', e);
-      throw AppException(
-          'Error fetching signup requests by role: ${e.toString()}',
-          originalError: e
-      );
-    }
-  }
-
-  /// NEW: Get statistics about signup requests by role
-  Future<Map<String, int>> getSignupRequestsStatsByRole() async {
-    try {
-      final stats = <String, int>{};
-
-      // Get all pending requests
-      final pendingRequests = await getSignupRequestsByStatus('pending');
-
-      // Count by role
-      for (final request in pendingRequests) {
-        // Handle both old single role and new multiple roles format
-        List<String> roles = request.roles.isNotEmpty ? request.roles : [request.role ?? ''];
-
-        for (final role in roles) {
-          if (role.isNotEmpty) {
-            stats[role] = (stats[role] ?? 0) + 1;
-          }
-        }
-      }
-
-      return stats;
-    } catch (e) {
-      ErrorHandler.logError('Error getting signup requests stats by role', e);
-      throw AppException(
-          'Error getting signup requests statistics: ${e.toString()}',
-          originalError: e
-      );
-    }
-  }
-
   /// Get a specific signup request by ID
   Future<SignupRequest?> getSignupRequestById(String id) async {
     try {
@@ -124,10 +73,10 @@ class SignupRequestRepository {
     }
   }
 
-  /// UPDATED: Create a new signup request with multiple roles and professional fields
+  /// UPDATED: Create a new signup request with hourlyFees field
   Future<SignupRequest> createSignupRequest(SignupData data) async {
     try {
-      ErrorHandler.logDebug('Creating signup request for: ${data.email} with roles: ${data.roles}');
+      ErrorHandler.logDebug('Creating signup request for: ${data.email}');
 
       // Check if a request with this email already exists
       final existingRequests = await _firestore
@@ -143,17 +92,16 @@ class SignupRequestRepository {
       // Create a new document reference to get an ID
       final docRef = _firestore.collection(_collectionPath).doc();
 
-      // UPDATED: Prepare the data with new multiple roles and professional fields
+      // UPDATED: Prepare the data with hourlyFees field
       final requestData = {
         'id': docRef.id,
-        'roles': data.roles, // NEW: Multiple roles instead of single role
-        'role': data.roles.isNotEmpty ? data.roles.first : null, // LEGACY: Backward compatibility
+        'roles': data.roles, // UPDATED: Multiple roles instead of single role
         'name': data.name,
         'surname': data.surname,
         'sex': data.sex,
         'birthdate': data.birthdate != null ? Timestamp.fromDate(data.birthdate!) : null, // Use Timestamp
-        'specialty': data.specialty,
         'phoneNumber': data.phoneNumber,
+        'address': data.address,
         'cityOfWork': data.cityOfWork,
         'countryOfWork': data.countryOfWork, // NEW: Country of work
         'email': data.email,
@@ -161,21 +109,22 @@ class SignupRequestRepository {
         'fiscalCode': data.fiscalCode,
 
         // Location and organization fields
-        'address': data.address,
         'languagesSpoken': data.languagesSpoken,
-        'organization': data.organization,
-        'ragioneSociale': data.ragioneSociale,
 
         // NEW: Professional registration fields
         'numero_iscrizione_albo': data.numero_iscrizione_albo,
         'numero_iscrizione_ente': data.numero_iscrizione_ente,
         'issuer': data.issuer,
 
-        // NEW: Optional professional fields
+        // Optional professional fields
+        'specialty': data.specialty,
         'areaOfInterest': data.areaOfInterest,
         'qualificationValidity': data.qualificationValidity != null
             ? Timestamp.fromDate(data.qualificationValidity!)
             : null,
+
+        // NEW: Hourly fees field
+        'hourlyFees': data.hourlyFees,
 
         'status': 'pending',
         'requestedAt': FieldValue.serverTimestamp(),
@@ -205,7 +154,7 @@ class SignupRequestRepository {
     }
   }
 
-  /// UPDATED: Approve signup request with new Doctor model structure
+  /// UPDATED: Approve signup request with hourlyFees from request data
   Future<bool> approveSignupRequestWithPassword(String requestId, String temporaryPassword) async {
     try {
       ErrorHandler.logDebug('Approving signup request with ID and temporary password: $requestId');
@@ -246,11 +195,37 @@ class SignupRequestRepository {
           }
       );
 
-      // 2. UPDATED: Create doctor record with new model structure and multiple roles
+      // 2. UPDATED: Create doctor record with hourlyFees from request
       final doctorsCollection = _firestore.collection('doctors');
       final newDoctorRef = doctorsCollection.doc(); // Auto-generate ID
 
-      // UPDATED: Create doctor record compatible with new Doctor model
+      // NEW: Parse hourly fees from request data
+      double doctorHourlyFees = 0.0;
+      if (requestData['hourlyFees'] != null) {
+        if (requestData['hourlyFees'] is double) {
+          doctorHourlyFees = requestData['hourlyFees'];
+        } else if (requestData['hourlyFees'] is int) {
+          doctorHourlyFees = (requestData['hourlyFees'] as int).toDouble();
+        } else if (requestData['hourlyFees'] is String) {
+          try {
+            doctorHourlyFees = double.parse(requestData['hourlyFees']);
+          } catch (e) {
+            ErrorHandler.logWarning('Failed to parse hourlyFees from request: ${requestData['hourlyFees']}');
+            doctorHourlyFees = 0.0;
+          }
+        }
+      }
+
+      // Ensure hourly fees is within reasonable bounds
+      if (doctorHourlyFees < 0) {
+        doctorHourlyFees = 0.0;
+      } else if (doctorHourlyFees > 1000) {
+        doctorHourlyFees = 1000.0;
+      }
+
+      ErrorHandler.logDebug('Setting doctor hourly fees to: $doctorHourlyFees');
+
+      // UPDATED: Create doctor record compatible with new Doctor model including hourlyFees
       final doctorData = {
         'name': requestData['name'] ?? '',
         'surname': requestData['surname'] ?? '',
@@ -280,23 +255,13 @@ class SignupRequestRepository {
 
         // Location and organization fields
         'languagesSpoken': requestData['languagesSpoken'] ?? [],
-        'organization': requestData['organization'] ?? '',
-        'ragioneSociale': requestData['ragioneSociale'] ?? '',
 
-        // Default values for new Doctor model
-        'hourlyFees': 0.0,
+        // UPDATED: Use hourly fees from signup request instead of hardcoded 0.0
+        'hourlyFees': doctorHourlyFees,
         'requiredPasswordChange': true,
         'profilePictureUrl': '',
         'isActive': true,
         'isAlive': true,
-
-        // Legacy compatibility fields
-        'role': requestData['roles'] != null && (requestData['roles'] as List).isNotEmpty
-            ? (requestData['roles'] as List).first
-            : requestData['role'], // Backward compatibility
-        'licenseNumber': '',
-        'placeOfWork': '',
-        'isDoctor': true, // Default to practitioner
 
         // Audit fields
         'createdAt': FieldValue.serverTimestamp(),
@@ -308,13 +273,13 @@ class SignupRequestRepository {
 
       // Commit the batch
       await batch.commit();
-      ErrorHandler.logDebug('Batch committed successfully with password: $temporaryPassword');
+      ErrorHandler.logDebug('Batch committed successfully with password: $temporaryPassword and hourlyFees: $doctorHourlyFees');
 
       // UPDATED: Create Firebase Auth user with role information
       await _createFirebaseAuthUser(
         requestData['email'],
         temporaryPassword,
-        '${requestData['name']} ${requestData['surname'] ?? ''}',
+        '${requestData['name']} ${requestData['surname']}',
         requestData['roles'] ?? [requestData['role']], // Handle both new and old format
       );
 
@@ -344,8 +309,9 @@ class SignupRequestRepository {
     }
   }
 
-  /// UPDATED: Check if emails exist (removed googleEmail)
-  Future<Map<String, Map<String, bool>>> checkDetailedEmailsExist(String email) async {
+  /// Check if emails exist
+  Future<Map<String, Map<String, bool>>> checkDetailedEmailsExist(
+      String email) async {
     try {
       final result = {
         'primaryEmail': await _checkDetailedEmailExists(email),
@@ -358,56 +324,6 @@ class SignupRequestRepository {
           'Unable to verify email availability. Please try again later.',
           originalError: e
       );
-    }
-  }
-
-  /// NEW: Batch approve multiple signup requests
-  Future<List<String>> batchApproveSignupRequests(
-      List<String> requestIds,
-      String defaultPassword
-      ) async {
-    try {
-      final successfulApprovals = <String>[];
-
-      for (final requestId in requestIds) {
-        try {
-          final success = await approveSignupRequestWithPassword(requestId, defaultPassword);
-          if (success) {
-            successfulApprovals.add(requestId);
-          }
-        } catch (e) {
-          ErrorHandler.logWarning('Failed to approve request $requestId: $e');
-        }
-      }
-
-      return successfulApprovals;
-    } catch (e) {
-      ErrorHandler.logError('Error in batch approval', e);
-      throw AppException(
-          'Error in batch approval: ${e.toString()}',
-          originalError: e
-      );
-    }
-  }
-
-  /// NEW: Update signup request with additional professional information
-  Future<bool> updateSignupRequestProfessionalInfo(
-      String requestId,
-      Map<String, dynamic> professionalInfo
-      ) async {
-    try {
-      await _firestore
-          .collection(_collectionPath)
-          .doc(requestId)
-          .update({
-        ...professionalInfo,
-        'lastModified': FieldValue.serverTimestamp(),
-      });
-
-      return true;
-    } catch (e) {
-      ErrorHandler.logError('Error updating signup request professional info', e);
-      return false;
     }
   }
 
@@ -447,7 +363,7 @@ class SignupRequestRepository {
     }
   }
 
-  /// UPDATED: Helper method to check if an email exists (removed googleEmail parameter)
+  /// Helper method to check if an email exists
   Future<Map<String, bool>> _checkDetailedEmailExists(String email) async {
     try {
       // Normalize the email to lowercase for consistent checks
@@ -495,7 +411,7 @@ class SignupRequestRepository {
     }
   }
 
-  /// NEW: Helper method to validate signup data based on roles
+  /// NEW: Helper method to validate signup data based on roles (including hourlyFees)
   bool _validateSignupData(Map<String, dynamic> requestData) {
     try {
       final roles = requestData['roles'] as List<dynamic>? ?? [];
@@ -518,10 +434,229 @@ class SignupRequestRepository {
         }
       }
 
+      // NEW: Validate hourly fees if present
+      if (requestData['hourlyFees'] != null) {
+        double hourlyFees = 0.0;
+
+        if (requestData['hourlyFees'] is double) {
+          hourlyFees = requestData['hourlyFees'];
+        } else if (requestData['hourlyFees'] is int) {
+          hourlyFees = (requestData['hourlyFees'] as int).toDouble();
+        } else if (requestData['hourlyFees'] is String) {
+          try {
+            hourlyFees = double.parse(requestData['hourlyFees']);
+          } catch (e) {
+            ErrorHandler.logWarning('Invalid hourlyFees format: ${requestData['hourlyFees']}');
+            return false;
+          }
+        }
+
+        // Validate hourly fees range
+        if (hourlyFees < 0 || hourlyFees > 1000) {
+          ErrorHandler.logWarning('Invalid hourlyFees value: $hourlyFees (must be between 0 and 1000)');
+          return false;
+        }
+      }
+
       return true;
     } catch (e) {
       ErrorHandler.logError('Error validating signup data', e);
       return false;
+    }
+  }
+
+  /// NEW: Get signup requests filtered by role
+  Future<List<SignupRequest>> getSignupRequestsByRole(String role) async {
+    try {
+      final querySnapshot = await _firestore
+          .collection(_collectionPath)
+          .where('roles', arrayContains: role)
+          .orderBy('requestedAt', descending: true)
+          .get();
+
+      return querySnapshot.docs.map((doc) {
+        return SignupRequest.fromJson(doc.data(), doc.id);
+      }).toList();
+    } catch (e) {
+      ErrorHandler.logError('Error fetching signup requests by role', e);
+      throw AppException(
+          'Error fetching signup requests by role: ${e.toString()}',
+          originalError: e
+      );
+    }
+  }
+
+  /// NEW: Get statistics about signup requests by role
+  Future<Map<String, int>> getSignupRequestsStatsByRole() async {
+    try {
+      final stats = <String, int>{};
+
+      // Get all pending requests
+      final pendingRequests = await getSignupRequestsByStatus('pending');
+
+      // Count by role
+      for (final request in pendingRequests) {
+        // Handle both old single role and new multiple roles format
+        List<String> roles;
+        if (request.role != null && request.role!.isNotEmpty) {
+          roles = [request.role!]; // Legacy single role
+        } else {
+          roles = request.roles; // Multiple roles
+        }
+
+        for (final role in roles) {
+          stats[role] = (stats[role] ?? 0) + 1;
+        }
+      }
+
+      return stats;
+    } catch (e) {
+      ErrorHandler.logError('Error getting signup requests stats by role', e);
+      throw AppException(
+          'Error getting signup requests statistics: ${e.toString()}',
+          originalError: e
+      );
+    }
+  }
+
+  /// NEW: Batch approve multiple signup requests
+  Future<List<String>> batchApproveSignupRequests(
+      List<String> requestIds,
+      String defaultPassword
+      ) async {
+    try {
+      final successfulApprovals = <String>[];
+
+      for (final requestId in requestIds) {
+        try {
+          final success = await approveSignupRequestWithPassword(requestId, defaultPassword);
+          if (success) {
+            successfulApprovals.add(requestId);
+          }
+        } catch (e) {
+          ErrorHandler.logWarning('Failed to approve request $requestId: $e');
+        }
+      }
+
+      return successfulApprovals;
+    } catch (e) {
+      ErrorHandler.logError('Error in batch approval', e);
+      throw AppException(
+          'Error in batch approval: ${e.toString()}',
+          originalError: e
+      );
+    }
+  }
+
+  /// NEW: Update signup request with additional professional information (including hourlyFees)
+  Future<bool> updateSignupRequestProfessionalInfo(
+      String requestId,
+      Map<String, dynamic> professionalInfo
+      ) async {
+    try {
+      // NEW: Validate hourly fees if being updated
+      if (professionalInfo.containsKey('hourlyFees')) {
+        final hourlyFeesValue = professionalInfo['hourlyFees'];
+        double hourlyFees = 0.0;
+
+        if (hourlyFeesValue is double) {
+          hourlyFees = hourlyFeesValue;
+        } else if (hourlyFeesValue is int) {
+          hourlyFees = hourlyFeesValue.toDouble();
+        } else if (hourlyFeesValue is String) {
+          try {
+            hourlyFees = double.parse(hourlyFeesValue);
+          } catch (e) {
+            ErrorHandler.logError('Invalid hourlyFees format during update: $hourlyFeesValue', e);
+            throw AppException('Invalid hourly fees format');
+          }
+        }
+
+        // Validate hourly fees bounds
+        if (hourlyFees < 0 || hourlyFees > 1000) {
+          throw AppException('Hourly fees must be between €0 and €1000');
+        }
+
+        // Update the value with the parsed double
+        professionalInfo['hourlyFees'] = hourlyFees;
+      }
+
+      await _firestore
+          .collection(_collectionPath)
+          .doc(requestId)
+          .update({
+        ...professionalInfo,
+        'lastModified': FieldValue.serverTimestamp(),
+      });
+
+      return true;
+    } catch (e) {
+      ErrorHandler.logError('Error updating signup request professional info', e);
+      if (e is AppException) {
+        rethrow;
+      }
+      throw AppException('Error updating professional information: ${e.toString()}');
+    }
+  }
+
+  /// NEW: Get hourly fees statistics for approved doctors by role
+  Future<Map<String, Map<String, double>>> getHourlyFeesStatsByRole() async {
+    try {
+      final stats = <String, Map<String, double>>{};
+
+      // Get all approved doctors with their hourly fees
+      final doctorsSnapshot = await _firestore
+          .collection('doctors')
+          .where('hourlyFees', isGreaterThan: 0)
+          .get();
+
+      final roleGroups = <String, List<double>>{};
+
+      for (final doc in doctorsSnapshot.docs) {
+        final data = doc.data();
+        final roles = data['roles'] as List<dynamic>? ?? [];
+        final hourlyFees = (data['hourlyFees'] as num?)?.toDouble() ?? 0.0;
+
+        if (hourlyFees > 0) {
+          for (final role in roles) {
+            final roleStr = role.toString();
+            roleGroups[roleStr] ??= <double>[];
+            roleGroups[roleStr]!.add(hourlyFees);
+          }
+        }
+      }
+
+      // Calculate statistics for each role
+      for (final entry in roleGroups.entries) {
+        final role = entry.key;
+        final fees = entry.value;
+
+        if (fees.isNotEmpty) {
+          fees.sort();
+          final count = fees.length;
+          final sum = fees.reduce((a, b) => a + b);
+          final average = sum / count;
+          final median = count % 2 == 0
+              ? (fees[count ~/ 2 - 1] + fees[count ~/ 2]) / 2
+              : fees[count ~/ 2];
+
+          stats[role] = {
+            'count': count.toDouble(),
+            'min': fees.first,
+            'max': fees.last,
+            'average': average,
+            'median': median,
+          };
+        }
+      }
+
+      return stats;
+    } catch (e) {
+      ErrorHandler.logError('Error getting hourly fees statistics', e);
+      throw AppException(
+          'Error getting hourly fees statistics: ${e.toString()}',
+          originalError: e
+      );
     }
   }
 }
