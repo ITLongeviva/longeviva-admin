@@ -56,8 +56,8 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        // Utilizza primaryRoleDisplayName per il titolo principale
-                        '${widget.request.primaryRoleDisplayName} Registration Request',
+                        // UPDATED: Use primary role display name with multiple roles support
+                        '${_getPrimaryRoleDisplayName()} Registration Request',
                         style: const TextStyle(
                           fontFamily: 'Montserrat',
                           fontSize: 20,
@@ -65,11 +65,12 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
                           color: CustomColors.verdeAbisso,
                         ),
                       ),
-                      if (widget.request.roles.length > 1) // Mostra ruoli aggiuntivi se presenti
+                      // UPDATED: Show all roles if multiple
+                      if (widget.request.roles.length > 1)
                         Padding(
                           padding: const EdgeInsets.only(top: 4.0),
                           child: Text(
-                            'Roles: ${widget.request.rolesFormatted}',
+                            'Roles: ${widget.request.roleDisplayNames.join(', ')}',
                             style: TextStyle(
                               fontFamily: 'Montserrat',
                               fontSize: 12,
@@ -115,10 +116,8 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
                       icon: Icons.person,
                       children: [
                         _buildDetailRow('Full Name', _getFullName()),
-                        // Condiziona la visualizzazione di Sesso e Data di nascita
-                        // in base alla presenza di ruoli che tipicamente li richiedono
-                        // o se il campo è effettivamente compilato.
-                        if (widget.request.sex.isNotEmpty && (widget.request.isDoctor || widget.request.isNutritionist || widget.request.isPersonalTrainer || widget.request.isPsychologist))
+                        // UPDATED: Show sex and birthdate for professional roles
+                        if (widget.request.sex.isNotEmpty && _requiresPersonalInfo())
                           _buildDetailRow('Sex', widget.request.sex),
                         if (widget.request.birthdate != null)
                           _buildDetailRow(
@@ -127,7 +126,7 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
                                   .format(widget.request.birthdate!)),
                         _buildDetailRow(
                             'Fiscal Code', widget.request.fiscalCode),
-                        // Mostra Partita IVA se non è vuota
+                        // Show VAT Number if not empty
                         if (widget.request.vatNumber.isNotEmpty)
                           _buildDetailRow(
                               'VAT Number', widget.request.vatNumber),
@@ -141,29 +140,38 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
                       title: 'Professional Information',
                       icon: Icons.work,
                       children: [
-                        _buildDetailRow('Roles', widget.request.rolesFormatted),
+                        // UPDATED: Show all roles with colored chips
+                        _buildRolesRow('Roles', widget.request.roleDisplayNames),
                         if (widget.request.specialty.isNotEmpty)
                           _buildDetailRow('Specialty', widget.request.specialty),
-                        if (widget.request.organization.isNotEmpty)
-                          _buildDetailRow(
-                              'Organization', widget.request.organization),
-                        // Mostra Ragione Sociale se non è vuota (tipico per Cliniche)
-                        if (widget.request.ragioneSociale.isNotEmpty)
-                          _buildDetailRow(
-                              'Business Name', widget.request.ragioneSociale),
                         _buildDetailRow(
                             'City of Work', widget.request.cityOfWork),
-                        _buildDetailRow(
-                            'Country of Work', widget.request.countryOfWork),
-                        // Mostra informazioni di registrazione professionale se rilevanti
+                        // NEW: Show country of work
+                        if (widget.request.countryOfWork != 'Italy')
+                          _buildDetailRow(
+                              'Country of Work', widget.request.countryOfWork),
+
+                        // NEW: Show professional registration information
                         if (widget.request.requiresProfessionalRegistration) ...[
                           const SizedBox(height: 8),
-                          _buildDetailRow('Professional Registration', widget.request.professionalRegistrationSummary),
-                          if(widget.request.areaOfInterest != null && widget.request.areaOfInterest!.isNotEmpty)
+                          if (widget.request.numeroIscrizioneAlbo != null)
+                            _buildDetailRow('Registration (Albo)', widget.request.numeroIscrizioneAlbo!),
+                          if (widget.request.numeroIscrizioneEnte != null)
+                            _buildDetailRow('Registration (Ente)', widget.request.numeroIscrizioneEnte!),
+                          if (widget.request.issuer.isNotEmpty)
+                            _buildDetailRow('Qualification Issuer', widget.request.issuer),
+                          if (widget.request.areaOfInterest != null && widget.request.areaOfInterest!.isNotEmpty)
                             _buildDetailRow('Area of Interest', widget.request.areaOfInterest!),
-                          if(widget.request.qualificationValidity != null)
-                            _buildDetailRow('Qualification Validity', DateFormat('MMMM dd, yyyy').format(widget.request.qualificationValidity!)),
-                        ]
+                          if (widget.request.qualificationValidity != null)
+                            _buildDetailRow('Qualification Validity',
+                                DateFormat('MMMM dd, yyyy').format(widget.request.qualificationValidity!)),
+                          // NEW: Show professional validation status
+                          _buildValidationStatusRow(),
+                        ],
+
+                        // NEW: Show hourly fees if set
+                        if (widget.request.hasHourlyFeesSet)
+                          _buildDetailRow('Hourly Fees', widget.request.formattedHourlyFees),
                       ],
                     ),
 
@@ -175,10 +183,6 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
                       icon: Icons.contact_mail,
                       children: [
                         _buildDetailRow('Email', widget.request.email),
-                        // `googleEmail` non è più presente nel modello SignupData fornito,
-                        // quindi è stato rimosso dalla visualizzazione. Se necessario, riaggiungerlo.
-                        // _buildDetailRow(
-                        // 'Google Email', widget.request.googleEmail ?? 'Not provided'),
                         _buildDetailRow('Phone', widget.request.phoneNumber),
                         if (widget.request.address.isNotEmpty)
                           _buildDetailRow('Address', widget.request.address),
@@ -213,7 +217,7 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
 
             const Divider(),
 
-            // Action buttons
+            // Action buttons - UPDATED: Check professional validation
             if (widget.request.status == 'pending') ...[
               const SizedBox(height: 16),
               Row(
@@ -243,17 +247,24 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: () => _showApprovalDialog(context),
+                      // UPDATED: Enable only if professional validation is complete
+                      onPressed: widget.request.hasValidProfessionalRegistration
+                          ? () => _showApprovalDialog(context)
+                          : null,
                       icon: const Icon(Icons.check_circle, color: Colors.white),
-                      label: const Text(
-                        'Approve Request',
-                        style: TextStyle(
+                      label: Text(
+                        widget.request.hasValidProfessionalRegistration
+                            ? 'Approve Request'
+                            : 'Validation Required',
+                        style: const TextStyle(
                           color: Colors.white,
                           fontFamily: 'Montserrat',
                         ),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: CustomColors.verdeMare,
+                        backgroundColor: widget.request.hasValidProfessionalRegistration
+                            ? CustomColors.verdeMare
+                            : Colors.grey,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -295,10 +306,23 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
     );
   }
 
+  // NEW: Get primary role display name
+  String _getPrimaryRoleDisplayName() {
+    return widget.request.roleDisplayNames.isNotEmpty
+        ? widget.request.roleDisplayNames.first
+        : 'Professional';
+  }
+
+  // NEW: Check if request requires personal info
+  bool _requiresPersonalInfo() {
+    return widget.request.isNutritionist ||
+        widget.request.isPsychologist ||
+        widget.request.isPersonalTrainer;
+  }
+
   String _getFullName() {
-    // Se è una clinica o un'organizzazione, il "nome" è probabilmente il nome dell'entità.
-    // Altrimenti, combina nome e cognome per le persone.
-    if (widget.request.isClinic || widget.request.organization.isNotEmpty && widget.request.surname.isEmpty) {
+    // For organizations or if surname is empty, return just the name
+    if (widget.request.surname.isEmpty) {
       return widget.request.name;
     }
     return '${widget.request.name} ${widget.request.surname}'.trim();
@@ -322,7 +346,29 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
       case 'rejected':
         return Icons.cancel;
       default: // 'pending' or other
-        return Icons.pending_actions; // Changed for better clarity
+        return Icons.pending_actions;
+    }
+  }
+
+  // NEW: Helper method to get role color
+  Color _getRoleColor(String role) {
+    switch (role.toUpperCase()) {
+      case 'NUTRITIONIST':
+      case 'NUTRIZIONISTA':
+        return Colors.green;
+      case 'PERSONAL TRAINER':
+        return Colors.orange;
+      case 'PSYCHOLOGIST':
+      case 'PSICOLOGO':
+        return Colors.purple;
+      case 'DOCTOR':
+      case 'DOTTORE':
+        return CustomColors.verdeMare;
+      case 'CLINIC':
+      case 'CLINICA':
+        return CustomColors.verdeAbisso;
+      default:
+        return CustomColors.verdeAbisso;
     }
   }
 
@@ -408,7 +454,7 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
     );
   }
 
-  Widget _buildDetailRow(String label, String? value) { // Value can be null
+  Widget _buildDetailRow(String label, String? value) {
     final displayValue = (value != null && value.isNotEmpty) ? value : 'Not provided';
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -416,7 +462,7 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 120, // Adjust as needed
+            width: 140, // Increased for longer labels
             child: Text(
               label + ':',
               style: const TextStyle(
@@ -442,6 +488,66 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
     );
   }
 
+  // NEW: Build roles row with colored chips
+  Widget _buildRolesRow(String label, List<String> roles) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 140,
+            child: Text(
+              '$label:',
+              style: const TextStyle(
+                fontFamily: 'Montserrat',
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          Expanded(
+            child: roles.isNotEmpty
+                ? Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: roles
+                  .map((role) => Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _getRoleColor(role).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color: _getRoleColor(role).withOpacity(0.3)),
+                ),
+                child: Text(
+                  role,
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 12,
+                    color: _getRoleColor(role),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ))
+                  .toList(),
+            )
+                : Text(
+              'Not provided',
+              style: TextStyle(
+                fontFamily: 'Montserrat',
+                color: Colors.grey,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildLanguagesRow(String label, List<String> languages) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -449,7 +555,7 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 120, // Adjust as needed
+            width: 140,
             child: Text(
               '$label:',
               style: const TextStyle(
@@ -502,6 +608,45 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
     );
   }
 
+  // NEW: Build validation status row
+  Widget _buildValidationStatusRow() {
+    final isValid = widget.request.hasValidProfessionalRegistration;
+    final color = isValid ? Colors.green : Colors.orange;
+    final icon = isValid ? Icons.verified : Icons.warning;
+    final text = isValid
+        ? 'Professional validation complete'
+        : 'Professional validation required';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8, top: 8),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                text,
+                style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildProcessingInfoSection() {
     if (widget.request.processedAt == null) return const SizedBox.shrink();
 
@@ -516,14 +661,14 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
         ),
         if (widget.request.status == 'rejected' &&
             widget.request.rejectionReason != null &&
-            widget.request.rejectionReason!.isNotEmpty) // Check if not empty
+            widget.request.rejectionReason!.isNotEmpty)
           _buildDetailRow('Rejection Reason', widget.request.rejectionReason!),
-        if (widget.request.temporaryPassword != null && widget.request.temporaryPassword!.isNotEmpty) // Check if not empty
+        if (widget.request.temporaryPassword != null &&
+            widget.request.temporaryPassword!.isNotEmpty)
           _buildDetailRow('Temp Password Sent', 'Yes'),
       ],
     );
   }
-
 
   void _showApprovalDialog(BuildContext context) {
     final signupRequestBloc = context.read<SignupRequestBloc>();
@@ -535,7 +680,7 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
           builder: (context, setState) {
             return AlertDialog(
               title: Text(
-                'Approve ${widget.request.primaryRoleDisplayName} Request',
+                'Approve ${_getPrimaryRoleDisplayName()} Request',
                 style: const TextStyle(
                   fontFamily: 'Montserrat',
                   fontWeight: FontWeight.bold,
@@ -547,7 +692,7 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Approve registration for ${_getFullName()} (${widget.request.rolesFormatted})?',
+                    'Approve registration for ${_getFullName()} (${widget.request.roleDisplayNames.join(', ')})?',
                     style: const TextStyle(
                       fontFamily: 'Montserrat',
                       fontWeight: FontWeight.w500,
@@ -645,7 +790,7 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
       builder: (BuildContext dialogContext) {
         return AlertDialog(
           title: Text(
-            'Reject ${widget.request.primaryRoleDisplayName} Request',
+            'Reject ${_getPrimaryRoleDisplayName()} Request',
             style: const TextStyle(
               fontFamily: 'Montserrat',
               fontWeight: FontWeight.bold,
@@ -657,7 +802,7 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Reject registration for ${_getFullName()} (${widget.request.rolesFormatted})?',
+                'Reject registration for ${_getFullName()} (${widget.request.roleDisplayNames.join(', ')})?',
                 style: const TextStyle(
                   fontFamily: 'Montserrat',
                   fontWeight: FontWeight.w500,

@@ -127,18 +127,22 @@ class _SignupRequestsLargeScreenViewModelState extends State<SignupRequestsLarge
                     // Apply search filter
                     final name = ('${request.name} ${request.surname}').toLowerCase();
                     final email = request.email.toLowerCase();
-                    final roles = request.rolesFormatted.toLowerCase();
-                    final professionalReg = request.professionalRegistrationSummary.toLowerCase();
+                    final roles = request.roleDisplayNames.join(' ').toLowerCase();
+                    final professionalReg = (request.professionalRegistrationNumber ?? '').toLowerCase();
+                    final specialty = (request.specialty ?? '').toLowerCase();
+                    final city = request.cityOfWork.toLowerCase();
 
                     final matchesSearch = name.contains(_searchQuery) ||
                         email.contains(_searchQuery) ||
                         roles.contains(_searchQuery) ||
-                        professionalReg.contains(_searchQuery);
+                        professionalReg.contains(_searchQuery) ||
+                        specialty.contains(_searchQuery) ||
+                        city.contains(_searchQuery);
 
                     // Apply status filter
                     final matchesStatus = _statusFilter == 'all' || request.status == _statusFilter;
 
-                    // NEW: Apply role filter
+                    // NEW: Apply role filter with enhanced matching
                     final matchesRole = _roleFilter == 'all' ||
                         request.hasRole(_roleFilter) ||
                         (_roleFilter == 'DOCTOR' && request.role == 'DOCTOR') ||
@@ -380,10 +384,10 @@ class _SignupRequestsLargeScreenViewModelState extends State<SignupRequestsLarge
     );
   }
 
-  // UPDATED: Enhanced request card with multiple roles support
+  // UPDATED: Enhanced request card with multiple roles support and hourly fees
   Widget _buildRequestCard(BuildContext context, SignupRequest request) {
     final status = request.status;
-    final primaryRole = request.primaryRoleDisplayName;
+    final primaryRole = request.roleDisplayNames.isNotEmpty ? request.roleDisplayNames.first : 'Unknown';
 
     Color statusColor;
     IconData statusIcon;
@@ -596,7 +600,7 @@ class _SignupRequestsLargeScreenViewModelState extends State<SignupRequestsLarge
                     ),
                   ),
 
-                  // Right side - Location and professional info
+                  // Right side - Location, professional info, and hourly fees
                   Expanded(
                     flex: 2,
                     child: Column(
@@ -661,15 +665,34 @@ class _SignupRequestsLargeScreenViewModelState extends State<SignupRequestsLarge
 
                         const SizedBox(height: 4),
 
-                        // Organization info
-                        if (request.organization.isNotEmpty)
+                        // NEW: Hourly fees display
+                        if (request.hasHourlyFeesSet)
+                          Row(
+                            children: [
+                              const Icon(Icons.euro, size: 16, color: CustomColors.verdeAbisso),
+                              const SizedBox(width: 4),
+                              Text(
+                                request.formattedHourlyFees,
+                                style: TextStyle(
+                                  color: Colors.grey[700],
+                                  fontFamily: 'Montserrat',
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+
+                        const SizedBox(height: 4),
+
+                        // Organization/Issuer info
+                        if (request.issuer.isNotEmpty)
                           Row(
                             children: [
                               const Icon(Icons.business, size: 16, color: CustomColors.verdeAbisso),
                               const SizedBox(width: 4),
                               Expanded(
                                 child: Text(
-                                  request.organization,
+                                  request.issuer,
                                   style: TextStyle(
                                     color: Colors.grey[700],
                                     fontFamily: 'Montserrat',
@@ -748,19 +771,19 @@ class _SignupRequestsLargeScreenViewModelState extends State<SignupRequestsLarge
                     ),
                     const SizedBox(width: 16),
                     ElevatedButton.icon(
-                      onPressed: request.isReadyForApproval ? () {
+                      onPressed: request.hasValidProfessionalRegistration ? () {
                         _showApproveConfirmation(context, request.id);
                       } : null, // Disable if not ready for approval
                       icon: const Icon(Icons.check_circle, color: Colors.white),
                       label: Text(
-                        request.isReadyForApproval ? 'Approve' : 'Validation Required',
+                        request.hasValidProfessionalRegistration ? 'Approve' : 'Validation Required',
                         style: const TextStyle(
                           color: Colors.white,
                           fontFamily: 'Montserrat',
                         ),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: request.isReadyForApproval
+                        backgroundColor: request.hasValidProfessionalRegistration
                             ? CustomColors.verdeMare
                             : Colors.grey,
                         foregroundColor: Colors.white,

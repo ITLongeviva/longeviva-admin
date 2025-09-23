@@ -39,6 +39,58 @@ class _UserManagementSmallScreenViewModelState extends State<UserManagementSmall
     return text.isNotEmpty ? '${text[0].toUpperCase()}${text.substring(1)}' : text;
   }
 
+  // NEW: Helper method to get role color
+  Color _getRoleColor(String role) {
+    switch (role.toUpperCase()) {
+      case 'NUTRITIONIST':
+      case 'NUTRIZIONISTA':
+        return Colors.green;
+      case 'PERSONAL TRAINER':
+        return Colors.orange;
+      case 'PSYCHOLOGIST':
+      case 'PSICOLOGO':
+        return Colors.blue;
+      default:
+        return CustomColors.verdeAbisso;
+    }
+  }
+
+  // NEW: Helper method to get role icon
+  IconData _getRoleIcon(String role) {
+    switch (role.toUpperCase()) {
+      case 'NUTRITIONIST':
+      case 'NUTRIZIONISTA':
+        return Icons.restaurant;
+      case 'PERSONAL TRAINER':
+        return Icons.fitness_center;
+      case 'PSYCHOLOGIST':
+      case 'PSICOLOGO':
+        return Icons.psychology;
+      default:
+        return Icons.medical_services;
+    }
+  }
+
+  // NEW: Helper method to format roles list for display
+  List<String> _getRoleDisplayNames(dynamic rolesData) {
+    if (rolesData == null) return ['N/A'];
+
+    List<String> roles = [];
+    if (rolesData is List) {
+      roles = List<String>.from(rolesData);
+    } else if (rolesData is String) {
+      roles = [rolesData];
+    }
+
+    const roleMap = {
+      'NUTRITIONIST': 'Nutrizionista',
+      'PERSONAL TRAINER': 'Personal Trainer',
+      'PSYCHOLOGIST': 'Psicologo',
+    };
+
+    return roles.map((role) => roleMap[role.toUpperCase()] ?? role).toList();
+  }
+
   @override
   void dispose() {
     _tabController.removeListener(_handleTabChange);
@@ -247,16 +299,18 @@ class _UserManagementSmallScreenViewModelState extends State<UserManagementSmall
 
   Widget _buildUserCardSmall(BuildContext context, Map<String, dynamic> user) {
     final userType = user['type'];
-    final userRole = user['role'] ?? '';
+    // UPDATED: Handle both old single role and new multiple roles
+    final userRoles = _getRoleDisplayNames(user['roles'] ?? user['role']);
+    final primaryRole = userRoles.isNotEmpty ? userRoles.first : '';
 
-    // Choose color based on user type
-    Color cardColor;
-    IconData typeIcon;
+    // UPDATED: Choose color based on primary role
+    Color cardColor = CustomColors.verdeAbisso;
+    IconData typeIcon = Icons.medical_services;
 
-    if (userType == 'doctor') {
-      cardColor = userRole == Doctor.ROLE_CLINIC ? CustomColors.verdeAbisso : CustomColors.verdeMare;
-      typeIcon = userRole == Doctor.ROLE_CLINIC ? Icons.local_hospital : Icons.medical_services;
-    } else {
+    if (userType == 'doctor' && userRoles.isNotEmpty) {
+      cardColor = _getRoleColor(userRoles.first);
+      typeIcon = _getRoleIcon(userRoles.first);
+    } else if (userType == 'patient') {
       cardColor = CustomColors.mentaFredda;
       typeIcon = Icons.personal_injury;
     }
@@ -277,7 +331,7 @@ class _UserManagementSmallScreenViewModelState extends State<UserManagementSmall
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header with user type and role
+              // Header with user type and roles
               Row(
                 children: [
                   // User icon
@@ -297,7 +351,7 @@ class _UserManagementSmallScreenViewModelState extends State<UserManagementSmall
 
                   const SizedBox(width: 12),
 
-                  // User name and role
+                  // User name and roles
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -322,30 +376,28 @@ class _UserManagementSmallScreenViewModelState extends State<UserManagementSmall
                               ),
                             ),
 
-                            if (userType == 'doctor' && userRole.isNotEmpty) ...[
-                              Text(
-                                ' · ',
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                                decoration: BoxDecoration(
-                                  color: userRole == Doctor.ROLE_CLINIC
-                                      ? CustomColors.verdeAbisso.withOpacity(0.1)
-                                      : CustomColors.verdeMare.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  userRole,
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: userRole == Doctor.ROLE_CLINIC
-                                        ? CustomColors.verdeAbisso
-                                        : CustomColors.verdeMare,
-                                  ),
+                            // UPDATED: Show roles as chips for doctors
+                            if (userType == 'doctor' && userRoles.isNotEmpty) ...[
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Wrap(
+                                  spacing: 4,
+                                  runSpacing: 4,
+                                  children: userRoles.take(2).map((role) => Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                    decoration: BoxDecoration(
+                                      color: _getRoleColor(role).withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      role,
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                        color: _getRoleColor(role),
+                                      ),
+                                    ),
+                                  )).toList(),
                                 ),
                               ),
                             ],
@@ -443,6 +495,29 @@ class _UserManagementSmallScreenViewModelState extends State<UserManagementSmall
                   ],
                 ),
               ],
+
+              // NEW: Hourly fees for doctors
+              if (userType == 'doctor' && user['hourlyFees'] != null && user['hourlyFees'] > 0) ...[
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.euro_outlined,
+                      size: 16,
+                      color: CustomColors.verdeAbisso,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '€${user['hourlyFees'].toStringAsFixed(0)}/h',
+                      style: TextStyle(
+                        color: Colors.grey[700],
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
@@ -452,7 +527,9 @@ class _UserManagementSmallScreenViewModelState extends State<UserManagementSmall
 
   void _showUserDetailsDialog(BuildContext context, Map<String, dynamic> user) {
     final userType = user['type'];
-    final userRole = user['role'] ?? '';
+    // UPDATED: Handle multiple roles
+    final userRoles = _getRoleDisplayNames(user['roles'] ?? user['role']);
+    final primaryRole = userRoles.isNotEmpty ? userRoles.first : '';
 
     context.showAnimatedDialog(
       dialogBuilder: (context) => Dialog(
@@ -461,6 +538,9 @@ class _UserManagementSmallScreenViewModelState extends State<UserManagementSmall
         ),
         child: Container(
           width: double.infinity,
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.8,
+          ),
           padding: const EdgeInsets.all(20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -471,11 +551,11 @@ class _UserManagementSmallScreenViewModelState extends State<UserManagementSmall
                 children: [
                   Icon(
                     userType == 'doctor'
-                        ? (userRole == Doctor.ROLE_CLINIC ? Icons.local_hospital : Icons.medical_services)
+                        ? _getRoleIcon(primaryRole)
                         : Icons.personal_injury,
                     size: 24,
                     color: userType == 'doctor'
-                        ? (userRole == Doctor.ROLE_CLINIC ? CustomColors.verdeAbisso : CustomColors.verdeMare)
+                        ? _getRoleColor(primaryRole)
                         : CustomColors.mentaFredda,
                   ),
                   const SizedBox(width: 12),
@@ -511,12 +591,39 @@ class _UserManagementSmallScreenViewModelState extends State<UserManagementSmall
                       _buildDetailItem('User Type', capitalize(userType)),
 
                       if (userType == 'doctor') ...[
-                        _buildDetailItem('Role', userRole),
+                        // UPDATED: Show all roles instead of single role
+                        _buildDetailItem('Role(s)', userRoles.join(', ')),
                         _buildDetailItem('Specialty', user['specialty'] ?? 'N/A'),
-                        if (user['placeOfWork'] != null)
-                          _buildDetailItem('Place of Work', user['placeOfWork']),
                         if (user['cityOfWork'] != null)
                           _buildDetailItem('City of Work', user['cityOfWork']),
+                        // NEW: Show country of work
+                        if (user['countryOfWork'] != null)
+                          _buildDetailItem('Country of Work', user['countryOfWork']),
+                        // NEW: Show professional registration numbers
+                        if (user['numero_iscrizione_albo'] != null)
+                          _buildDetailItem('Registration (Albo)', user['numero_iscrizione_albo']),
+                        if (user['numero_iscrizione_ente'] != null)
+                          _buildDetailItem('Registration (Ente)', user['numero_iscrizione_ente']),
+                        // NEW: Show issuer
+                        if (user['issuer'] != null && user['issuer'].toString().isNotEmpty)
+                          _buildDetailItem('Qualification Issuer', user['issuer']),
+                        // NEW: Show hourly fees
+                        if (user['hourlyFees'] != null)
+                          _buildDetailItem('Hourly Fees', user['hourlyFees'] > 0
+                              ? '€${user['hourlyFees'].toStringAsFixed(2)}'
+                              : 'Not specified'),
+                        // NEW: Show languages spoken
+                        if (user['languagesSpoken'] != null && user['languagesSpoken'] is List)
+                          _buildDetailItem('Languages', (user['languagesSpoken'] as List).join(', ')),
+                        // NEW: Show area of interest
+                        if (user['areaOfInterest'] != null && user['areaOfInterest'].toString().isNotEmpty)
+                          _buildDetailItem('Area of Interest', user['areaOfInterest']),
+                        // NEW: Show VAT number
+                        if (user['vatNumber'] != null && user['vatNumber'].toString().isNotEmpty)
+                          _buildDetailItem('VAT Number', user['vatNumber']),
+                        // NEW: Show fiscal code
+                        if (user['fiscalCode'] != null && user['fiscalCode'].toString().isNotEmpty)
+                          _buildDetailItem('Fiscal Code', user['fiscalCode']),
                       ],
 
                       const SizedBox(height: 16),

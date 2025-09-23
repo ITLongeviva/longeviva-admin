@@ -129,30 +129,32 @@ class _SignupRequestsSmallScreenViewModelState
                     ),
                   );
                 } else if (state is SignupRequestsLoaded) {
-                  // UPDATED: Enhanced filtering logic
+                  // UPDATED: Enhanced filtering logic with support for new model fields
                   final filteredRequests = state.requests.where((request) {
                     // Apply search filter
-                    final name =
-                    ('${request.name} ${request.surname}').toLowerCase();
+                    final name = ('${request.name} ${request.surname}').toLowerCase();
                     final email = request.email.toLowerCase();
-                    final roles = request.rolesFormatted.toLowerCase(); // NEW
-                    final professionalReg = request.professionalRegistrationSummary.toLowerCase(); // NEW
+                    final roles = request.roleDisplayNames.join(' ').toLowerCase(); // NEW: Multiple roles
+                    final professionalReg = (request.professionalRegistrationNumber ?? '').toLowerCase(); // NEW
+                    final specialty = (request.specialty ?? '').toLowerCase();
+                    final city = request.cityOfWork.toLowerCase();
 
                     final matchesSearch = name.contains(_searchQuery) ||
                         email.contains(_searchQuery) ||
-                        roles.contains(_searchQuery) || // NEW
-                        professionalReg.contains(_searchQuery); // NEW
+                        roles.contains(_searchQuery) ||
+                        professionalReg.contains(_searchQuery) ||
+                        specialty.contains(_searchQuery) ||
+                        city.contains(_searchQuery);
 
                     // Apply status filter
                     final matchesStatus =
                         _statusFilter == 'all' || request.status == _statusFilter;
 
-                    // NEW: Apply role filter
+                    // NEW: Apply role filter with enhanced matching
                     final matchesRole = _roleFilter == 'all' ||
                         request.hasRole(_roleFilter) ||
-                        (_roleFilter == 'DOCTOR' && request.role == 'DOCTOR') || // Maintain old role for backward compatibility if needed
+                        (_roleFilter == 'DOCTOR' && request.role == 'DOCTOR') || // Backward compatibility
                         (_roleFilter == 'CLINIC' && request.role == 'CLINIC');
-
 
                     return matchesSearch && matchesStatus && matchesRole;
                   }).toList();
@@ -304,7 +306,7 @@ class _SignupRequestsSmallScreenViewModelState
     );
   }
 
-  // NEW: Role filter dropdown (Identical to Large Screen version)
+  // NEW: Role filter dropdown
   Widget _buildRoleFilterDropdown() {
     return Container(
       decoration: BoxDecoration(
@@ -401,10 +403,10 @@ class _SignupRequestsSmallScreenViewModelState
     );
   }
 
-  // UPDATED: Enhanced request card for small screen
+  // UPDATED: Enhanced request card for small screen with full support for new model
   Widget _buildRequestCardSmall(BuildContext context, SignupRequest request) {
     final status = request.status;
-    final primaryRole = request.primaryRoleDisplayName; // Use primary role for icon/color
+    final primaryRole = request.roleDisplayNames.isNotEmpty ? request.roleDisplayNames.first : 'Unknown';
 
     Color statusColor;
     IconData statusIcon;
@@ -497,12 +499,12 @@ class _SignupRequestsSmallScreenViewModelState
                     width: 48, // Slightly larger icon container
                     height: 48,
                     decoration: BoxDecoration(
-                      color: _getRoleColor(primaryRole).withOpacity(0.2), // Use helper
+                      color: _getRoleColor(primaryRole).withOpacity(0.2),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
-                      _getRoleIcon(primaryRole), // Use helper
-                      color: _getRoleColor(primaryRole), // Use helper
+                      _getRoleIcon(primaryRole),
+                      color: _getRoleColor(primaryRole),
                       size: 28,
                     ),
                   ),
@@ -581,9 +583,15 @@ class _SignupRequestsSmallScreenViewModelState
                     icon: Icons.badge,
                     text: 'VAT: ${request.vatNumber}'),
 
-              // Organization
-              if (request.organization.isNotEmpty)
-                _buildInfoRow(icon: Icons.business, text: request.organization),
+              // NEW: Hourly fees display
+              if (request.hasHourlyFeesSet)
+                _buildInfoRow(
+                    icon: Icons.euro,
+                    text: '${request.formattedHourlyFees}/hour'),
+
+              // Organization/Issuer
+              if (request.issuer.isNotEmpty)
+                _buildInfoRow(icon: Icons.business, text: request.issuer),
 
               // Professional Validation Status
               if (request.requiresProfessionalRegistration)
@@ -651,20 +659,20 @@ class _SignupRequestsSmallScreenViewModelState
                     const SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton.icon(
-                        // UPDATED: Disable button if not ready for approval
-                        onPressed: request.isReadyForApproval ? () {
+                        // UPDATED: Use proper validation check from new model
+                        onPressed: request.hasValidProfessionalRegistration ? () {
                           _showApproveConfirmation(context, request.id);
                         } : null,
                         icon: const Icon(Icons.check_circle, color: Colors.white),
                         label: Text(
-                          request.isReadyForApproval ? 'Approve' : 'Validate', // UPDATED LABEL
+                          request.hasValidProfessionalRegistration ? 'Approve' : 'Validate',
                           style: const TextStyle(
                             color: Colors.white,
                             fontFamily: 'Montserrat',
                           ),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: request.isReadyForApproval
+                          backgroundColor: request.hasValidProfessionalRegistration
                               ? CustomColors.verdeMare
                               : Colors.grey, // Grey out if disabled
                           foregroundColor: Colors.white,
@@ -709,8 +717,7 @@ class _SignupRequestsSmallScreenViewModelState
     );
   }
 
-
-  // NEW: Helper methods for role-specific styling (Identical to Large Screen version)
+  // NEW: Helper methods for role-specific styling
   Color _getRoleColor(String role) {
     switch (role.toUpperCase()) {
       case 'NUTRITIONIST':
