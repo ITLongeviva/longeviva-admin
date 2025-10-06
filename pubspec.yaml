@@ -102,8 +102,6 @@ flutter:
   # LOCAL ASSETS
   assets:
     - assets/icons/generals/
-    - assets/icons/logo/
-    - assets/images/
     - assets/lang/
 
   # LOCAL FONTS
