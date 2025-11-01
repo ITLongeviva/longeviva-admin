@@ -31,6 +31,7 @@ android/app/google-services.json
 .pub-cache/
 .pub/
 /build/
+.env
 
 # Symbolication related
 app.*.symbols

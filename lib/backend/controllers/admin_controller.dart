@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../../shared/config/environment_config.dart';
 import '../../shared/utils/error_handler.dart';
 import '../models/admin_model.dart';
 import '../repositories/admin_repository.dart';
@@ -340,7 +341,7 @@ class AdminController {
       }
 
       // If not found in admin_profiles, check other collections with timeout
-      final firestoreDb = FirebaseFirestore.instance;
+      final firestoreDb = EnvironmentConfig().getFirestore();
 
       final adminQuery = await Future.any([
         firestoreDb

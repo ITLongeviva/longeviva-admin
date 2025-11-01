@@ -2,6 +2,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import '../../shared/config/environment_config.dart';
 import '../../shared/utils/error_handler.dart';
 import '../models/admin_model.dart';
 
@@ -17,7 +18,7 @@ class AdminRepository {
     FirebaseFirestore? firestore,
     FirebaseAuth? firebaseAuth,
   }) :
-        _firestore = firestore ?? FirebaseFirestore.instance,
+        _firestore = firestore ?? EnvironmentConfig().getFirestore(),
         _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
 
   /// Login admin using Firebase Authentication with Windows-optimized approach

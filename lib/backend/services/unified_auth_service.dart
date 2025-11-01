@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
+import '../../shared/config/environment_config.dart';
 import '../models/admin_model.dart';
 import '../../shared/utils/error_handler.dart';
 
@@ -12,8 +13,8 @@ class UnifiedAuthService {
   UnifiedAuthService._internal();
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  FirebaseFirestore get _firestore => EnvironmentConfig().getFirestore();
 
   // Session management
   Admin? _currentAdmin;

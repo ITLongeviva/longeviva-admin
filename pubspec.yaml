@@ -77,6 +77,9 @@ dependencies:
 
   intl: any
   crypto: any
+
+  flutter_dotenv: ^5.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -102,9 +105,10 @@ flutter:
   # LOCAL ASSETS
   assets:
     - assets/icons/generals/
-    - assets/icons/logo/
-    - assets/images/
+    # - assets/icons/logo/
+    # - assets/images/
     - assets/lang/
+    - .env
 
   # LOCAL FONTS
   fonts:

@@ -238,17 +238,69 @@ class SignupRequestController {
 
         ErrorHandler.logDebug('Firebase Auth user created successfully: ${userCredential.user!.uid}');
 
-        // UPDATED: Set custom claims for multiple roles
+        ErrorHandler.logDebug('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        ErrorHandler.logDebug('🔐 SETTING CUSTOM CLAIMS');
+        ErrorHandler.logDebug('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+        final userRoles = _getUserRoles(request);
+        ErrorHandler.logDebug('📋 Preparing custom claims:');
+        ErrorHandler.logDebug('   🆔 UID: ${userCredential.user!.uid}');
+        ErrorHandler.logDebug('   ✅ Approved: true');
+        ErrorHandler.logDebug('   🎭 All Roles: $userRoles');
+
         try {
-          await _functions.httpsCallable('setUserApprovedClaim').call({
+          // Prendi solo il primo ruolo (la Cloud Function accetta solo un ruolo singolo)
+          final primaryRole = userRoles.isNotEmpty ? userRoles.first : 'NUTRITIONIST';
+          ErrorHandler.logDebug('   🎯 Primary Role (sending to function): $primaryRole');
+
+          ErrorHandler.logDebug('🔄 Calling Cloud Function: setUserApprovedClaim');
+
+          final result = await _functions.httpsCallable('setUserApprovedClaim').call({
             'uid': userCredential.user!.uid,
             'approved': true,
-            'roles': _getUserRoles(request), // UPDATED: Support multiple roles
+            'role': primaryRole,
           });
-          ErrorHandler.logDebug('Set approved claims for user: ${userCredential.user!.uid}');
-        } catch (e) {
-          ErrorHandler.logError('Error setting custom claims (non-fatal)', e);
-          // Don't fail the entire process for this
+
+          ErrorHandler.logDebug('✅ Cloud Function call completed successfully');
+          ErrorHandler.logDebug('   📦 Function result: ${result.data}');
+
+          // Verify claims were set
+          ErrorHandler.logDebug('🔄 Verifying custom claims were set...');
+          await Future.delayed(Duration(seconds: 2)); // Give Firebase time
+
+          final idTokenResult = await userCredential.user!.getIdTokenResult(true);
+          final claims = idTokenResult.claims ?? {};
+
+          ErrorHandler.logDebug('✅ ID token refreshed');
+          ErrorHandler.logDebug('   📋 Claims found: ${claims.keys.toList()}');
+
+          final approvedClaim = claims['approved'] as bool?;
+          final roleClaim = claims['role']; // Può essere stringa o array
+
+          ErrorHandler.logDebug('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          ErrorHandler.logDebug('🎯 VERIFICATION RESULTS:');
+          ErrorHandler.logDebug('   ✅ Approved claim: ${approvedClaim ?? "NOT SET"}');
+          ErrorHandler.logDebug('   🎭 Role claim: ${roleClaim ?? "NOT SET"}');
+
+          if (approvedClaim == true && roleClaim != null) {
+            ErrorHandler.logDebug('✅✅✅ CUSTOM CLAIMS VERIFIED SUCCESSFULLY! ✅✅✅');
+          } else {
+            ErrorHandler.logWarning('⚠️⚠️⚠️ CUSTOM CLAIMS NOT FOUND OR INCOMPLETE! ⚠️⚠️⚠️');
+            ErrorHandler.logWarning('   User may have issues logging in!');
+          }
+          ErrorHandler.logDebug('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+        } catch (claimsError) {
+          ErrorHandler.logError('❌❌❌ ERROR SETTING CUSTOM CLAIMS ❌❌❌', claimsError);
+          ErrorHandler.logError('Error type: ${claimsError.runtimeType}', null);
+
+          if (claimsError is FirebaseFunctionsException) {
+            ErrorHandler.logError('  Code: ${claimsError.code}', null);
+            ErrorHandler.logError('  Message: ${claimsError.message}', null);
+            ErrorHandler.logError('  Details: ${claimsError.details}', null);
+          }
+
+          ErrorHandler.logWarning('⚠️ Continuing despite claims error (user may not be able to login!)');
         }
 
         // Update Firestore records

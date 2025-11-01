@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../shared/config/environment_config.dart';
 import '../../shared/utils/error_handler.dart';
 import '../models/doctor/sign_up_data.dart';
 import '../models/signup_request_model.dart';
@@ -8,7 +9,7 @@ class SignupRequestRepository {
   static const String _collectionPath = 'signup_requests';
 
   SignupRequestRepository({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+      : _firestore = firestore ?? EnvironmentConfig().getFirestore();
 
   /// Get all signup requests
   Future<List<SignupRequest>> getAllSignupRequests() async {
@@ -275,12 +276,11 @@ class SignupRequestRepository {
       await batch.commit();
       ErrorHandler.logDebug('Batch committed successfully with password: $temporaryPassword and hourlyFees: $doctorHourlyFees');
 
-      // UPDATED: Create Firebase Auth user with role information
       await _createFirebaseAuthUser(
-        requestData['email'],
-        temporaryPassword,
-        '${requestData['name']} ${requestData['surname']}',
-        requestData['roles'] ?? [requestData['role']], // Handle both new and old format
+          requestData['email'],
+          temporaryPassword,
+          '${requestData['name']} ${requestData['surname']}',
+          requestData['roles'] ?? [requestData['role']]
       );
 
       return true;
@@ -332,7 +332,7 @@ class SignupRequestRepository {
       String email,
       String password,
       String displayName,
-      dynamic roles // Can be List<String> or String for backward compatibility
+      dynamic roles
       ) async {
     try {
       // Normalize roles to List<String>
@@ -345,21 +345,21 @@ class SignupRequestRepository {
         rolesList = ['UNKNOWN'];
       }
 
-      // Store the request to create a Firebase Auth user in a separate collection
+      // Store the auth creation record with 'approved' status since user was already created
       await _firestore.collection('auth_creation_requests').add({
         'email': email,
         'password': password,
         'displayName': displayName,
-        'roles': rolesList, // UPDATED: Store as list
+        'roles': rolesList,
         'createdAt': FieldValue.serverTimestamp(),
-        'status': 'pending'
+        'status': 'approved',  // ✅ L'utente è già stato creato con successo
+        'processedAt': FieldValue.serverTimestamp(),
       });
 
-      ErrorHandler.logDebug('Requested Firebase Auth user creation for: $email with roles: $rolesList and password: $password');
-
+      ErrorHandler.logDebug('Created auth_creation_requests record with approved status for $email');
     } catch (e) {
-      ErrorHandler.logError('Error requesting Firebase Auth user creation', e);
-      throw AppException('Failed to request Firebase Auth user creation: ${e.toString()}');
+      ErrorHandler.logError('Error creating auth_creation_requests record', e);
+      rethrow;
     }
   }
 

@@ -4,12 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'backend/bloc/admin_auth_bloc.dart';
 import 'backend/bloc/admin_bloc.dart';
 import 'backend/bloc/signup_request_bloc.dart';
 import 'backend/controllers/admin_controller.dart';
 import 'backend/controllers/signup_request_controller.dart';
+import 'backend/services/unified_auth_service.dart';
 import 'firebase_options.dart';
 import 'frontend/auth/auth_wrapper.dart';
 import 'frontend/screens/login/landing_page/admin_login_landing_page.dart';
@@ -17,6 +19,7 @@ import 'shared/localization/app_localizations.dart';
 import 'shared/localization/language_bloc.dart';
 import 'shared/utils/colors.dart';
 import 'shared/utils/error_handler.dart';
+import 'shared/config/environment_config.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,13 +27,40 @@ Future<void> main() async {
   try {
     ErrorHandler.logInfo('🚀 Starting Longeviva Admin App...');
     ErrorHandler.logInfo('📱 Platform: ${defaultTargetPlatform.name}');
+    ErrorHandler.logInfo('🔍 Build Mode: ${kDebugMode ? "DEBUG" : "RELEASE"}');
 
-    // Initialize Firebase
+    // ========================================
+    // STEP 1: Carica il file .env (solo in locale)
+    // ========================================
+    try {
+      await dotenv.load(fileName: ".env");
+      ErrorHandler.logInfo('✅ File .env caricato');
+    } catch (e) {
+      ErrorHandler.logInfo('⚠️ File .env non trovato (normale in produzione): $e');
+      // In produzione il file .env non esiste, ed è normale
+    }
+
+    // ========================================
+    // STEP 2: Inizializza la configurazione ambiente
+    // ========================================
+    await EnvironmentConfig().initialize();
+
+    // ========================================
+    // STEP 3: Inizializza Firebase
+    // ========================================
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-
     ErrorHandler.logInfo('🔥 Firebase initialized successfully');
+
+    // ========================================
+    // STEP 4: Configura Firestore con il database corretto
+    // ========================================
+    EnvironmentConfig().configureFirestore();
+    ErrorHandler.logInfo(
+        '✅ Firestore configurato per ambiente: ${EnvironmentConfig().isDevelopment ? "SVILUPPO 🔧" : "PRODUZIONE 🚀"}'
+    );
+    ErrorHandler.logInfo('   Database ID: ${EnvironmentConfig().databaseId}');
 
     runApp(const LongevivaAdminApp());
 

@@ -2,10 +2,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../shared/config/environment_config.dart';
 import '../models/doctor/sign_up_data.dart';
 
 class EmailService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  FirebaseFirestore get _firestore => EnvironmentConfig().getFirestore();
 
   /// Sends a registration email using the device's email client
   Future<bool> sendSignupEmail(SignupData data) async {
