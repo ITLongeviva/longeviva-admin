@@ -1,0 +1,45 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "longeviva-web-app-dev",
+          "appId": "1:471375608487:android:7417c85f3a03419fe8b982",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "longeviva-web-app-dev",
+          "configurations": {
+            "android": "1:471375608487:android:7417c85f3a03419fe8b982",
+            "ios": "1:471375608487:ios:63b8854bddb8d094e8b982",
+            "macos": "1:471375608487:ios:63b8854bddb8d094e8b982",
+            "web": "1:471375608487:web:72cb8657d2d401c6e8b982",
+            "windows": "1:471375608487:web:a2ef2330f2c85b49e8b982"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "my-firebase-functions/functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ]
+    }
+  ],
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  }
+}
