@@ -79,6 +79,7 @@ dependencies:
   crypto: any
 
   flutter_dotenv: ^5.1.0
+  emailjs: ^4.1.0
 
 dev_dependencies:
   flutter_test:
