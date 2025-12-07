@@ -561,7 +561,7 @@ The Longeviva Security Team
 
 ---
 SECURITY REMINDER: For your protection, we generate strong passwords and require immediate password changes on first login.
-If you encounter any issues, contact: longeviva.app@gmail.com
+If you encounter any issues, contact: info@longeviva.it
 ''';
 
     await _emailService.sendCustomEmail(
@@ -591,7 +591,7 @@ Reason for Decline:
 $reason
 
 Next Steps:
-If you believe this decision was made in error or would like to provide additional information, please contact our support team at longeviva.app@gmail.com.
+If you believe this decision was made in error or would like to provide additional information, please contact our support team at info@longeviva.it .
 
 You may also submit a new application with updated information if the circumstances have changed.
 
