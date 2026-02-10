@@ -81,3 +81,7 @@ pids
 
 # Optional eslint cache
 .eslintcache
+
+# FVM Version Cache
+.fvm/
+.fvmrc

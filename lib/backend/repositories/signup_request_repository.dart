@@ -263,6 +263,7 @@ class SignupRequestRepository {
         'profilePictureUrl': '',
         'isActive': true,
         'isAlive': true,
+        'hasCompletedServiceSetup': false,
 
         // Audit fields
         'createdAt': FieldValue.serverTimestamp(),
@@ -271,6 +272,27 @@ class SignupRequestRepository {
       };
 
       batch.set(newDoctorRef, doctorData);
+
+      // 3. Create default "Prima Visita" service
+      final serviceRef = newDoctorRef
+          .collection('services')
+          .doc('prima-visita');
+      final serviceData = {
+        'name': 'Prima Visita',
+        'description': null,
+        'price':
+            (doctorHourlyFees * 100).round(),
+        'currency': 'eur',
+        'durationMinutes': 60,
+        'modality': 'both',
+        'isActive': true,
+        'sortOrder': 0,
+        'createdAt':
+            FieldValue.serverTimestamp(),
+        'updatedAt':
+            FieldValue.serverTimestamp(),
+      };
+      batch.set(serviceRef, serviceData);
 
       // Commit the batch
       await batch.commit();
