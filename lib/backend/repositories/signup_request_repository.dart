@@ -177,10 +177,14 @@ class SignupRequestRepository {
       // Validate the temporary password
       if (temporaryPassword.isEmpty) {
         temporaryPassword = 'temp${DateTime.now().millisecondsSinceEpoch.toString().substring(0, 8)}';
-        ErrorHandler.logWarning('Empty temporary password provided, generated a random one: $temporaryPassword');
+        ErrorHandler.logWarning(
+            'Empty temporary password provided, '
+            'generated a random one');
       }
 
-      ErrorHandler.logDebug('Using temporary password for approval: $temporaryPassword');
+      ErrorHandler.logDebug(
+          'Temporary password set for approval of '
+          'request: $requestId');
 
       // Start a batch write
       final batch = _firestore.batch();
@@ -279,7 +283,7 @@ class SignupRequestRepository {
           .doc('prima-visita');
       final serviceData = {
         'name': 'Prima Visita',
-        'description': null,
+        'description': '',
         'price':
             (doctorHourlyFees * 100).round(),
         'currency': 'eur',
@@ -296,7 +300,9 @@ class SignupRequestRepository {
 
       // Commit the batch
       await batch.commit();
-      ErrorHandler.logDebug('Batch committed successfully with password: $temporaryPassword and hourlyFees: $doctorHourlyFees');
+      ErrorHandler.logDebug(
+          'Batch committed successfully for signup request '
+          '$requestId with hourlyFees: $doctorHourlyFees');
 
       await _createFirebaseAuthUser(
           requestData['email'],
