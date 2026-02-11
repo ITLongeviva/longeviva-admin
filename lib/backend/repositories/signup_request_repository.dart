@@ -280,7 +280,7 @@ class SignupRequestRepository {
       // 3. Create default "Prima Visita" service
       final serviceRef = newDoctorRef
           .collection('services')
-          .doc('prima-visita');
+          .doc();
       final serviceData = {
         'name': 'Prima Visita',
         'description': '',
@@ -290,6 +290,7 @@ class SignupRequestRepository {
         'durationMinutes': 60,
         'modality': 'both',
         'isActive': true,
+        'isFirstVisit': true,
         'sortOrder': 0,
         'createdAt':
             FieldValue.serverTimestamp(),
