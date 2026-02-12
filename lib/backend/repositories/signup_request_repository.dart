@@ -24,10 +24,8 @@ class SignupRequestRepository {
       }).toList();
     } catch (e) {
       ErrorHandler.logError('Error fetching signup requests', e);
-      throw AppException(
-          'Error fetching signup requests: ${e.toString()}',
-          originalError: e
-      );
+      throw AppException('Error fetching signup requests: ${e.toString()}',
+          originalError: e);
     }
   }
 
@@ -47,18 +45,15 @@ class SignupRequestRepository {
       ErrorHandler.logError('Error fetching signup requests by status', e);
       throw AppException(
           'Error fetching signup requests by status: ${e.toString()}',
-          originalError: e
-      );
+          originalError: e);
     }
   }
 
   /// Get a specific signup request by ID
   Future<SignupRequest?> getSignupRequestById(String id) async {
     try {
-      final docSnapshot = await _firestore
-          .collection(_collectionPath)
-          .doc(id)
-          .get();
+      final docSnapshot =
+          await _firestore.collection(_collectionPath).doc(id).get();
 
       if (!docSnapshot.exists || docSnapshot.data() == null) {
         return null;
@@ -67,10 +62,8 @@ class SignupRequestRepository {
       return SignupRequest.fromJson(docSnapshot.data()!, docSnapshot.id);
     } catch (e) {
       ErrorHandler.logError('Error fetching signup request by ID', e);
-      throw AppException(
-          'Error fetching signup request by ID: ${e.toString()}',
-          originalError: e
-      );
+      throw AppException('Error fetching signup request by ID: ${e.toString()}',
+          originalError: e);
     }
   }
 
@@ -87,7 +80,8 @@ class SignupRequestRepository {
           .get();
 
       if (existingRequests.docs.isNotEmpty) {
-        throw AppException('A pending signup request already exists for this email');
+        throw AppException(
+            'A pending signup request already exists for this email');
       }
 
       // Create a new document reference to get an ID
@@ -100,7 +94,9 @@ class SignupRequestRepository {
         'name': data.name,
         'surname': data.surname,
         'sex': data.sex,
-        'birthdate': data.birthdate != null ? Timestamp.fromDate(data.birthdate!) : null, // Use Timestamp
+        'birthdate': data.birthdate != null
+            ? Timestamp.fromDate(data.birthdate!)
+            : null, // Use Timestamp
         'phoneNumber': data.phoneNumber,
         'address': data.address,
         'cityOfWork': data.cityOfWork,
@@ -148,23 +144,21 @@ class SignupRequestRepository {
       if (e is AppException) {
         rethrow;
       }
-      throw AppException(
-          'Error creating signup request: ${e.toString()}',
-          originalError: e
-      );
+      throw AppException('Error creating signup request: ${e.toString()}',
+          originalError: e);
     }
   }
 
   /// UPDATED: Approve signup request with hourlyFees from request data
-  Future<bool> approveSignupRequestWithPassword(String requestId, String temporaryPassword) async {
+  Future<bool> approveSignupRequestWithPassword(
+      String requestId, String temporaryPassword) async {
     try {
-      ErrorHandler.logDebug('Approving signup request with ID and temporary password: $requestId');
+      ErrorHandler.logDebug(
+          'Approving signup request with ID and temporary password: $requestId');
 
       // Get the signup request
-      final requestDoc = await _firestore
-          .collection(_collectionPath)
-          .doc(requestId)
-          .get();
+      final requestDoc =
+          await _firestore.collection(_collectionPath).doc(requestId).get();
 
       if (!requestDoc.exists || requestDoc.data() == null) {
         ErrorHandler.logWarning('Request not found: $requestId');
@@ -176,29 +170,26 @@ class SignupRequestRepository {
 
       // Validate the temporary password
       if (temporaryPassword.isEmpty) {
-        temporaryPassword = 'temp${DateTime.now().millisecondsSinceEpoch.toString().substring(0, 8)}';
-        ErrorHandler.logWarning(
-            'Empty temporary password provided, '
+        temporaryPassword =
+            'temp${DateTime.now().millisecondsSinceEpoch.toString().substring(0, 8)}';
+        ErrorHandler.logWarning('Empty temporary password provided, '
             'generated a random one');
       }
 
-      ErrorHandler.logDebug(
-          'Temporary password set for approval of '
+      ErrorHandler.logDebug('Temporary password set for approval of '
           'request: $requestId');
 
       // Start a batch write
       final batch = _firestore.batch();
 
       // 1. Update request status to approved
-      batch.update(
-          _firestore.collection(_collectionPath).doc(requestId),
-          {
-            'status': 'approved',
-            'processedAt': FieldValue.serverTimestamp(),
-            'deleteAt': Timestamp.fromDate(DateTime.now().add(const Duration(days: 30))),
-            'temporaryPassword': temporaryPassword,
-          }
-      );
+      batch.update(_firestore.collection(_collectionPath).doc(requestId), {
+        'status': 'approved',
+        'processedAt': FieldValue.serverTimestamp(),
+        'deleteAt':
+            Timestamp.fromDate(DateTime.now().add(const Duration(days: 30))),
+        'temporaryPassword': temporaryPassword,
+      });
 
       // 2. UPDATED: Create doctor record with hourlyFees from request
       final doctorsCollection = _firestore.collection('doctors');
@@ -215,7 +206,8 @@ class SignupRequestRepository {
           try {
             doctorHourlyFees = double.parse(requestData['hourlyFees']);
           } catch (e) {
-            ErrorHandler.logWarning('Failed to parse hourlyFees from request: ${requestData['hourlyFees']}');
+            ErrorHandler.logWarning(
+                'Failed to parse hourlyFees from request: ${requestData['hourlyFees']}');
             doctorHourlyFees = 0.0;
           }
         }
@@ -236,7 +228,7 @@ class SignupRequestRepository {
         'surname': requestData['surname'] ?? '',
         'sex': requestData['sex'] ?? '',
         'phoneNumber': requestData['phoneNumber'] ?? '',
-        'birthdate': requestData['birthdate'], // Already a Timestamp
+        'birthdate': requestData['birthdate'],
         'address': requestData['address'] ?? '',
         'cityOfWork': requestData['cityOfWork'] ?? '',
         'countryOfWork': requestData['countryOfWork'] ?? 'Italy',
@@ -246,7 +238,7 @@ class SignupRequestRepository {
 
         // UPDATED: Multiple roles instead of single role
         'roles': requestData['roles'] ??
-            (requestData['role'] != null ? [requestData['role']] : []), // Backward compatibility
+            (requestData['role'] != null ? [requestData['role']] : []),
 
         // Professional registration fields
         'numero_iscrizione_albo': requestData['numero_iscrizione_albo'],
@@ -277,40 +269,53 @@ class SignupRequestRepository {
 
       batch.set(newDoctorRef, doctorData);
 
-      // 3. Create default "Prima Visita" service
-      final serviceRef = newDoctorRef
-          .collection('services')
-          .doc();
+      // 3. Fetch mandatory services catalog
+      String? mandatoryServiceKey;
+      try {
+        final catalogSnapshot =
+            await _firestore.collection('mandatory_services_catalog').get();
+        for (final doc in catalogSnapshot.docs) {
+          final key = doc.data()['service_key'] as String?;
+          if (key != null && key.startsWith('first_visit')) {
+            mandatoryServiceKey = key;
+            break;
+          }
+        }
+      } catch (e) {
+        ErrorHandler.logWarning(
+          'Could not fetch mandatory services '
+          'catalog: $e',
+        );
+      }
+
+      // 4. Create default "Prima Visita" service
+      final serviceRef = newDoctorRef.collection('services').doc();
       final serviceData = {
         'name': 'Prima Visita',
         'description': '',
-        'price':
-            (doctorHourlyFees * 100).round(),
+        'price': (doctorHourlyFees * 100).round(),
         'currency': 'eur',
         'durationMinutes': 60,
         'modality': 'both',
         'isActive': true,
-        'isFirstVisit': true,
+        'isMandatoryService': mandatoryServiceKey != null,
+        'mandatoryServiceKey': mandatoryServiceKey,
         'sortOrder': 0,
-        'createdAt':
-            FieldValue.serverTimestamp(),
-        'updatedAt':
-            FieldValue.serverTimestamp(),
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
       };
       batch.set(serviceRef, serviceData);
 
       // Commit the batch
       await batch.commit();
-      ErrorHandler.logDebug(
-          'Batch committed successfully for signup request '
+      ErrorHandler.logDebug('Batch committed successfully for signup request '
           '$requestId with hourlyFees: $doctorHourlyFees');
 
       await _createFirebaseAuthUser(
           requestData['email'],
           temporaryPassword,
           '${requestData['name']} ${requestData['surname']}',
-          requestData['roles'] ?? [requestData['role']]
-      );
+          requestData['roles'] ?? [requestData['role']]);
 
       return true;
     } catch (e) {
@@ -319,15 +324,14 @@ class SignupRequestRepository {
     }
   }
 
-  Future<bool> rejectSignupRequestWithReason(String requestId, String reason) async {
+  Future<bool> rejectSignupRequestWithReason(
+      String requestId, String reason) async {
     try {
-      await _firestore
-          .collection(_collectionPath)
-          .doc(requestId)
-          .update({
+      await _firestore.collection(_collectionPath).doc(requestId).update({
         'status': 'rejected',
         'processedAt': FieldValue.serverTimestamp(),
-        'deleteAt': Timestamp.fromDate(DateTime.now().add(const Duration(days: 30))),
+        'deleteAt':
+            Timestamp.fromDate(DateTime.now().add(const Duration(days: 30))),
         'rejectionReason': reason,
       });
 
@@ -351,18 +355,13 @@ class SignupRequestRepository {
       ErrorHandler.logError('Error checking detailed email existence', e);
       throw AppException(
           'Unable to verify email availability. Please try again later.',
-          originalError: e
-      );
+          originalError: e);
     }
   }
 
   /// UPDATED: Create Firebase Auth user with role support
   Future<void> _createFirebaseAuthUser(
-      String email,
-      String password,
-      String displayName,
-      dynamic roles
-      ) async {
+      String email, String password, String displayName, dynamic roles) async {
     try {
       // Normalize roles to List<String>
       List<String> rolesList;
@@ -381,11 +380,12 @@ class SignupRequestRepository {
         'displayName': displayName,
         'roles': rolesList,
         'createdAt': FieldValue.serverTimestamp(),
-        'status': 'approved',  // ✅ L'utente è già stato creato con successo
+        'status': 'approved', // ✅ L'utente è già stato creato con successo
         'processedAt': FieldValue.serverTimestamp(),
       });
 
-      ErrorHandler.logDebug('Created auth_creation_requests record with approved status for $email');
+      ErrorHandler.logDebug(
+          'Created auth_creation_requests record with approved status for $email');
     } catch (e) {
       ErrorHandler.logError('Error creating auth_creation_requests record', e);
       rethrow;
@@ -433,10 +433,8 @@ class SignupRequestRepository {
       return result;
     } catch (e) {
       ErrorHandler.logError('Unexpected error checking email', e);
-      throw AppException(
-          'Error checking email availability: ${e.toString()}',
-          originalError: e
-      );
+      throw AppException('Error checking email availability: ${e.toString()}',
+          originalError: e);
     }
   }
 
@@ -449,7 +447,8 @@ class SignupRequestRepository {
       if (roles.contains('NUTRITIONIST') || roles.contains('PSYCHOLOGIST')) {
         final numeroAlbo = requestData['numero_iscrizione_albo'] as String?;
         if (numeroAlbo == null || numeroAlbo.isEmpty) {
-          ErrorHandler.logWarning('Missing numero_iscrizione_albo for nutritionist/psychologist role');
+          ErrorHandler.logWarning(
+              'Missing numero_iscrizione_albo for nutritionist/psychologist role');
           return false;
         }
       }
@@ -458,7 +457,8 @@ class SignupRequestRepository {
       if (roles.contains('PERSONAL TRAINER')) {
         final numeroEnte = requestData['numero_iscrizione_ente'] as String?;
         if (numeroEnte == null || numeroEnte.isEmpty) {
-          ErrorHandler.logWarning('Missing numero_iscrizione_ente for personal trainer role');
+          ErrorHandler.logWarning(
+              'Missing numero_iscrizione_ente for personal trainer role');
           return false;
         }
       }
@@ -475,14 +475,16 @@ class SignupRequestRepository {
           try {
             hourlyFees = double.parse(requestData['hourlyFees']);
           } catch (e) {
-            ErrorHandler.logWarning('Invalid hourlyFees format: ${requestData['hourlyFees']}');
+            ErrorHandler.logWarning(
+                'Invalid hourlyFees format: ${requestData['hourlyFees']}');
             return false;
           }
         }
 
         // Validate hourly fees range
         if (hourlyFees < 0 || hourlyFees > 1000) {
-          ErrorHandler.logWarning('Invalid hourlyFees value: $hourlyFees (must be between 0 and 1000)');
+          ErrorHandler.logWarning(
+              'Invalid hourlyFees value: $hourlyFees (must be between 0 and 1000)');
           return false;
         }
       }
@@ -510,8 +512,7 @@ class SignupRequestRepository {
       ErrorHandler.logError('Error fetching signup requests by role', e);
       throw AppException(
           'Error fetching signup requests by role: ${e.toString()}',
-          originalError: e
-      );
+          originalError: e);
     }
   }
 
@@ -543,22 +544,20 @@ class SignupRequestRepository {
       ErrorHandler.logError('Error getting signup requests stats by role', e);
       throw AppException(
           'Error getting signup requests statistics: ${e.toString()}',
-          originalError: e
-      );
+          originalError: e);
     }
   }
 
   /// NEW: Batch approve multiple signup requests
   Future<List<String>> batchApproveSignupRequests(
-      List<String> requestIds,
-      String defaultPassword
-      ) async {
+      List<String> requestIds, String defaultPassword) async {
     try {
       final successfulApprovals = <String>[];
 
       for (final requestId in requestIds) {
         try {
-          final success = await approveSignupRequestWithPassword(requestId, defaultPassword);
+          final success = await approveSignupRequestWithPassword(
+              requestId, defaultPassword);
           if (success) {
             successfulApprovals.add(requestId);
           }
@@ -570,18 +569,14 @@ class SignupRequestRepository {
       return successfulApprovals;
     } catch (e) {
       ErrorHandler.logError('Error in batch approval', e);
-      throw AppException(
-          'Error in batch approval: ${e.toString()}',
-          originalError: e
-      );
+      throw AppException('Error in batch approval: ${e.toString()}',
+          originalError: e);
     }
   }
 
   /// NEW: Update signup request with additional professional information (including hourlyFees)
   Future<bool> updateSignupRequestProfessionalInfo(
-      String requestId,
-      Map<String, dynamic> professionalInfo
-      ) async {
+      String requestId, Map<String, dynamic> professionalInfo) async {
     try {
       // NEW: Validate hourly fees if being updated
       if (professionalInfo.containsKey('hourlyFees')) {
@@ -596,7 +591,8 @@ class SignupRequestRepository {
           try {
             hourlyFees = double.parse(hourlyFeesValue);
           } catch (e) {
-            ErrorHandler.logError('Invalid hourlyFees format during update: $hourlyFeesValue', e);
+            ErrorHandler.logError(
+                'Invalid hourlyFees format during update: $hourlyFeesValue', e);
             throw AppException('Invalid hourly fees format');
           }
         }
@@ -610,21 +606,20 @@ class SignupRequestRepository {
         professionalInfo['hourlyFees'] = hourlyFees;
       }
 
-      await _firestore
-          .collection(_collectionPath)
-          .doc(requestId)
-          .update({
+      await _firestore.collection(_collectionPath).doc(requestId).update({
         ...professionalInfo,
         'lastModified': FieldValue.serverTimestamp(),
       });
 
       return true;
     } catch (e) {
-      ErrorHandler.logError('Error updating signup request professional info', e);
+      ErrorHandler.logError(
+          'Error updating signup request professional info', e);
       if (e is AppException) {
         rethrow;
       }
-      throw AppException('Error updating professional information: ${e.toString()}');
+      throw AppException(
+          'Error updating professional information: ${e.toString()}');
     }
   }
 
@@ -684,8 +679,7 @@ class SignupRequestRepository {
       ErrorHandler.logError('Error getting hourly fees statistics', e);
       throw AppException(
           'Error getting hourly fees statistics: ${e.toString()}',
-          originalError: e
-      );
+          originalError: e);
     }
   }
 }
