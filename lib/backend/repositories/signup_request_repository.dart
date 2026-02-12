@@ -123,6 +123,9 @@ class SignupRequestRepository {
         // NEW: Hourly fees field
         'hourlyFees': data.hourlyFees,
 
+        // First visit duration
+        'firstVisitDurationMinutes': data.firstVisitDurationMinutes,
+
         'status': 'pending',
         'requestedAt': FieldValue.serverTimestamp(),
       };
@@ -220,7 +223,15 @@ class SignupRequestRepository {
         doctorHourlyFees = 1000.0;
       }
 
-      ErrorHandler.logDebug('Setting doctor hourly fees to: $doctorHourlyFees');
+      ErrorHandler.logDebug(
+        'Setting doctor hourly fees to: '
+        '$doctorHourlyFees',
+      );
+
+      // Parse firstVisitDurationMinutes (default 60)
+      final durationMinutes = requestData['firstVisitDurationMinutes'] is int
+          ? requestData['firstVisitDurationMinutes'] as int
+          : 60;
 
       // UPDATED: Create doctor record compatible with new Doctor model including hourlyFees
       final doctorData = {
@@ -253,8 +264,11 @@ class SignupRequestRepository {
         // Location and organization fields
         'languagesSpoken': requestData['languagesSpoken'] ?? [],
 
-        // UPDATED: Use hourly fees from signup request instead of hardcoded 0.0
+        // UPDATED: Use hourly fees from signup request
         'hourlyFees': doctorHourlyFees,
+
+        // First visit duration
+        'firstVisitDurationMinutes': durationMinutes,
         'requiredPasswordChange': true,
         'profilePictureUrl': '',
         'isActive': true,
@@ -295,7 +309,7 @@ class SignupRequestRepository {
         'description': '',
         'price': (doctorHourlyFees * 100).round(),
         'currency': 'eur',
-        'durationMinutes': 60,
+        'durationMinutes': durationMinutes,
         'modality': 'both',
         'isActive': true,
         'isMandatoryService': mandatoryServiceKey != null,

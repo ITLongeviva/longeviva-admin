@@ -35,6 +35,9 @@ class SignupRequest {
   // NEW: Hourly fees field
   final double hourlyFees; // Professional hourly rate in Euros
 
+  // First visit duration in minutes (default 60)
+  final int firstVisitDurationMinutes;
+
   // Status fields - UNCHANGED
   final String status; // 'pending', 'approved', 'rejected'
   final DateTime requestedAt;
@@ -73,6 +76,9 @@ class SignupRequest {
     // NEW: Hourly fees with default
     this.hourlyFees = 0.0,
 
+    // First visit duration (default 60 minutes)
+    this.firstVisitDurationMinutes = 60,
+
     // Status fields - UNCHANGED
     required this.status,
     required this.requestedAt,
@@ -103,13 +109,36 @@ class SignupRequest {
       if (json['hourlyFees'] is double) {
         parsedHourlyFees = json['hourlyFees'];
       } else if (json['hourlyFees'] is int) {
-        parsedHourlyFees = (json['hourlyFees'] as int).toDouble();
+        parsedHourlyFees =
+            (json['hourlyFees'] as int).toDouble();
       } else if (json['hourlyFees'] is String) {
         try {
-          parsedHourlyFees = double.parse(json['hourlyFees']);
+          parsedHourlyFees =
+              double.parse(json['hourlyFees']);
         } catch (e) {
           parsedHourlyFees = 0.0;
         }
+      }
+    }
+
+    // Parse firstVisitDurationMinutes (default 60)
+    int parsedFirstVisitDuration = 60;
+    if (json['firstVisitDurationMinutes'] != null) {
+      if (json['firstVisitDurationMinutes'] is int) {
+        parsedFirstVisitDuration =
+            json['firstVisitDurationMinutes'];
+      } else if (json['firstVisitDurationMinutes']
+          is double) {
+        parsedFirstVisitDuration =
+            (json['firstVisitDurationMinutes'] as double)
+                .toInt();
+      } else if (json['firstVisitDurationMinutes']
+          is String) {
+        parsedFirstVisitDuration =
+            int.tryParse(
+              json['firstVisitDurationMinutes'],
+            ) ??
+                60;
       }
     }
 
@@ -152,6 +181,10 @@ class SignupRequest {
 
       // NEW: Hourly fees
       hourlyFees: parsedHourlyFees,
+
+      // First visit duration
+      firstVisitDurationMinutes:
+          parsedFirstVisitDuration,
 
       // Status fields - UNCHANGED
       status: json['status'] ?? 'pending',
@@ -208,6 +241,10 @@ class SignupRequest {
       // NEW: Hourly fees
       'hourlyFees': hourlyFees,
 
+      // First visit duration
+      'firstVisitDurationMinutes':
+          firstVisitDurationMinutes,
+
       // Status fields - UNCHANGED
       'status': status,
       'requestedAt': requestedAt.toIso8601String(),
@@ -249,6 +286,9 @@ class SignupRequest {
     // NEW: Hourly fees
     double? hourlyFees,
 
+    // First visit duration
+    int? firstVisitDurationMinutes,
+
     // Status fields
     String? status,
     DateTime? requestedAt,
@@ -286,6 +326,11 @@ class SignupRequest {
 
       // NEW: Hourly fees
       hourlyFees: hourlyFees ?? this.hourlyFees,
+
+      // First visit duration
+      firstVisitDurationMinutes:
+          firstVisitDurationMinutes ??
+              this.firstVisitDurationMinutes,
 
       // Status fields
       status: status ?? this.status,
@@ -437,6 +482,8 @@ class SignupRequest {
       qualificationValidity: signupData.qualificationValidity,
       // NEW: Include hourly fees from signup data
       hourlyFees: signupData.hourlyFees,
+      firstVisitDurationMinutes:
+          signupData.firstVisitDurationMinutes,
       status: status,
       requestedAt: DateTime.now(),
     );
@@ -444,7 +491,12 @@ class SignupRequest {
 
   @override
   String toString() {
-    return 'SignupRequest{id: $id, roles: $roles, name: $name, surname: $surname, email: $email, status: $status, hourlyFees: $hourlyFees}';
+    return 'SignupRequest{id: $id, roles: $roles, '
+        'name: $name, surname: $surname, '
+        'email: $email, status: $status, '
+        'hourlyFees: $hourlyFees, '
+        'firstVisitDurationMinutes: '
+        '$firstVisitDurationMinutes}';
   }
 
   @override
@@ -456,16 +508,19 @@ class SignupRequest {
         other.name == name &&
         other.surname == surname &&
         other.email == email &&
-        other.hourlyFees == hourlyFees;
+        other.hourlyFees == hourlyFees &&
+        other.firstVisitDurationMinutes ==
+            firstVisitDurationMinutes;
   }
 
   @override
   int get hashCode {
     return id.hashCode ^
-    roles.hashCode ^
-    name.hashCode ^
-    surname.hashCode ^
-    email.hashCode ^
-    hourlyFees.hashCode;
+        roles.hashCode ^
+        name.hashCode ^
+        surname.hashCode ^
+        email.hashCode ^
+        hourlyFees.hashCode ^
+        firstVisitDurationMinutes.hashCode;
   }
 }

@@ -28,6 +28,9 @@ class SignupData {
   // NEW: Hourly fees field
   final double hourlyFees; // Professional hourly rate
 
+  // First visit duration in minutes (default 60)
+  final int firstVisitDurationMinutes;
+
   SignupData({
     required this.roles, // UPDATED: Now requires list of roles
     required this.name,
@@ -56,6 +59,9 @@ class SignupData {
 
     // NEW: Hourly fees with default value
     this.hourlyFees = 0.0,
+
+    // First visit duration (default 60 minutes)
+    this.firstVisitDurationMinutes = 60,
   });
 
   // LEGACY: Constructor for backward compatibility with single role
@@ -87,6 +93,9 @@ class SignupData {
 
     // NEW: Hourly fees
     this.hourlyFees = 0.0,
+
+    // First visit duration (default 60 minutes)
+    this.firstVisitDurationMinutes = 60,
   }) : roles = [role]; // Convert single role to list
 
   // NEW: Helper methods for role checking
@@ -195,6 +204,9 @@ class SignupData {
 
     // NEW: Hourly fees
     double? hourlyFees,
+
+    // First visit duration
+    int? firstVisitDurationMinutes,
   }) {
     return SignupData(
       roles: roles ?? this.roles,
@@ -224,6 +236,11 @@ class SignupData {
 
       // NEW: Hourly fees
       hourlyFees: hourlyFees ?? this.hourlyFees,
+
+      // First visit duration
+      firstVisitDurationMinutes:
+          firstVisitDurationMinutes ??
+              this.firstVisitDurationMinutes,
     );
   }
 
@@ -267,6 +284,8 @@ class SignupData {
 
       // UPDATED: Use actual hourly fees instead of default 0.0
       'hourlyFees': hourlyFees,
+      'firstVisitDurationMinutes':
+          firstVisitDurationMinutes,
       'requiredPasswordChange': true,
       'isActive': true,
       'isAlive': true,
@@ -305,8 +324,29 @@ class SignupData {
           ? formData['qualificationValidity']
           : null,
       // NEW: Parse hourly fees
-      hourlyFees: _parseDoubleFromFormData(formData['hourlyFees']),
+      hourlyFees: _parseDoubleFromFormData(
+        formData['hourlyFees'],
+      ),
+      firstVisitDurationMinutes:
+          _parseIntFromFormData(
+            formData['firstVisitDurationMinutes'],
+            defaultValue: 60,
+          ),
     );
+  }
+
+  /// Helper to parse int from form data with default.
+  static int _parseIntFromFormData(
+    dynamic value, {
+    int defaultValue = 0,
+  }) {
+    if (value == null) return defaultValue;
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) {
+      return int.tryParse(value) ?? defaultValue;
+    }
+    return defaultValue;
   }
 
   // NEW: Helper method to parse double from form data
@@ -326,7 +366,12 @@ class SignupData {
 
   @override
   String toString() {
-    return 'SignupData{roles: $roles, name: $name, surname: $surname, email: $email, cityOfWork: $cityOfWork, hourlyFees: $hourlyFees}';
+    return 'SignupData{roles: $roles, name: $name, '
+        'surname: $surname, email: $email, '
+        'cityOfWork: $cityOfWork, '
+        'hourlyFees: $hourlyFees, '
+        'firstVisitDurationMinutes: '
+        '$firstVisitDurationMinutes}';
   }
 
   @override
@@ -338,16 +383,19 @@ class SignupData {
         other.surname == surname &&
         other.email == email &&
         other.fiscalCode == fiscalCode &&
-        other.hourlyFees == hourlyFees;
+        other.hourlyFees == hourlyFees &&
+        other.firstVisitDurationMinutes ==
+            firstVisitDurationMinutes;
   }
 
   @override
   int get hashCode {
     return roles.hashCode ^
-    name.hashCode ^
-    surname.hashCode ^
-    email.hashCode ^
-    fiscalCode.hashCode ^
-    hourlyFees.hashCode;
+        name.hashCode ^
+        surname.hashCode ^
+        email.hashCode ^
+        fiscalCode.hashCode ^
+        hourlyFees.hashCode ^
+        firstVisitDurationMinutes.hashCode;
   }
 }
