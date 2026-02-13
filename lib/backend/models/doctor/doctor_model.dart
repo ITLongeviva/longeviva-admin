@@ -32,6 +32,7 @@ class Doctor { //Practioner
   final String vatNumber; //Practitioner.identifier[system=vatNumber]
   final double hourlyFees; // Potrebbe servire una nuova estensione
   final bool requiredPasswordChange;
+  final bool hasCompletedServiceSetup;
   final DateTime? signupApprovalDate; // Added to track when account was created
   final String? signupRequestId; // Reference to original signup request
   final String profilePictureUrl; // Added profile picture URL in FHIR Practitioner.photo[0].url
@@ -73,6 +74,7 @@ class Doctor { //Practioner
     required this.vatNumber,
     required this.hourlyFees,
     this.requiredPasswordChange = false,
+    this.hasCompletedServiceSetup = false,
     this.signupApprovalDate,
     this.signupRequestId,
     this.profilePictureUrl = '', // Default to empty string
@@ -119,6 +121,8 @@ class Doctor { //Practioner
       vatNumber: json['vatNumber'] ?? '',
       hourlyFees: (json['hourlyFees'] ?? 0.0).toDouble(),
       requiredPasswordChange: json['requiredPasswordChange'] ?? false,
+      hasCompletedServiceSetup:
+          json['hasCompletedServiceSetup'] ?? false,
       signupApprovalDate: json['signupApprovalDate'] != null ?
       (json['signupApprovalDate'] is Timestamp ?
       (json['signupApprovalDate'] as Timestamp).toDate() :
@@ -184,6 +188,8 @@ class Doctor { //Practioner
       'vatNumber': vatNumber,
       'hourlyFees': hourlyFees,
       'requiredPasswordChange': requiredPasswordChange,
+      'hasCompletedServiceSetup':
+          hasCompletedServiceSetup,
       'signupApprovalDate': signupApprovalDate != null ? Timestamp.fromDate(signupApprovalDate!) : null,
       'signupRequestId': signupRequestId,
       'profilePictureUrl': profilePictureUrl,
@@ -247,6 +253,7 @@ class Doctor { //Practioner
     String? vatNumber,
     double? hourlyFees,
     bool? requiredPasswordChange,
+    bool? hasCompletedServiceSetup,
     DateTime? signupApprovalDate,
     String? signupRequestId,
     String? profilePictureUrl,
@@ -279,8 +286,13 @@ class Doctor { //Practioner
       roles: roles ?? this.roles,
       vatNumber: vatNumber ?? this.vatNumber,
       hourlyFees: hourlyFees ?? this.hourlyFees,
-      requiredPasswordChange: requiredPasswordChange ?? this.requiredPasswordChange,
-      signupApprovalDate: signupApprovalDate ?? this.signupApprovalDate,
+      requiredPasswordChange: requiredPasswordChange ??
+          this.requiredPasswordChange,
+      hasCompletedServiceSetup:
+          hasCompletedServiceSetup ??
+              this.hasCompletedServiceSetup,
+      signupApprovalDate: signupApprovalDate ??
+          this.signupApprovalDate,
       signupRequestId: signupRequestId ?? this.signupRequestId,
       profilePictureUrl: profilePictureUrl ?? this.profilePictureUrl,
       // New fields
