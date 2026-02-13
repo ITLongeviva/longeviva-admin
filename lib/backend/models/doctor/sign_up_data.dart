@@ -16,7 +16,8 @@ class SignupData {
   final List<String> languagesSpoken;
 
   // NEW: Professional registration fields (based on role)
-  final String? numero_iscrizione_albo; // For nutritionists, psychologists, etc.
+  final String?
+      numero_iscrizione_albo; // For nutritionists, psychologists, etc.
   final String? numero_iscrizione_ente; // For personal trainers
   final String issuer; // Professional qualification issuer
 
@@ -27,6 +28,12 @@ class SignupData {
 
   // NEW: Hourly fees field
   final double hourlyFees; // Professional hourly rate
+
+  // First visit duration in minutes (default 60)
+  final int firstVisitDurationMinutes;
+
+  // First visit modality (default 'in_person')
+  final String firstVisitModality;
 
   SignupData({
     required this.roles, // UPDATED: Now requires list of roles
@@ -40,7 +47,6 @@ class SignupData {
     required this.email,
     required this.vatNumber,
     required this.fiscalCode,
-
     this.address = '',
     this.languagesSpoken = const [],
 
@@ -56,6 +62,12 @@ class SignupData {
 
     // NEW: Hourly fees with default value
     this.hourlyFees = 0.0,
+
+    // First visit duration (default 60 minutes)
+    this.firstVisitDurationMinutes = 60,
+
+    // First visit modality
+    this.firstVisitModality = 'in_person',
   });
 
   // LEGACY: Constructor for backward compatibility with single role
@@ -71,7 +83,6 @@ class SignupData {
     required this.email,
     required this.vatNumber,
     required this.fiscalCode,
-
     this.address = '',
     this.languagesSpoken = const [],
 
@@ -87,6 +98,12 @@ class SignupData {
 
     // NEW: Hourly fees
     this.hourlyFees = 0.0,
+
+    // First visit duration (default 60 minutes)
+    this.firstVisitDurationMinutes = 60,
+
+    // First visit modality
+    this.firstVisitModality = 'in_person',
   }) : roles = [role]; // Convert single role to list
 
   // NEW: Helper methods for role checking
@@ -153,13 +170,15 @@ class SignupData {
     // Role-specific validation
     if (isNutritionist || isPsychologist) {
       if (numero_iscrizione_albo == null || numero_iscrizione_albo!.isEmpty) {
-        errors.add('Professional registration number (albo) is required for this role');
+        errors.add(
+            'Professional registration number (albo) is required for this role');
       }
     }
 
     if (isPersonalTrainer) {
       if (numero_iscrizione_ente == null || numero_iscrizione_ente!.isEmpty) {
-        errors.add('Professional registration number (ente) is required for personal trainers');
+        errors.add(
+            'Professional registration number (ente) is required for personal trainers');
       }
     }
 
@@ -179,7 +198,6 @@ class SignupData {
     String? email,
     String? vatNumber,
     String? fiscalCode,
-
     String? address,
     List<String>? languagesSpoken,
 
@@ -195,6 +213,12 @@ class SignupData {
 
     // NEW: Hourly fees
     double? hourlyFees,
+
+    // First visit duration
+    int? firstVisitDurationMinutes,
+
+    // First visit modality
+    String? firstVisitModality,
   }) {
     return SignupData(
       roles: roles ?? this.roles,
@@ -213,17 +237,27 @@ class SignupData {
       languagesSpoken: languagesSpoken ?? this.languagesSpoken,
 
       // Professional registration fields
-      numero_iscrizione_albo: numero_iscrizione_albo ?? this.numero_iscrizione_albo,
-      numero_iscrizione_ente: numero_iscrizione_ente ?? this.numero_iscrizione_ente,
+      numero_iscrizione_albo:
+          numero_iscrizione_albo ?? this.numero_iscrizione_albo,
+      numero_iscrizione_ente:
+          numero_iscrizione_ente ?? this.numero_iscrizione_ente,
       issuer: issuer ?? this.issuer,
 
       // Optional professional fields
       specialty: specialty ?? this.specialty,
       areaOfInterest: areaOfInterest ?? this.areaOfInterest,
-      qualificationValidity: qualificationValidity ?? this.qualificationValidity,
+      qualificationValidity:
+          qualificationValidity ?? this.qualificationValidity,
 
       // NEW: Hourly fees
       hourlyFees: hourlyFees ?? this.hourlyFees,
+
+      // First visit duration
+      firstVisitDurationMinutes:
+          firstVisitDurationMinutes ?? this.firstVisitDurationMinutes,
+
+      // First visit modality
+      firstVisitModality: firstVisitModality ?? this.firstVisitModality,
     );
   }
 
@@ -267,6 +301,8 @@ class SignupData {
 
       // UPDATED: Use actual hourly fees instead of default 0.0
       'hourlyFees': hourlyFees,
+      'firstVisitDurationMinutes': firstVisitDurationMinutes,
+      'firstVisitModality': firstVisitModality,
       'requiredPasswordChange': true,
       'isActive': true,
       'isAlive': true,
@@ -283,9 +319,8 @@ class SignupData {
       name: formData['name']?.toString() ?? '',
       surname: formData['surname']?.toString() ?? '',
       sex: formData['sex']?.toString() ?? '',
-      birthdate: formData['birthdate'] is DateTime
-          ? formData['birthdate']
-          : null,
+      birthdate:
+          formData['birthdate'] is DateTime ? formData['birthdate'] : null,
       phoneNumber: formData['phoneNumber']?.toString() ?? '',
       cityOfWork: formData['cityOfWork']?.toString() ?? '',
       countryOfWork: formData['countryOfWork']?.toString() ?? 'Italy',
@@ -305,8 +340,30 @@ class SignupData {
           ? formData['qualificationValidity']
           : null,
       // NEW: Parse hourly fees
-      hourlyFees: _parseDoubleFromFormData(formData['hourlyFees']),
+      hourlyFees: _parseDoubleFromFormData(
+        formData['hourlyFees'],
+      ),
+      firstVisitDurationMinutes: _parseIntFromFormData(
+        formData['firstVisitDurationMinutes'],
+        defaultValue: 60,
+      ),
+      firstVisitModality:
+          formData['firstVisitModality'] as String? ?? 'in_person',
     );
+  }
+
+  /// Helper to parse int from form data with default.
+  static int _parseIntFromFormData(
+    dynamic value, {
+    int defaultValue = 0,
+  }) {
+    if (value == null) return defaultValue;
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) {
+      return int.tryParse(value) ?? defaultValue;
+    }
+    return defaultValue;
   }
 
   // NEW: Helper method to parse double from form data
@@ -326,7 +383,14 @@ class SignupData {
 
   @override
   String toString() {
-    return 'SignupData{roles: $roles, name: $name, surname: $surname, email: $email, cityOfWork: $cityOfWork, hourlyFees: $hourlyFees}';
+    return 'SignupData{roles: $roles, name: $name, '
+        'surname: $surname, email: $email, '
+        'cityOfWork: $cityOfWork, '
+        'hourlyFees: $hourlyFees, '
+        'firstVisitDurationMinutes: '
+        '$firstVisitDurationMinutes, '
+        'firstVisitModality: '
+        '$firstVisitModality}';
   }
 
   @override
@@ -338,16 +402,20 @@ class SignupData {
         other.surname == surname &&
         other.email == email &&
         other.fiscalCode == fiscalCode &&
-        other.hourlyFees == hourlyFees;
+        other.hourlyFees == hourlyFees &&
+        other.firstVisitDurationMinutes == firstVisitDurationMinutes &&
+        other.firstVisitModality == firstVisitModality;
   }
 
   @override
   int get hashCode {
     return roles.hashCode ^
-    name.hashCode ^
-    surname.hashCode ^
-    email.hashCode ^
-    fiscalCode.hashCode ^
-    hourlyFees.hashCode;
+        name.hashCode ^
+        surname.hashCode ^
+        email.hashCode ^
+        fiscalCode.hashCode ^
+        hourlyFees.hashCode ^
+        firstVisitDurationMinutes.hashCode ^
+        firstVisitModality.hashCode;
   }
 }
