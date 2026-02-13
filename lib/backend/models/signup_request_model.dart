@@ -38,6 +38,9 @@ class SignupRequest {
   // First visit duration in minutes (default 60)
   final int firstVisitDurationMinutes;
 
+  // First visit modality (default 'in_person')
+  final String firstVisitModality;
+
   // Status fields - UNCHANGED
   final String status; // 'pending', 'approved', 'rejected'
   final DateTime requestedAt;
@@ -79,6 +82,9 @@ class SignupRequest {
     // First visit duration (default 60 minutes)
     this.firstVisitDurationMinutes = 60,
 
+    // First visit modality
+    this.firstVisitModality = 'in_person',
+
     // Status fields - UNCHANGED
     required this.status,
     required this.requestedAt,
@@ -109,12 +115,10 @@ class SignupRequest {
       if (json['hourlyFees'] is double) {
         parsedHourlyFees = json['hourlyFees'];
       } else if (json['hourlyFees'] is int) {
-        parsedHourlyFees =
-            (json['hourlyFees'] as int).toDouble();
+        parsedHourlyFees = (json['hourlyFees'] as int).toDouble();
       } else if (json['hourlyFees'] is String) {
         try {
-          parsedHourlyFees =
-              double.parse(json['hourlyFees']);
+          parsedHourlyFees = double.parse(json['hourlyFees']);
         } catch (e) {
           parsedHourlyFees = 0.0;
         }
@@ -125,34 +129,35 @@ class SignupRequest {
     int parsedFirstVisitDuration = 60;
     if (json['firstVisitDurationMinutes'] != null) {
       if (json['firstVisitDurationMinutes'] is int) {
+        parsedFirstVisitDuration = json['firstVisitDurationMinutes'];
+      } else if (json['firstVisitDurationMinutes'] is double) {
         parsedFirstVisitDuration =
-            json['firstVisitDurationMinutes'];
-      } else if (json['firstVisitDurationMinutes']
-          is double) {
-        parsedFirstVisitDuration =
-            (json['firstVisitDurationMinutes'] as double)
-                .toInt();
-      } else if (json['firstVisitDurationMinutes']
-          is String) {
-        parsedFirstVisitDuration =
-            int.tryParse(
+            (json['firstVisitDurationMinutes'] as double).toInt();
+      } else if (json['firstVisitDurationMinutes'] is String) {
+        parsedFirstVisitDuration = int.tryParse(
               json['firstVisitDurationMinutes'],
             ) ??
-                60;
+            60;
       }
     }
+
+    // Parse firstVisitModality (default 'in_person')
+    final parsedModality = json['firstVisitModality'] as String? ?? 'in_person';
 
     return SignupRequest(
       id: docId,
       roles: parsedRoles, // NEW: Multiple roles
-      role: legacyRole ?? (parsedRoles.isNotEmpty ? parsedRoles.first : null), // LEGACY: Backward compatibility
+      role: legacyRole ??
+          (parsedRoles.isNotEmpty
+              ? parsedRoles.first
+              : null), // LEGACY: Backward compatibility
       name: json['name'] ?? '',
       surname: json['surname'] ?? '',
       sex: json['sex'] ?? '',
       birthdate: json['birthdate'] != null
           ? (json['birthdate'] is Timestamp
-          ? (json['birthdate'] as Timestamp).toDate()
-          : DateTime.parse(json['birthdate']))
+              ? (json['birthdate'] as Timestamp).toDate()
+              : DateTime.parse(json['birthdate']))
           : null,
       specialty: json['specialty'] ?? '',
       phoneNumber: json['phoneNumber'] ?? '',
@@ -175,33 +180,35 @@ class SignupRequest {
       areaOfInterest: json['areaOfInterest'] as String?,
       qualificationValidity: json['qualificationValidity'] != null
           ? (json['qualificationValidity'] is Timestamp
-          ? (json['qualificationValidity'] as Timestamp).toDate()
-          : DateTime.parse(json['qualificationValidity']))
+              ? (json['qualificationValidity'] as Timestamp).toDate()
+              : DateTime.parse(json['qualificationValidity']))
           : null,
 
       // NEW: Hourly fees
       hourlyFees: parsedHourlyFees,
 
       // First visit duration
-      firstVisitDurationMinutes:
-          parsedFirstVisitDuration,
+      firstVisitDurationMinutes: parsedFirstVisitDuration,
+
+      // First visit modality
+      firstVisitModality: parsedModality,
 
       // Status fields - UNCHANGED
       status: json['status'] ?? 'pending',
       requestedAt: json['requestedAt'] != null
           ? (json['requestedAt'] is Timestamp
-          ? (json['requestedAt'] as Timestamp).toDate()
-          : DateTime.parse(json['requestedAt']))
+              ? (json['requestedAt'] as Timestamp).toDate()
+              : DateTime.parse(json['requestedAt']))
           : DateTime.now(),
       processedAt: json['processedAt'] != null
           ? (json['processedAt'] is Timestamp
-          ? (json['processedAt'] as Timestamp).toDate()
-          : DateTime.parse(json['processedAt']))
+              ? (json['processedAt'] as Timestamp).toDate()
+              : DateTime.parse(json['processedAt']))
           : null,
       deleteAt: json['deleteAt'] != null
           ? (json['deleteAt'] is Timestamp
-          ? (json['deleteAt'] as Timestamp).toDate()
-          : DateTime.parse(json['deleteAt']))
+              ? (json['deleteAt'] as Timestamp).toDate()
+              : DateTime.parse(json['deleteAt']))
           : null,
       temporaryPassword: json['temporaryPassword'],
       rejectionReason: json['rejectionReason'],
@@ -213,7 +220,10 @@ class SignupRequest {
     return {
       // UPDATED: Include both formats for compatibility
       'roles': roles, // NEW: Multiple roles
-      'role': role ?? (roles.isNotEmpty ? roles.first : null), // LEGACY: Single role for backward compatibility
+      'role': role ??
+          (roles.isNotEmpty
+              ? roles.first
+              : null), // LEGACY: Single role for backward compatibility
 
       'name': name,
       'surname': surname,
@@ -242,8 +252,10 @@ class SignupRequest {
       'hourlyFees': hourlyFees,
 
       // First visit duration
-      'firstVisitDurationMinutes':
-          firstVisitDurationMinutes,
+      'firstVisitDurationMinutes': firstVisitDurationMinutes,
+
+      // First visit modality
+      'firstVisitModality': firstVisitModality,
 
       // Status fields - UNCHANGED
       'status': status,
@@ -289,6 +301,9 @@ class SignupRequest {
     // First visit duration
     int? firstVisitDurationMinutes,
 
+    // First visit modality
+    String? firstVisitModality,
+
     // Status fields
     String? status,
     DateTime? requestedAt,
@@ -322,15 +337,18 @@ class SignupRequest {
       numeroIscrizioneEnte: numeroIscrizioneEnte ?? this.numeroIscrizioneEnte,
       issuer: issuer ?? this.issuer,
       areaOfInterest: areaOfInterest ?? this.areaOfInterest,
-      qualificationValidity: qualificationValidity ?? this.qualificationValidity,
+      qualificationValidity:
+          qualificationValidity ?? this.qualificationValidity,
 
       // NEW: Hourly fees
       hourlyFees: hourlyFees ?? this.hourlyFees,
 
       // First visit duration
       firstVisitDurationMinutes:
-          firstVisitDurationMinutes ??
-              this.firstVisitDurationMinutes,
+          firstVisitDurationMinutes ?? this.firstVisitDurationMinutes,
+
+      // First visit modality
+      firstVisitModality: firstVisitModality ?? this.firstVisitModality,
 
       // Status fields
       status: status ?? this.status,
@@ -359,7 +377,8 @@ class SignupRequest {
   }
 
   // NEW: Check if this request requires professional registration
-  bool get requiresProfessionalRegistration => isNutritionist || isPsychologist || isPersonalTrainer;
+  bool get requiresProfessionalRegistration =>
+      isNutritionist || isPsychologist || isPersonalTrainer;
 
   // NEW: Get role-specific registration type
   String get registrationType {
@@ -437,12 +456,14 @@ class SignupRequest {
       final roleNames = <String>[];
       if (isNutritionist) roleNames.add('Nutritionist');
       if (isPsychologist) roleNames.add('Psychologist');
-      errors.add('Professional registration number (albo) is required for ${roleNames.join(" and ")} role(s)');
+      errors.add(
+          'Professional registration number (albo) is required for ${roleNames.join(" and ")} role(s)');
     }
 
     if (isPersonalTrainer &&
         (numeroIscrizioneEnte == null || numeroIscrizioneEnte!.isEmpty)) {
-      errors.add('Professional registration number (ente) is required for Personal Trainer role');
+      errors.add(
+          'Professional registration number (ente) is required for Personal Trainer role');
     }
 
     if (requiresProfessionalRegistration && issuer.isEmpty) {
@@ -454,14 +475,16 @@ class SignupRequest {
 
   // UPDATED: Create from SignupData with hourlyFees
   factory SignupRequest.fromSignupData(
-      SignupData signupData,
-      String requestId,
-      String status,
-      ) {
+    SignupData signupData,
+    String requestId,
+    String status,
+  ) {
     return SignupRequest(
       id: requestId,
       roles: signupData.roles,
-      role: signupData.roles.isNotEmpty ? signupData.roles.first : null, // Backward compatibility
+      role: signupData.roles.isNotEmpty
+          ? signupData.roles.first
+          : null, // Backward compatibility
       name: signupData.name,
       surname: signupData.surname,
       sex: signupData.sex,
@@ -482,8 +505,8 @@ class SignupRequest {
       qualificationValidity: signupData.qualificationValidity,
       // NEW: Include hourly fees from signup data
       hourlyFees: signupData.hourlyFees,
-      firstVisitDurationMinutes:
-          signupData.firstVisitDurationMinutes,
+      firstVisitDurationMinutes: signupData.firstVisitDurationMinutes,
+      firstVisitModality: signupData.firstVisitModality,
       status: status,
       requestedAt: DateTime.now(),
     );
@@ -496,7 +519,9 @@ class SignupRequest {
         'email: $email, status: $status, '
         'hourlyFees: $hourlyFees, '
         'firstVisitDurationMinutes: '
-        '$firstVisitDurationMinutes}';
+        '$firstVisitDurationMinutes, '
+        'firstVisitModality: '
+        '$firstVisitModality}';
   }
 
   @override
@@ -509,8 +534,8 @@ class SignupRequest {
         other.surname == surname &&
         other.email == email &&
         other.hourlyFees == hourlyFees &&
-        other.firstVisitDurationMinutes ==
-            firstVisitDurationMinutes;
+        other.firstVisitDurationMinutes == firstVisitDurationMinutes &&
+        other.firstVisitModality == firstVisitModality;
   }
 
   @override
@@ -521,6 +546,7 @@ class SignupRequest {
         surname.hashCode ^
         email.hashCode ^
         hourlyFees.hashCode ^
-        firstVisitDurationMinutes.hashCode;
+        firstVisitDurationMinutes.hashCode ^
+        firstVisitModality.hashCode;
   }
 }

@@ -126,6 +126,9 @@ class SignupRequestRepository {
         // First visit duration
         'firstVisitDurationMinutes': data.firstVisitDurationMinutes,
 
+        // First visit modality
+        'firstVisitModality': data.firstVisitModality,
+
         'status': 'pending',
         'requestedAt': FieldValue.serverTimestamp(),
       };
@@ -267,8 +270,10 @@ class SignupRequestRepository {
         // UPDATED: Use hourly fees from signup request
         'hourlyFees': doctorHourlyFees,
 
-        // First visit duration
+        // First visit duration and modality
         'firstVisitDurationMinutes': durationMinutes,
+        'firstVisitModality':
+            requestData['firstVisitModality'] as String? ?? 'in_person',
         'requiredPasswordChange': true,
         'profilePictureUrl': '',
         'isActive': true,
@@ -310,7 +315,7 @@ class SignupRequestRepository {
         'price': (doctorHourlyFees * 100).round(),
         'currency': 'eur',
         'durationMinutes': durationMinutes,
-        'modality': 'both',
+        'modality': requestData['firstVisitModality'] as String? ?? 'in_person',
         'isActive': true,
         'isMandatoryService': mandatoryServiceKey != null,
         'mandatoryServiceKey': mandatoryServiceKey,
