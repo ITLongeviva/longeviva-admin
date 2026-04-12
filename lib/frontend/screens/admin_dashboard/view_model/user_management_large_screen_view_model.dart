@@ -83,9 +83,9 @@ class _UserManagementLargeScreenViewModelState extends State<UserManagementLarge
     }
 
     const roleMap = {
-      'NUTRITIONIST': 'Nutrizionista',
-      'PERSONAL TRAINER': 'Personal Trainer',
-      'PSYCHOLOGIST': 'Psicologo',
+      'NUTRITIONIST': 'Professionista salute alimentare',
+      'PERSONAL TRAINER': 'Professionista salute motoria',
+      'PSYCHOLOGIST': 'Professionista salute mentale',
     };
 
     return roles.map((role) => roleMap[role.toUpperCase()] ?? role).toList();

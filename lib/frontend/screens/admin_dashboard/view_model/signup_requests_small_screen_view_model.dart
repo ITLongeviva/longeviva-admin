@@ -348,7 +348,7 @@ class _SignupRequestsSmallScreenViewModelState
                 children: [
                   Icon(Icons.restaurant_menu, size: 20, color: Colors.green),
                   SizedBox(width: 8),
-                  Text('Nutritionist',
+                  Text('Prof. salute alimentare',
                       style: TextStyle(fontFamily: 'Montserrat')),
                 ],
               ),
@@ -359,7 +359,7 @@ class _SignupRequestsSmallScreenViewModelState
                 children: [
                   Icon(Icons.fitness_center, size: 20, color: Colors.orange),
                   SizedBox(width: 8),
-                  Text('Personal Trainer',
+                  Text('Prof. salute motoria',
                       style: TextStyle(fontFamily: 'Montserrat')),
                 ],
               ),
@@ -370,7 +370,7 @@ class _SignupRequestsSmallScreenViewModelState
                 children: [
                   Icon(Icons.psychology, size: 20, color: Colors.purple),
                   SizedBox(width: 8),
-                  Text('Psychologist',
+                  Text('Prof. salute mentale',
                       style: TextStyle(fontFamily: 'Montserrat')),
                 ],
               ),

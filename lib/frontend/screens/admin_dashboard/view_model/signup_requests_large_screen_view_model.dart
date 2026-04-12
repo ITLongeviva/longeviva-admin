@@ -334,7 +334,7 @@ class _SignupRequestsLargeScreenViewModelState extends State<SignupRequestsLarge
                 children: [
                   Icon(Icons.restaurant_menu, size: 20, color: Colors.green),
                   SizedBox(width: 8),
-                  Text('Nutritionist', style: TextStyle(fontFamily: 'Montserrat')),
+                  Text('Prof. salute alimentare', style: TextStyle(fontFamily: 'Montserrat')),
                 ],
               ),
             ),
@@ -344,7 +344,7 @@ class _SignupRequestsLargeScreenViewModelState extends State<SignupRequestsLarge
                 children: [
                   Icon(Icons.fitness_center, size: 20, color: Colors.orange),
                   SizedBox(width: 8),
-                  Text('Personal Trainer', style: TextStyle(fontFamily: 'Montserrat')),
+                  Text('Prof. salute motoria', style: TextStyle(fontFamily: 'Montserrat')),
                 ],
               ),
             ),
@@ -354,7 +354,7 @@ class _SignupRequestsLargeScreenViewModelState extends State<SignupRequestsLarge
                 children: [
                   Icon(Icons.psychology, size: 20, color: Colors.purple),
                   SizedBox(width: 8),
-                  Text('Psychologist', style: TextStyle(fontFamily: 'Montserrat')),
+                  Text('Prof. salute mentale', style: TextStyle(fontFamily: 'Montserrat')),
                 ],
               ),
             ),

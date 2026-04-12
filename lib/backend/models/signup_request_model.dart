@@ -393,9 +393,9 @@ class SignupRequest {
   // NEW: Get user-friendly role names
   List<String> get roleDisplayNames {
     const roleMap = {
-      'NUTRITIONIST': 'Nutrizionista',
-      'PERSONAL TRAINER': 'Personal Trainer',
-      'PSYCHOLOGIST': 'Psicologo',
+      'NUTRITIONIST': 'Professionista salute alimentare',
+      'PERSONAL TRAINER': 'Professionista salute motoria',
+      'PSYCHOLOGIST': 'Professionista salute mentale',
     };
     return roles.map((role) => roleMap[role] ?? role).toList();
   }
