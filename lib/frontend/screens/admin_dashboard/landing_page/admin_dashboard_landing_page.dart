@@ -86,6 +86,8 @@ class _AdminDashboardLandingPageState extends State<AdminDashboardLandingPage> {
         return 'Signup Requests';
       case 2:
         return 'User Management';
+      case 3:
+        return 'Rituali';
       default:
         return 'Dashboard';
     }

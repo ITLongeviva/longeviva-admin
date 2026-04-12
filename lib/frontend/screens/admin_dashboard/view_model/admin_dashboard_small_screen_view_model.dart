@@ -5,8 +5,9 @@ import '../../../../../shared/utils/colors.dart';
 import '../../../../backend/models/admin_model.dart';
 import '../landing_page/admin_dashboard_home_landing_page.dart';
 import '../landing_page/signup_requests_landing_page.dart';
-import '../widgets/admin_header_small.dart';
 import '../landing_page/user_management_landing_page.dart';
+import '../landing_page/rituals_analytics_landing_page.dart';
+import '../widgets/admin_header_small.dart';
 
 class AdminDashboardSmallScreenViewModel extends StatelessWidget {
   final Admin admin;
@@ -114,7 +115,13 @@ class AdminDashboardSmallScreenViewModel extends StatelessWidget {
                 title: 'User Management',
                 icon: Icons.people,
                 index: 2,
-                  context: context
+                context: context,
+              ),
+              _buildDrawerItem(
+                title: 'Rituali',
+                icon: Icons.auto_awesome,
+                index: 3,
+                context: context,
               ),
               const Divider(color: Colors.white30),
               _buildDrawerItem(
@@ -156,6 +163,7 @@ class AdminDashboardSmallScreenViewModel extends StatelessWidget {
                 AdminDashboardHome(),
                 SignupRequestsLandingPage(),
                 UsersManagementPageLandingPage(),
+                RitualsAnalyticsLandingPage(),
               ],
             ),
           ),
