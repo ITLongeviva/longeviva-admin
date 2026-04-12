@@ -722,11 +722,14 @@ class _SignupRequestsSmallScreenViewModelState
     switch (role.toUpperCase()) {
       case 'NUTRITIONIST':
       case 'NUTRIZIONISTA':
+      case 'PROFESSIONISTA SALUTE ALIMENTARE':
         return Colors.green;
       case 'PERSONAL TRAINER':
+      case 'PROFESSIONISTA SALUTE MOTORIA':
         return Colors.orange;
       case 'PSYCHOLOGIST':
       case 'PSICOLOGO':
+      case 'PROFESSIONISTA SALUTE MENTALE':
         return Colors.purple;
       case 'DOCTOR':
       case 'DOTTORE':
@@ -743,11 +746,14 @@ class _SignupRequestsSmallScreenViewModelState
     switch (role.toUpperCase()) {
       case 'NUTRITIONIST':
       case 'NUTRIZIONISTA':
+      case 'PROFESSIONISTA SALUTE ALIMENTARE':
         return Icons.restaurant_menu;
       case 'PERSONAL TRAINER':
+      case 'PROFESSIONISTA SALUTE MOTORIA':
         return Icons.fitness_center;
       case 'PSYCHOLOGIST':
       case 'PSICOLOGO':
+      case 'PROFESSIONISTA SALUTE MENTALE':
         return Icons.psychology;
       case 'DOCTOR':
       case 'DOTTORE':
