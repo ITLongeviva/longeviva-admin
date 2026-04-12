@@ -323,28 +323,25 @@ class _RitualsAnalyticsContent extends StatelessWidget {
   // ─── Category section ────────────────────────────────────────────────────────
 
   Widget _categorySection() {
-    const categoryColors = {
-      Ritual.categoryAlimentare: Colors.green,
-      Ritual.categoryMotoria: Colors.orange,
-      Ritual.categoryMentale: Colors.purple,
-      Ritual.categoryBenessere: CustomColors.verdeAbisso,
-    };
-
-    final entries = Ritual.categoryLabels.entries.toList();
+    final categoryEntries = [
+      (key: Ritual.categoryAlimentare, label: 'Salute Alimentare',  color: const Color(0xFF4CAF50)),
+      (key: Ritual.categoryMotoria,    label: 'Salute Motoria',     color: const Color(0xFFFF9800)),
+      (key: Ritual.categoryMentale,    label: 'Salute Mentale',     color: const Color(0xFF9C27B0)),
+      (key: Ritual.categoryBenessere,  label: 'Benessere Generale', color: const Color(0xFF025861)),
+    ];
 
     return _sectionCard(
       title: 'Distribuzione per categoria',
       icon: Icons.category_outlined,
       child: Column(
-        children: entries.map((entry) {
+        children: categoryEntries.map((entry) {
           final count = byCategory[entry.key] ?? 0;
           final pct = total == 0 ? 0.0 : count / total;
-          final color = categoryColors[entry.key] ?? CustomColors.verdeAbisso;
           return _barRow(
-            label: entry.value,
+            label: entry.label,
             count: count,
             pct: pct,
-            color: color,
+            color: entry.color,
           );
         }).toList(),
       ),
@@ -481,27 +478,24 @@ class _RitualsAnalyticsContent extends StatelessWidget {
   // ─── Level section ───────────────────────────────────────────────────────────
 
   Widget _levelSection() {
-    const levelColors = {
-      Ritual.levelPrincipiante: Colors.green,
-      Ritual.levelIntermedio: Colors.orange,
-      Ritual.levelAvanzato: Colors.red,
-    };
-
-    final entries = Ritual.levelLabels.entries.toList();
+    final levelEntries = [
+      (key: Ritual.levelPrincipiante, label: 'Principiante', color: const Color(0xFF4CAF50)),
+      (key: Ritual.levelIntermedio,   label: 'Intermedio',   color: const Color(0xFFFF9800)),
+      (key: Ritual.levelAvanzato,     label: 'Avanzato',     color: const Color(0xFFF44336)),
+    ];
 
     return _sectionCard(
       title: 'Per livello',
       icon: Icons.bar_chart,
       child: Column(
-        children: entries.map((entry) {
+        children: levelEntries.map((entry) {
           final count = byLevel[entry.key] ?? 0;
           final pct = total == 0 ? 0.0 : count / total;
-          final color = levelColors[entry.key] ?? Colors.grey;
           return _barRow(
-            label: entry.value,
+            label: entry.label,
             count: count,
             pct: pct,
-            color: color,
+            color: entry.color,
           );
         }).toList(),
       ),

@@ -63,8 +63,24 @@ class Ritual {
     this.imageUrl,
   });
 
-  String get categoryLabel => categoryLabels[category] ?? category;
-  String get levelLabel => levelLabels[level] ?? level;
+  String get categoryLabel {
+    switch (category) {
+      case categoryAlimentare: return 'Salute Alimentare';
+      case categoryMotoria:    return 'Salute Motoria';
+      case categoryMentale:    return 'Salute Mentale';
+      case categoryBenessere:  return 'Benessere Generale';
+      default:                 return category;
+    }
+  }
+
+  String get levelLabel {
+    switch (level) {
+      case levelPrincipiante: return 'Principiante';
+      case levelIntermedio:   return 'Intermedio';
+      case levelAvanzato:     return 'Avanzato';
+      default:                return level;
+    }
+  }
 
   String get formattedPrice =>
       price == 0.0 ? 'Gratuito' : '€${price.toStringAsFixed(price == price.roundToDouble() ? 0 : 2)}';
