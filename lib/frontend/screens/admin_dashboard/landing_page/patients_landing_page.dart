@@ -3,17 +3,30 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../backend/bloc/patients_bloc.dart';
 import '../view_model/patients_large_screen_view_model.dart';
 
-class PatientsLandingPage extends StatelessWidget {
+class PatientsLandingPage extends StatefulWidget {
   const PatientsLandingPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    context.read<PatientsBloc>().add(LoadPatients());
+  State<PatientsLandingPage> createState() => _PatientsLandingPageState();
+}
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return const PatientsLargeScreenViewModel();
-      },
-    );
+class _PatientsLandingPageState extends State<PatientsLandingPage>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    final bloc = context.read<PatientsBloc>();
+    if (bloc.state is PatientsInitial) {
+      bloc.add(LoadPatients());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return const PatientsLargeScreenViewModel();
   }
 }
