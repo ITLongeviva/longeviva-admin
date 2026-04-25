@@ -88,6 +88,8 @@ class _AdminDashboardLandingPageState extends State<AdminDashboardLandingPage> {
         return 'User Management';
       case 3:
         return 'Rituali';
+      case 4:
+        return 'Analytics Piattaforma';
       default:
         return 'Dashboard';
     }

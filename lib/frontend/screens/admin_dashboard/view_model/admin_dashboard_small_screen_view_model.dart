@@ -7,6 +7,7 @@ import '../landing_page/admin_dashboard_home_landing_page.dart';
 import '../landing_page/signup_requests_landing_page.dart';
 import '../landing_page/user_management_landing_page.dart';
 import '../landing_page/rituals_analytics_landing_page.dart';
+import '../landing_page/platform_analytics_landing_page.dart';
 import '../widgets/admin_header_small.dart';
 
 class AdminDashboardSmallScreenViewModel extends StatelessWidget {
@@ -123,6 +124,12 @@ class AdminDashboardSmallScreenViewModel extends StatelessWidget {
                 index: 3,
                 context: context,
               ),
+              _buildDrawerItem(
+                title: 'Analytics Piattaforma',
+                icon: Icons.bar_chart,
+                index: 4,
+                context: context,
+              ),
               const Divider(color: Colors.white30),
               _buildDrawerItem(
                 title: 'Logout',
@@ -164,6 +171,7 @@ class AdminDashboardSmallScreenViewModel extends StatelessWidget {
                 SignupRequestsLandingPage(),
                 UsersManagementPageLandingPage(),
                 RitualsAnalyticsLandingPage(),
+                PlatformAnalyticsLandingPage(),
               ],
             ),
           ),

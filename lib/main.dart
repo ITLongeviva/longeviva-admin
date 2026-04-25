@@ -9,6 +9,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'backend/bloc/admin_auth_bloc.dart';
 import 'backend/bloc/admin_bloc.dart';
 import 'backend/bloc/ritual_bloc.dart';
+import 'backend/bloc/platform_analytics_bloc.dart';
 import 'backend/bloc/signup_request_bloc.dart';
 import 'backend/controllers/admin_controller.dart';
 import 'backend/controllers/signup_request_controller.dart';
@@ -112,6 +113,11 @@ class LongevivaAdminApp extends StatelessWidget {
         // Ritual BLoC
         BlocProvider<RitualBloc>(
           create: (context) => RitualBloc(),
+        ),
+
+        // Platform Analytics BLoC
+        BlocProvider<PlatformAnalyticsBloc>(
+          create: (context) => PlatformAnalyticsBloc(),
         ),
       ],
       child: BlocBuilder<LanguageBloc, LanguageState>(

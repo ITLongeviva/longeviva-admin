@@ -91,6 +91,7 @@ class AdminSidebar extends StatelessWidget {
                 _buildNavItem(context, index: 1, title: 'Signup Requests', icon: Icons.app_registration),
                 _buildNavItem(context, index: 2, title: 'User Management', icon: Icons.people),
                 _buildNavItem(context, index: 3, title: 'Rituali', icon: Icons.auto_awesome),
+                _buildNavItem(context, index: 4, title: 'Analytics Piattaforma', icon: Icons.bar_chart),
               ],
             ),
           ),
