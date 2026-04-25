@@ -1,3 +1,6 @@
+import 'dart:convert' show utf8;
+import 'dart:html' as html;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -178,6 +181,45 @@ class _PatientsContentState extends State<_PatientsContent> {
       _onboardingFilter != null ||
       _nameSearch.isNotEmpty;
 
+  void _exportCsv(List<Patient> patients) {
+    String esc(String s) => '"${s.replaceAll('"', '""')}"';
+
+    final buffer = StringBuffer();
+    buffer.writeln(
+        'Cognome,Nome,Email,Sesso,Età,Città,Attivo,Onboarding completato,Iscritto il');
+
+    for (final p in patients) {
+      final age = _ageOf(p);
+      final ageStr = age >= 0 ? '$age' : 'N.D.';
+      final activeStr = p.isActive ? 'Sì' : 'No';
+      final onboardingStr = p.hasCompletedOnboarding ? 'Sì' : 'No';
+      final dateStr = p.createdAt != null
+          ? DateFormat('dd/MM/yyyy').format(p.createdAt!)
+          : '';
+
+      buffer.writeln([
+        esc(p.surname),
+        esc(p.name),
+        esc(p.email),
+        esc(_sexNorm(p)),
+        esc(ageStr),
+        esc(p.cityOfResidence),
+        esc(activeStr),
+        esc(onboardingStr),
+        esc(dateStr),
+      ].join(','));
+    }
+
+    final bytes = utf8.encode(buffer.toString());
+    final blob = html.Blob([bytes], 'text/csv;charset=utf-8');
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    html.AnchorElement(href: url)
+      ..setAttribute('download',
+          'pazienti_${DateFormat('yyyyMMdd').format(DateTime.now())}.csv')
+      ..click();
+    html.Url.revokeObjectUrl(url);
+  }
+
   // ── Build ────────────────────────────────────────────────────────────────────
 
   @override
@@ -258,6 +300,14 @@ class _PatientsContentState extends State<_PatientsContent> {
                   ),
                 ),
               ],
+              const SizedBox(width: 4),
+              IconButton(
+                icon: const Icon(Icons.refresh,
+                    size: 18, color: CustomColors.verdeMare),
+                tooltip: 'Ricarica dati',
+                onPressed: () =>
+                    context.read<PatientsBloc>().add(LoadPatients()),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -523,6 +573,15 @@ class _PatientsContentState extends State<_PatientsContent> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _chartTitle('Pazienti (${filtered.length})'),
+              const SizedBox(width: 12),
+              TextButton.icon(
+                onPressed: () => _exportCsv(filtered),
+                icon: const Icon(Icons.download, size: 16),
+                label: const Text('Esporta CSV'),
+                style: TextButton.styleFrom(
+                    foregroundColor: CustomColors.verdeAbisso),
+              ),
+              const Spacer(),
               if (filtered.length > 100)
                 Text(
                   'Visualizzati: 100 di ${filtered.length}',

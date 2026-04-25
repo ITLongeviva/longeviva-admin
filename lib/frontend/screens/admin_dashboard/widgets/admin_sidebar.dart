@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/svg.dart';
 import '../../../../backend/bloc/admin_auth_bloc.dart';
+import '../../../../backend/bloc/signup_request_bloc.dart';
 import '../../../../shared/utils/colors.dart';
-import '../../../../shared/utils/logout_helper.dart'; // NEW IMPORT
+import '../../../../shared/utils/logout_helper.dart';
 
 class AdminSidebar extends StatelessWidget {
   final int selectedIndex;
@@ -22,7 +23,7 @@ class AdminSidebar extends StatelessWidget {
       color: CustomColors.verdeAbisso,
       child: Column(
         children: [
-          // Logo section
+          // Logo
           Container(
             padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
             child: SvgPicture.asset(
@@ -32,7 +33,7 @@ class AdminSidebar extends StatelessWidget {
             ),
           ),
 
-          // Admin info section
+          // Admin info
           BlocBuilder<SimpleAdminAuthBloc, SimpleAdminAuthState>(
             builder: (context, state) {
               if (state is AuthSuccess) {
@@ -43,10 +44,7 @@ class AdminSidebar extends StatelessWidget {
                     children: [
                       const CircleAvatar(
                         backgroundColor: CustomColors.verdeMare,
-                        child: Icon(
-                          Icons.admin_panel_settings,
-                          color: Colors.white,
-                        ),
+                        child: Icon(Icons.admin_panel_settings, color: Colors.white),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -84,32 +82,56 @@ class AdminSidebar extends StatelessWidget {
 
           // Navigation items
           Expanded(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                _buildNavItem(context, index: 0, title: 'Dashboard', icon: Icons.dashboard),
-                _buildNavItem(context, index: 1, title: 'Signup Requests', icon: Icons.app_registration),
-                _buildNavItem(context, index: 2, title: 'User Management', icon: Icons.people),
-                _buildNavItem(context, index: 3, title: 'Rituali', icon: Icons.auto_awesome),
-                _buildNavItem(context, index: 4, title: 'Analytics Piattaforma', icon: Icons.bar_chart),
-                _buildNavItem(context, index: 5, title: 'Dottori', icon: Icons.medical_services),
-                _buildNavItem(context, index: 6, title: 'Pazienti', icon: Icons.personal_injury),
-              ],
+            child: BlocBuilder<SignupRequestBloc, SignupRequestState>(
+              builder: (context, signupState) {
+                int pendingCount = 0;
+                if (signupState is SignupRequestsLoaded) {
+                  pendingCount = signupState.requests
+                      .where((r) => r?.status == 'pending')
+                      .length;
+                }
+                return ListView(
+                  padding: EdgeInsets.zero,
+                  children: [
+                    _buildNavItem(context, index: 0, title: 'Dashboard', icon: Icons.dashboard),
+                    _buildNavItem(
+                      context,
+                      index: 1,
+                      title: 'Signup Requests',
+                      icon: Icons.app_registration,
+                      badgeCount: pendingCount,
+                    ),
+                    _buildNavItem(context, index: 2, title: 'User Management', icon: Icons.people),
+                    _buildNavItem(context, index: 3, title: 'Rituali', icon: Icons.auto_awesome),
+                    _buildNavItem(context, index: 4, title: 'Analytics Piattaforma', icon: Icons.bar_chart),
+                    _buildNavItem(context, index: 5, title: 'Dottori', icon: Icons.medical_services),
+                    _buildNavItem(context, index: 6, title: 'Pazienti', icon: Icons.personal_injury),
+                  ],
+                );
+              },
             ),
           ),
 
-          // UPDATED LOGOUT BUTTON - Much simpler!
+          // Logout
           Container(
             padding: const EdgeInsets.all(16),
-            child: LogoutHelper.getLogoutButton(context), // NEW SIMPLE LOGOUT
+            child: LogoutHelper.getLogoutButton(context),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildNavItem(BuildContext context, {required int index, required String title, required IconData icon}) {
+  Widget _buildNavItem(
+    BuildContext context, {
+    required int index,
+    required String title,
+    required IconData icon,
+    int badgeCount = 0,
+  }) {
     final isSelected = selectedIndex == index;
+    final iconColor = isSelected ? Colors.white : CustomColors.perla.withOpacity(0.7);
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -117,10 +139,16 @@ class AdminSidebar extends StatelessWidget {
         color: isSelected ? CustomColors.verdeMare : Colors.transparent,
       ),
       child: ListTile(
-        leading: Icon(
-          icon,
-          color: isSelected ? Colors.white : CustomColors.perla.withOpacity(0.7),
-        ),
+        leading: badgeCount > 0
+            ? Badge(
+                label: Text(
+                  '$badgeCount',
+                  style: const TextStyle(fontSize: 10, color: Colors.white),
+                ),
+                backgroundColor: CustomColors.rossoSimone,
+                child: Icon(icon, color: iconColor),
+              )
+            : Icon(icon, color: iconColor),
         title: Text(
           title,
           style: TextStyle(
