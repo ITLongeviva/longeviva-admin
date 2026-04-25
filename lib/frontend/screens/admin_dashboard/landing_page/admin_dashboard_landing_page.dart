@@ -90,6 +90,10 @@ class _AdminDashboardLandingPageState extends State<AdminDashboardLandingPage> {
         return 'Rituali';
       case 4:
         return 'Analytics Piattaforma';
+      case 5:
+        return 'Dottori';
+      case 6:
+        return 'Pazienti';
       default:
         return 'Dashboard';
     }
