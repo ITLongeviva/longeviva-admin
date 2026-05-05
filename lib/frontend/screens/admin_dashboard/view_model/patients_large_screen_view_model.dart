@@ -64,7 +64,6 @@ class _PatientsContent extends StatefulWidget {
 class _PatientsContentState extends State<_PatientsContent> {
   String? _sexFilter;
   String? _ageFilter;
-  bool? _activeFilter;
   bool? _onboardingFilter;
   String _nameSearch = '';
   late TextEditingController _searchController;
@@ -125,7 +124,6 @@ class _PatientsContentState extends State<_PatientsContent> {
     var list = widget.patients.where((p) {
       if (_sexFilter != null && _sexNorm(p) != _sexFilter) return false;
       if (!_matchesAge(p)) return false;
-      if (_activeFilter != null && p.isActive != _activeFilter) return false;
       if (_onboardingFilter != null &&
           p.hasCompletedOnboarding != _onboardingFilter) return false;
       if (_nameSearch.isNotEmpty) {
@@ -165,7 +163,6 @@ class _PatientsContentState extends State<_PatientsContent> {
     setState(() {
       _sexFilter = null;
       _ageFilter = null;
-      _activeFilter = null;
       _onboardingFilter = null;
       _nameSearch = '';
       _searchController.clear();
@@ -177,7 +174,6 @@ class _PatientsContentState extends State<_PatientsContent> {
   bool get _hasActiveFilters =>
       _sexFilter != null ||
       _ageFilter != null ||
-      _activeFilter != null ||
       _onboardingFilter != null ||
       _nameSearch.isNotEmpty;
 
@@ -186,12 +182,12 @@ class _PatientsContentState extends State<_PatientsContent> {
 
     final buffer = StringBuffer();
     buffer.writeln(
-        'Cognome,Nome,Email,Sesso,Età,Città,Attivo,Onboarding completato,Iscritto il');
+        'Cognome,Nome,Email,Sesso,Età,Città,"Dottore assegnato","Onboarding completato","Iscritto il"');
 
     for (final p in patients) {
       final age = _ageOf(p);
       final ageStr = age >= 0 ? '$age' : 'N.D.';
-      final activeStr = p.isActive ? 'Sì' : 'No';
+      final doctorStr = p.assignedDoctorId != null ? 'Sì' : 'No';
       final onboardingStr = p.hasCompletedOnboarding ? 'Sì' : 'No';
       final dateStr = p.createdAt != null
           ? DateFormat('dd/MM/yyyy').format(p.createdAt!)
@@ -204,7 +200,7 @@ class _PatientsContentState extends State<_PatientsContent> {
         esc(_sexNorm(p)),
         esc(ageStr),
         esc(p.cityOfResidence),
-        esc(activeStr),
+        esc(doctorStr),
         esc(onboardingStr),
         esc(dateStr),
       ].join(','));
@@ -328,16 +324,6 @@ class _PatientsContentState extends State<_PatientsContent> {
           ),
           const SizedBox(height: 8),
           _filterRow(
-            'Account',
-            [
-              _boolChip('Attivi', true, _activeFilter,
-                  (v) => setState(() => _activeFilter = v)),
-              _boolChip('Inattivi', false, _activeFilter,
-                  (v) => setState(() => _activeFilter = v)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          _filterRow(
             'Onboarding',
             [
               _boolChip('Completato', true, _onboardingFilter,
@@ -364,9 +350,8 @@ class _PatientsContentState extends State<_PatientsContent> {
         ? null
         : ages.fold(0, (s, a) => s + a) / ages.length;
 
-    final activeCount = filtered.where((p) => p.isActive).length;
-    final pctActive =
-        total == 0 ? 0.0 : activeCount / total * 100;
+    final withDoctorCount =
+        filtered.where((p) => p.assignedDoctorId != null).length;
 
     final onboardingCount =
         filtered.where((p) => p.hasCompletedOnboarding).length;
@@ -390,8 +375,11 @@ class _PatientsContentState extends State<_PatientsContent> {
                 Icons.cake_outlined,
                 CustomColors.verdeMare)),
         Expanded(
-            child: _kpi('${pctActive.round()}%', 'Account attivi',
-                Icons.check_circle_outline, const Color(0xFF4CAF50))),
+            child: _kpi(
+                total == 0 ? '—' : '$withDoctorCount',
+                'Con dottore assegnato',
+                Icons.medical_services_outlined,
+                const Color(0xFF4CAF50))),
         Expanded(
             child: _kpi('${pctOnboarding.round()}%', 'Onboarding completato',
                 Icons.task_alt, Colors.orange)),
@@ -620,7 +608,7 @@ class _PatientsContentState extends State<_PatientsContent> {
                 const Expanded(
                   flex: 1,
                   child: Text(
-                    'Attivo',
+                    'Dottore',
                     style: TextStyle(
                       fontFamily: 'Montserrat',
                       fontSize: 12,
@@ -725,13 +713,13 @@ class _PatientsContentState extends State<_PatientsContent> {
                     Expanded(
                       flex: 1,
                       child: Icon(
-                        p.isActive
+                        p.assignedDoctorId != null
                             ? Icons.check_circle
-                            : Icons.cancel_outlined,
+                            : Icons.radio_button_unchecked,
                         size: 18,
-                        color: p.isActive
+                        color: p.assignedDoctorId != null
                             ? const Color(0xFF4CAF50)
-                            : CustomColors.rossoSimone,
+                            : Colors.grey.shade400,
                       ),
                     ),
                     Expanded(

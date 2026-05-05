@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'dart:convert' show utf8;
+import 'dart:html' as html;
 import 'package:intl/intl.dart';
 import '../../../../backend/bloc/doctors_bloc.dart';
 import '../../../../backend/models/doctor/doctor_model.dart';
@@ -179,6 +181,161 @@ class _DoctorsContentState extends State<_DoctorsContent> {
       _activeFilter != null ||
       _nameSearch.isNotEmpty;
 
+  List<Doctor> get _expiringQualifications {
+    final now = DateTime.now();
+    final limit = now.add(const Duration(days: 90));
+    return widget.doctors
+        .where((d) =>
+            d.qualificationValidity != null &&
+            d.qualificationValidity!.isAfter(now) &&
+            d.qualificationValidity!.isBefore(limit))
+        .toList()
+      ..sort((a, b) =>
+          a.qualificationValidity!.compareTo(b.qualificationValidity!));
+  }
+
+  void _exportCsv(List<Doctor> doctors) {
+    final buffer = StringBuffer();
+    buffer.writeln('Cognome,Nome,Email,"Ruolo/i",Sesso,Età,Città,"Tariffa (€/h)","Setup completato","Iscritto il"');
+    String esc(String s) => '"${s.replaceAll('"', '""')}"';
+    for (final d in doctors) {
+      final age = _ageOf(d);
+      final roles = d.roles.map(_roleLabel).join('; ');
+      final fee = d.hourlyFees == 0 ? 'N.D.' : d.hourlyFees.toStringAsFixed(0);
+      final date = d.signupApprovalDate != null
+          ? DateFormat('dd/MM/yyyy').format(d.signupApprovalDate!)
+          : '';
+      buffer.writeln([
+        esc(d.surname), esc(d.name), esc(d.email), esc(roles),
+        _sexNorm(d), '$age', esc(d.cityOfWork), fee,
+        d.hasCompletedServiceSetup ? 'Sì' : 'No', date,
+      ].join(','));
+    }
+    final bytes = utf8.encode(buffer.toString());
+    final blob = html.Blob([bytes], 'text/csv;charset=utf-8');
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    html.AnchorElement(href: url)
+      ..setAttribute('download', 'dottori_${DateFormat('yyyyMMdd').format(DateTime.now())}.csv')
+      ..click();
+    html.Url.revokeObjectUrl(url);
+  }
+
+  Widget _expiringQualificationsCard(List<Doctor> expiring) {
+    if (expiring.isEmpty) return const SizedBox.shrink();
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Color(0xFFFF9800), size: 20),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Qualifiche in scadenza (prossimi 90 giorni)',
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: Color(0xFFFF9800),
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF9800),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${expiring.length}',
+                  style: const TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...expiring.take(10).map((d) {
+            final daysLeft =
+                d.qualificationValidity!.difference(DateTime.now()).inDays;
+            final daysColor = daysLeft < 30
+                ? CustomColors.rossoSimone
+                : daysLeft < 60
+                    ? const Color(0xFFFF9800)
+                    : const Color(0xFFFFC107);
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      '${d.surname} ${d.name}',
+                      style: const TextStyle(
+                          fontFamily: 'Nunito',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Expanded(
+                      flex: 3,
+                      child: Wrap(
+                          spacing: 4,
+                          children: d.roles.map(_roleBadge).toList())),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      d.cityOfWork.isEmpty ? '—' : d.cityOfWork,
+                      style:
+                          const TextStyle(fontFamily: 'Montserrat', fontSize: 13),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      DateFormat('dd/MM/yyyy').format(d.qualificationValidity!),
+                      style:
+                          const TextStyle(fontFamily: 'Montserrat', fontSize: 13),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 1,
+                    child: Text(
+                      '$daysLeft gg',
+                      style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: daysColor,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+          if (expiring.length > 10)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                'e altri ${expiring.length - 10}…',
+                style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 12,
+                    color: Colors.grey[500]),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   void _toggleSort(String column) {
     setState(() {
       if (_sortBy == column) {
@@ -198,6 +355,8 @@ class _DoctorsContentState extends State<_DoctorsContent> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          _expiringQualificationsCard(_expiringQualifications),
+          const SizedBox(height: 16),
           _filterSection(),
           const SizedBox(height: 20),
           _kpiRow(filtered),
@@ -256,6 +415,11 @@ class _DoctorsContentState extends State<_DoctorsContent> {
                     foregroundColor: CustomColors.rossoSimone,
                   ),
                 ),
+              IconButton(
+                icon: const Icon(Icons.refresh, size: 18, color: CustomColors.verdeMare),
+                tooltip: 'Ricarica dati',
+                onPressed: () => context.read<DoctorsBloc>().add(LoadDoctors()),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -598,6 +762,24 @@ class _DoctorsContentState extends State<_DoctorsContent> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            children: [
+              _chartTitle('Elenco dottori'),
+              const Spacer(),
+              Text(
+                '${list.length} risultati',
+                style: const TextStyle(fontFamily: 'Montserrat', fontSize: 13, color: Colors.grey),
+              ),
+              const SizedBox(width: 12),
+              TextButton.icon(
+                onPressed: () => _exportCsv(list),
+                icon: const Icon(Icons.download, size: 16),
+                label: const Text('Esporta CSV'),
+                style: TextButton.styleFrom(foregroundColor: CustomColors.verdeAbisso),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
           _tableHeader(),
           const Divider(height: 1),
           if (list.isEmpty)
