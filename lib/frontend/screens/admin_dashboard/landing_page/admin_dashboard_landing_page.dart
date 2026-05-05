@@ -1,7 +1,12 @@
-// lib/frontend/screens/admin_dashboard/landing_page/admin_dashboard_landing_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../backend/bloc/admin_auth_bloc.dart';
+import '../../../../backend/bloc/admin_bloc.dart';
+import '../../../../backend/bloc/doctors_bloc.dart';
+import '../../../../backend/bloc/patients_bloc.dart';
+import '../../../../backend/bloc/platform_analytics_bloc.dart';
+import '../../../../backend/bloc/ritual_bloc.dart';
+import '../../../../backend/bloc/signup_request_bloc.dart';
 import '../../../../backend/models/admin_model.dart';
 import '../../../../shared/utils/error_handler.dart';
 import '../view_model/admin_dashboard_large_screen_view_model.dart';
@@ -16,10 +21,12 @@ class AdminDashboardLandingPage extends StatefulWidget {
   });
 
   @override
-  State<AdminDashboardLandingPage> createState() => _AdminDashboardLandingPageState();
+  State<AdminDashboardLandingPage> createState() =>
+      _AdminDashboardLandingPageState();
 }
 
-class _AdminDashboardLandingPageState extends State<AdminDashboardLandingPage> {
+class _AdminDashboardLandingPageState
+    extends State<AdminDashboardLandingPage> {
   int _selectedIndex = 0;
   final PageController _pageController = PageController();
   final double _smallScreenBreakpoint = 1100;
@@ -31,24 +38,58 @@ class _AdminDashboardLandingPageState extends State<AdminDashboardLandingPage> {
   }
 
   void _navigateToPage(int index) {
+    // Prevent redundant navigation and double-dispatch from onPageChanged
+    if (index == _selectedIndex) return;
+
     setState(() {
       _selectedIndex = index;
       _pageController.jumpToPage(index);
     });
+
+    _refreshTab(index);
+  }
+
+  /// Refreshes data for the target tab. Called on every navigation so the
+  /// admin always sees current Firestore data, even with keepAlive pages.
+  void _refreshTab(int index) {
+    switch (index) {
+      case 0:
+        final adminBloc = context.read<AdminOperationsBloc>();
+        if (adminBloc.state is! AdminOperationsInitial) {
+          adminBloc.add(FetchAllUsers());
+        }
+        final signupBloc = context.read<SignupRequestBloc>();
+        if (signupBloc.state is! SignupRequestInitial) {
+          signupBloc.add(FetchAllSignupRequests());
+        }
+        break;
+      case 3:
+        context.read<RitualBloc>().add(LoadRitualAnalytics());
+        break;
+      case 4:
+        context.read<PlatformAnalyticsBloc>().add(LoadPlatformAnalytics());
+        break;
+      case 5:
+        context.read<DoctorsBloc>().add(LoadDoctors());
+        break;
+      case 6:
+        context.read<PatientsBloc>().add(LoadPatients());
+        break;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    ErrorHandler.logDebug('AdminDashboardLandingPage: Building for admin: ${widget.admin.email}');
+    ErrorHandler.logDebug(
+        'AdminDashboardLandingPage: Building for admin: ${widget.admin.email}');
 
     return BlocListener<SimpleAdminAuthBloc, SimpleAdminAuthState>(
       listener: (context, state) {
-        // Handle logout or auth failures
         if (state is AuthUnauthenticated || state is AuthFailure) {
           ErrorHandler.logDebug('Dashboard: User logged out, returning to login');
           Navigator.of(context).pushNamedAndRemoveUntil(
             '/login',
-                (route) => false,
+            (route) => false,
           );
         }
       },
