@@ -124,6 +124,28 @@ class _RitualsAnalyticsContent extends StatelessWidget {
     return sorted.take(5).toList();
   }
 
+  double get catalogRevenueGenerated =>
+      rituals.fold(0.0, (sum, r) => sum + r.usageCount * r.price);
+
+  int get freeRitualsCount => rituals.where((r) => r.price == 0).length;
+  int get paidRitualsCount => rituals.where((r) => r.price > 0).length;
+
+  Map<String, double> get avgUsageByCategory {
+    final result = <String, double>{};
+    for (final cat in [
+      Ritual.categoryAlimentare,
+      Ritual.categoryMotoria,
+      Ritual.categoryMentale,
+      Ritual.categoryBenessere,
+    ]) {
+      final items = rituals.where((r) => r.category == cat).toList();
+      result[cat] = items.isEmpty
+          ? 0
+          : items.fold(0, (s, r) => s + r.usageCount) / items.length;
+    }
+    return result;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -176,7 +198,11 @@ class _RitualsAnalyticsContent extends StatelessWidget {
               _emptyState()
             else ...[
               _kpiRow(),
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
+
+              // ── Valore del catalogo ──────────────────────────────────────
+              _catalogValueSection(),
+              const SizedBox(height: 24),
 
               // ── Row: category + top rituali ──────────────────────────────
               Row(
@@ -568,6 +594,170 @@ class _RitualsAnalyticsContent extends StatelessWidget {
                 );
               }).toList(),
             ),
+    );
+  }
+
+  // ─── Valore del catalogo ─────────────────────────────────────────────────────
+
+  Widget _catalogValueSection() {
+    final revenue = catalogRevenueGenerated;
+    final avgUsage = avgUsageByCategory;
+    final avgTotal = total == 0 ? 0.0 : totalUsage / total;
+
+    final categoryEntries = [
+      (key: Ritual.categoryAlimentare, label: 'Salute Alimentare', color: const Color(0xFF4CAF50)),
+      (key: Ritual.categoryMotoria,    label: 'Salute Motoria',    color: const Color(0xFFFF9800)),
+      (key: Ritual.categoryMentale,    label: 'Salute Mentale',    color: const Color(0xFF9C27B0)),
+      (key: Ritual.categoryBenessere,  label: 'Benessere Generale',color: const Color(0xFF025861)),
+    ];
+
+    final maxAvg = avgUsage.values.isEmpty
+        ? 1.0
+        : avgUsage.values.reduce((a, b) => a > b ? a : b).clamp(1.0, double.infinity);
+
+    return _sectionCard(
+      title: 'Valore del Catalogo',
+      icon: Icons.insights,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _valueStat(
+                  revenue == 0 ? '€0' : '€${revenue.toStringAsFixed(0)}',
+                  'Ricavi generati',
+                  Icons.savings_outlined,
+                  const Color(0xFF4CAF50),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _valueStat(
+                  '$paidRitualsCount / $total',
+                  'Rituali a pagamento',
+                  Icons.euro,
+                  Colors.amber.shade700,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _valueStat(
+                  avgTotal == 0 ? '0' : avgTotal.toStringAsFixed(1),
+                  'Utilizzi medi per rituale',
+                  Icons.people_outline,
+                  CustomColors.verdeMare,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Efficacia per categoria (utilizzi medi)',
+            style: TextStyle(
+              fontFamily: 'Montserrat',
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...categoryEntries.map((e) {
+            final avg = avgUsage[e.key] ?? 0;
+            return _avgBarRow(
+              label: e.label,
+              avg: avg,
+              maxAvg: maxAvg,
+              color: e.color,
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _valueStat(String value, String label, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontFamily: 'Montserrat',
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'Montserrat',
+              fontSize: 11,
+              color: Colors.grey[600],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _avgBarRow({
+    required String label,
+    required double avg,
+    required double maxAvg,
+    required Color color,
+  }) {
+    final pct = maxAvg == 0 ? 0.0 : (avg / maxAvg).clamp(0.0, 1.0);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Text(
+                '${avg.toStringAsFixed(1)} usi medi',
+                style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: pct,
+              minHeight: 8,
+              backgroundColor: Colors.grey.shade200,
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

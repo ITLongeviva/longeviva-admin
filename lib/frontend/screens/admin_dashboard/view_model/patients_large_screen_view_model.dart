@@ -177,6 +177,32 @@ class _PatientsContentState extends State<_PatientsContent> {
       _onboardingFilter != null ||
       _nameSearch.isNotEmpty;
 
+  List<MapEntry<String, int>> get _topConditions {
+    final map = <String, int>{};
+    for (final p in widget.patients) {
+      for (final c in p.conditions) {
+        final norm = c.trim();
+        if (norm.isNotEmpty) map[norm] = (map[norm] ?? 0) + 1;
+      }
+    }
+    return (map.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value)))
+        .take(8)
+        .toList();
+  }
+
+  List<MapEntry<String, int>> get _topPatientCities {
+    final map = <String, int>{};
+    for (final p in widget.patients) {
+      final c = p.cityOfResidence.trim();
+      if (c.isNotEmpty) map[c] = (map[c] ?? 0) + 1;
+    }
+    return (map.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value)))
+        .take(6)
+        .toList();
+  }
+
   void _exportCsv(List<Patient> patients) {
     String esc(String s) => '"${s.replaceAll('"', '""')}"';
 
@@ -216,6 +242,196 @@ class _PatientsContentState extends State<_PatientsContent> {
     html.Url.revokeObjectUrl(url);
   }
 
+  // ── Clinical Insights ────────────────────────────────────────────────────────
+
+  Widget _clinicalInsightsSection() {
+    final all = widget.patients;
+    final total = all.length;
+    if (total == 0) return const SizedBox.shrink();
+
+    final conditions = _topConditions;
+    final cities = _topPatientCities;
+    final withDoctor = all.where((p) => p.assignedDoctorId != null).length;
+    final onboarded = all.where((p) => p.hasCompletedOnboarding).length;
+
+    final maxCondition = conditions.isEmpty
+        ? 1
+        : conditions.map((e) => e.value).reduce((a, b) => a > b ? a : b);
+    final maxCity = cities.isEmpty
+        ? 1
+        : cities.map((e) => e.value).reduce((a, b) => a > b ? a : b);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text(
+              'Insight Clinici',
+              style: TextStyle(
+                fontFamily: 'Nunito',
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: CustomColors.verdeAbisso,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: Colors.purple.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text(
+                'Dato anonimizzato',
+                style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 10,
+                    color: Colors.purple),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        // KPI mini-row
+        Row(
+          children: [
+            Expanded(
+              child: _kpi(
+                '$total',
+                'Pazienti totali',
+                Icons.people_outline,
+                CustomColors.verdeAbisso,
+              ),
+            ),
+            Expanded(
+              child: _kpi(
+                total == 0
+                    ? '—'
+                    : '${(withDoctor / total * 100).round()}%',
+                'Con dottore assegnato',
+                Icons.medical_services_outlined,
+                CustomColors.verdeMare,
+              ),
+            ),
+            Expanded(
+              child: _kpi(
+                total == 0
+                    ? '—'
+                    : '${(onboarded / total * 100).round()}%',
+                'Onboarding completato',
+                Icons.task_alt,
+                const Color(0xFF4CAF50),
+              ),
+            ),
+            Expanded(
+              child: _kpi(
+                '${conditions.length}',
+                'Condizioni distinte rilevate',
+                Icons.health_and_safety_outlined,
+                Colors.purple,
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 16),
+
+        // Charts row
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (conditions.isNotEmpty)
+              Expanded(
+                flex: 6,
+                child: _card(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.health_and_safety_outlined,
+                              color: Colors.purple, size: 18),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text(
+                              'Condizioni più comuni',
+                              style: TextStyle(
+                                fontFamily: 'Nunito',
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: CustomColors.verdeAbisso,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            'Su ${total} pazienti',
+                            style: TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontSize: 11,
+                                color: Colors.grey[500]),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      ...conditions.map((e) {
+                        return _barRow(
+                          e.key,
+                          e.value,
+                          maxCondition,
+                          Colors.purple,
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+              ),
+            if (conditions.isNotEmpty && cities.isNotEmpty)
+              const SizedBox(width: 16),
+            if (cities.isNotEmpty)
+              Expanded(
+                flex: 4,
+                child: _card(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.location_city_outlined,
+                              color: CustomColors.verdeAbisso, size: 18),
+                          SizedBox(width: 8),
+                          Text(
+                            'Distribuzione geografica',
+                            style: TextStyle(
+                              fontFamily: 'Nunito',
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: CustomColors.verdeAbisso,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      ...cities.map((e) => _barRow(
+                            e.key,
+                            e.value,
+                            maxCity,
+                            CustomColors.verdeTropicale,
+                          )),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+
+        const Divider(height: 40),
+      ],
+    );
+  }
+
   // ── Build ────────────────────────────────────────────────────────────────────
 
   @override
@@ -226,6 +442,7 @@ class _PatientsContentState extends State<_PatientsContent> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          _clinicalInsightsSection(),
           _filterSection(),
           const SizedBox(height: 20),
           _kpiRow(filtered),

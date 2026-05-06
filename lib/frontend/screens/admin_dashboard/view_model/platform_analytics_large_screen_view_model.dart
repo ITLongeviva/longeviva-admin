@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../../../backend/bloc/platform_analytics_bloc.dart';
 import '../../../../backend/models/doctor/doctor_model.dart';
+import '../../../../backend/models/patient_model.dart';
 import '../../../../backend/models/signup_request_model.dart';
 import '../../../../backend/repositories/platform_analytics_repository.dart';
 import '../../../../shared/utils/colors.dart';
@@ -155,6 +156,82 @@ class _Content extends StatelessWidget {
     return result;
   }
 
+  List<Patient> get _patients => data.patients;
+
+  List<({String label, int count})> get _monthlySignupTrend {
+    const months = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu',
+                     'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+    final now = DateTime.now();
+    final result = <({String label, int count})>[];
+    for (int i = 5; i >= 0; i--) {
+      int m = now.month - i;
+      int y = now.year;
+      while (m <= 0) { m += 12; y--; }
+      final label = months[m - 1];
+      final count = _allRequests.where(
+          (r) => r.requestedAt.year == y && r.requestedAt.month == m).length;
+      result.add((label: label, count: count));
+    }
+    return result;
+  }
+
+  List<MapEntry<String, int>> get _topDoctorCities {
+    final map = <String, int>{};
+    for (final d in _doctors) {
+      final city = d.cityOfWork.trim();
+      if (city.isNotEmpty) map[city] = (map[city] ?? 0) + 1;
+    }
+    return (map.entries.toList()..sort((a, b) => b.value.compareTo(a.value))).take(8).toList();
+  }
+
+  double get _revenuePotential =>
+      _doctors.fold(0.0, (sum, d) => sum + d.hourlyFees * 20);
+
+  double get _avgFee => _doctors.isEmpty ? 0
+      : _doctors.fold(0.0, (sum, d) => sum + d.hourlyFees) / _doctors.length;
+
+  double get _maxFee => _doctors.isEmpty ? 0
+      : _doctors.map((d) => d.hourlyFees).reduce((a, b) => a > b ? a : b);
+
+  double get _assignmentRate => _patients.isEmpty ? 0
+      : _patients.where((p) => p.assignedDoctorId != null).length / _patients.length;
+
+  List<({String city, int patientCount, int doctorCount})> get _supplyGap {
+    final doctorCities = <String, int>{};
+    for (final d in _doctors) {
+      final c = d.cityOfWork.trim().toLowerCase();
+      if (c.isNotEmpty) doctorCities[c] = (doctorCities[c] ?? 0) + 1;
+    }
+    final patientCities = <String, int>{};
+    for (final p in _patients) {
+      final c = p.cityOfResidence.trim().toLowerCase();
+      if (c.isNotEmpty) patientCities[c] = (patientCities[c] ?? 0) + 1;
+    }
+    final result = <({String city, int patientCount, int doctorCount})>[];
+    for (final entry in patientCities.entries) {
+      final dc = doctorCities[entry.key] ?? 0;
+      final ratio = dc == 0 ? double.infinity : entry.value / dc;
+      if (ratio > 2) {
+        final displayCity = entry.key.isEmpty
+            ? entry.key
+            : entry.key[0].toUpperCase() + entry.key.substring(1);
+        result.add((city: displayCity, patientCount: entry.value, doctorCount: dc));
+      }
+    }
+    result.sort((a, b) {
+      final aR = a.doctorCount == 0 ? 9999.0 : a.patientCount / a.doctorCount;
+      final bR = b.doctorCount == 0 ? 9999.0 : b.patientCount / b.doctorCount;
+      return bR.compareTo(aR);
+    });
+    return result.take(8).toList();
+  }
+
+  String _formatEuro(double amount) {
+    if (amount >= 1000000) return '€${(amount / 1000000).toStringAsFixed(1)}M';
+    if (amount >= 1000) return '€${(amount / 1000).toStringAsFixed(0)}K';
+    return '€${amount.toStringAsFixed(0)}';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -201,6 +278,10 @@ class _Content extends StatelessWidget {
               ],
             ),
 
+            const SizedBox(height: 32),
+
+            // ── Crescita & Mercato ───────────────────────────────────────────
+            _growthAndMarketSection(),
             const SizedBox(height: 32),
 
             // ── Sezione Richieste ────────────────────────────────────────────
@@ -955,6 +1036,246 @@ class _Content extends StatelessWidget {
                 color: Colors.grey[500],
                 fontSize: 13),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _growthAndMarketSection() {
+    final trend = _monthlySignupTrend;
+    final maxTrend = trend.isEmpty
+        ? 1
+        : trend.map((t) => t.count).reduce((a, b) => a > b ? a : b).clamp(1, 999999);
+    final doctorCities = _topDoctorCities;
+    final maxCity = doctorCities.isEmpty
+        ? 1
+        : doctorCities.map((e) => e.value).reduce((a, b) => a > b ? a : b).clamp(1, 999999);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionHeader('Crescita & Mercato', Icons.show_chart),
+        const SizedBox(height: 16),
+
+        Row(
+          children: [
+            Expanded(
+              child: _kpiCard(
+                'Potenziale mensile*',
+                _revenuePotential == 0 ? 'N/D' : _formatEuro(_revenuePotential),
+                Icons.monetization_on_outlined,
+                Colors.amber.shade700,
+              ),
+            ),
+            Expanded(
+              child: _kpiCard(
+                'Tariffa media',
+                _avgFee == 0 ? 'N/D' : '€${_avgFee.toStringAsFixed(0)}/h',
+                Icons.euro_outlined,
+                CustomColors.verdeMare,
+              ),
+            ),
+            Expanded(
+              child: _kpiCard(
+                'Tariffa massima',
+                _maxFee == 0 ? 'N/D' : '€${_maxFee.toStringAsFixed(0)}/h',
+                Icons.arrow_upward,
+                CustomColors.verdeAbisso,
+              ),
+            ),
+            Expanded(
+              child: _kpiCard(
+                'Pazienti con dottore',
+                '${(_assignmentRate * 100).round()}%',
+                Icons.people_outline,
+                Colors.purple,
+              ),
+            ),
+            Expanded(
+              child: _kpiCard(
+                'Pazienti totali',
+                '${_patients.length}',
+                Icons.personal_injury_outlined,
+                CustomColors.verdeTropicale,
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 8),
+        Text(
+          '* Stima: 20 sessioni/mese × tariffa per professionista',
+          style: TextStyle(
+              fontFamily: 'Montserrat', fontSize: 11, color: Colors.grey[500]),
+        ),
+
+        const SizedBox(height: 16),
+
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 5,
+              child: _card(
+                title: 'Nuove iscrizioni — ultimi 6 mesi',
+                icon: Icons.trending_up,
+                iconColor: CustomColors.verdeMare,
+                child: trend.every((t) => t.count == 0)
+                    ? _emptyRow('Nessun dato per il periodo')
+                    : Column(
+                        children: trend
+                            .map((t) => _barRow(
+                                  label: t.label,
+                                  count: t.count,
+                                  pct: t.count / maxTrend,
+                                  color: CustomColors.verdeAbisso,
+                                ))
+                            .toList(),
+                      ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              flex: 5,
+              child: _card(
+                title: 'Top città per professionisti',
+                icon: Icons.location_city_outlined,
+                iconColor: CustomColors.verdeTropicale,
+                child: doctorCities.isEmpty
+                    ? _emptyRow('Nessun dato geografico')
+                    : Column(
+                        children: doctorCities
+                            .map((e) => _barRow(
+                                  label: e.key,
+                                  count: e.value,
+                                  pct: e.value / maxCity,
+                                  color: CustomColors.verdeTropicale,
+                                ))
+                            .toList(),
+                      ),
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 16),
+        _supplyGapSection(),
+      ],
+    );
+  }
+
+  Widget _supplyGapSection() {
+    final gaps = _supplyGap;
+    if (gaps.isEmpty) return const SizedBox.shrink();
+
+    return _card(
+      title: 'Gap domanda/offerta — città con pochi professionisti',
+      icon: Icons.warning_amber_outlined,
+      iconColor: Colors.orange,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Città dove il numero di pazienti supera significativamente quello dei professionisti disponibili. Opportunità di espansione.',
+            style: TextStyle(
+                fontFamily: 'Montserrat', fontSize: 12, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                flex: 4,
+                child: Text('Città',
+                    style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[600])),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text('Pazienti',
+                    style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[600]),
+                    textAlign: TextAlign.center),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text('Professionisti',
+                    style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[600]),
+                    textAlign: TextAlign.center),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text('Ratio P/Prof.',
+                    style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[600]),
+                    textAlign: TextAlign.right),
+              ),
+            ],
+          ),
+          const Divider(height: 12),
+          ...gaps.map((g) {
+            final ratio = g.doctorCount == 0
+                ? '∞'
+                : (g.patientCount / g.doctorCount).toStringAsFixed(1);
+            final isHigh =
+                g.doctorCount == 0 || g.patientCount / g.doctorCount > 5;
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 4,
+                    child: Text(g.city,
+                        style: const TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500)),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text('${g.patientCount}',
+                        style: const TextStyle(
+                            fontFamily: 'Montserrat', fontSize: 13),
+                        textAlign: TextAlign.center),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text('${g.doctorCount}',
+                        style: const TextStyle(
+                            fontFamily: 'Montserrat', fontSize: 13),
+                        textAlign: TextAlign.center),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      ratio,
+                      style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: isHigh
+                            ? CustomColors.rossoSimone
+                            : Colors.orange,
+                      ),
+                      textAlign: TextAlign.right,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
         ],
       ),
     );
