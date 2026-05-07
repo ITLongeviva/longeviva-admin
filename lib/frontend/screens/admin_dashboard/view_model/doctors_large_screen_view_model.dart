@@ -55,6 +55,7 @@ class _DoctorsContentState extends State<_DoctorsContent> {
   String _sortBy = 'name';
   bool _sortAsc = true;
   String _viewMode = 'lista';
+  String _selectedRoleTab = Doctor.ROLE_NUTRITIONIST;
 
   @override
   void initState() {
@@ -1068,6 +1069,7 @@ class _DoctorsContentState extends State<_DoctorsContent> {
       (key: 'citta',   label: 'Per città',   icon: Icons.location_city_outlined),
       (key: 'eta',     label: 'Per età',     icon: Icons.cake_outlined),
       (key: 'tariffa', label: 'Per tariffa', icon: Icons.euro_outlined),
+      (key: 'figura',  label: 'Per figura',  icon: Icons.badge_outlined),
     ];
     return Row(
       children: [
@@ -1135,6 +1137,7 @@ class _DoctorsContentState extends State<_DoctorsContent> {
       case 'citta':   return _clusterByCity();
       case 'eta':     return _clusterByAge();
       case 'tariffa': return _clusterByFee();
+      case 'figura':  return _roleTabsView();
       default:        return const SizedBox.shrink();
     }
   }
@@ -1719,6 +1722,382 @@ class _DoctorsContentState extends State<_DoctorsContent> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  // ─── Per figura (role profile tabs) ──────────────────────────────────────────
+
+  Widget _roleTabsView() {
+    final roles = [
+      (key: Doctor.ROLE_NUTRITIONIST,     label: 'Nutrizionisti',    color: const Color(0xFF4CAF50), icon: Icons.local_dining_outlined),
+      (key: Doctor.ROLE_PERSONAL_TRAINER, label: 'Personal Trainer', color: const Color(0xFFFF9800), icon: Icons.fitness_center_outlined),
+      (key: Doctor.ROLE_PSYCHOLOGIST,     label: 'Psicologi',        color: const Color(0xFF9C27B0), icon: Icons.psychology_outlined),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 10,
+          children: roles.map((r) {
+            final sel = _selectedRoleTab == r.key;
+            final count =
+                widget.doctors.where((d) => d.roles.contains(r.key)).length;
+            return GestureDetector(
+              onTap: () => setState(() => _selectedRoleTab = r.key),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                decoration: BoxDecoration(
+                  color: sel ? r.color : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color: sel ? r.color : Colors.grey.shade300),
+                  boxShadow: sel
+                      ? [
+                          BoxShadow(
+                              color: r.color.withOpacity(0.25),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2))
+                        ]
+                      : [],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(r.icon,
+                        size: 16,
+                        color: sel ? Colors.white : r.color),
+                    const SizedBox(width: 8),
+                    Text(
+                      r.label,
+                      style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: sel ? Colors.white : r.color,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: sel
+                            ? Colors.white.withOpacity(0.25)
+                            : r.color.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '$count',
+                        style: TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: sel ? Colors.white : r.color,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 20),
+        _roleTabContent(_selectedRoleTab),
+      ],
+    );
+  }
+
+  Widget _roleTabContent(String role) {
+    final docs =
+        widget.doctors.where((d) => d.roles.contains(role)).toList();
+
+    final color = role == Doctor.ROLE_NUTRITIONIST
+        ? const Color(0xFF4CAF50)
+        : role == Doctor.ROLE_PERSONAL_TRAINER
+            ? const Color(0xFFFF9800)
+            : const Color(0xFF9C27B0);
+
+    final specialtyLabel = role == Doctor.ROLE_NUTRITIONIST
+        ? 'Specializzazioni alimentari'
+        : role == Doctor.ROLE_PERSONAL_TRAINER
+            ? 'Metodi di allenamento'
+            : 'Indirizzi terapeutici';
+
+    final interestLabel = role == Doctor.ROLE_NUTRITIONIST
+        ? 'Aree di interesse nutrizionale'
+        : role == Doctor.ROLE_PERSONAL_TRAINER
+            ? 'Discipline sportive'
+            : 'Aree di intervento clinico';
+
+    final regLabel = role == Doctor.ROLE_PERSONAL_TRAINER
+        ? 'Con tessera ente'
+        : 'Con iscrizione albo';
+
+    if (docs.isEmpty) {
+      return _card(
+        child: const Padding(
+          padding: EdgeInsets.all(32),
+          child: Center(
+            child: Text(
+              'Nessun professionista con questo ruolo',
+              style: TextStyle(
+                  color: Colors.grey, fontFamily: 'Montserrat'),
+            ),
+          ),
+        ),
+      );
+    }
+
+    final now = DateTime.now();
+    int localAgeOf(Doctor d) {
+      int age = now.year - d.birthdate.year;
+      if (now.month < d.birthdate.month ||
+          (now.month == d.birthdate.month &&
+              now.day < d.birthdate.day)) {
+        age--;
+      }
+      return age;
+    }
+
+    final avgFee =
+        docs.fold(0.0, (s, d) => s + d.hourlyFees) / docs.length;
+    final avgAge =
+        docs.map(localAgeOf).fold(0.0, (s, a) => s + a) / docs.length;
+    final setupPct =
+        docs.where((d) => d.hasCompletedServiceSetup).length /
+            docs.length *
+            100;
+    final withReg = role == Doctor.ROLE_PERSONAL_TRAINER
+        ? docs
+            .where((d) =>
+                d.numero_iscrizione_ente != null &&
+                d.numero_iscrizione_ente!.isNotEmpty)
+            .length
+        : docs
+            .where((d) =>
+                d.numero_iscrizione_albo != null &&
+                d.numero_iscrizione_albo!.isNotEmpty)
+            .length;
+
+    final specialties = _valueDistribution(docs
+        .map((d) => d.specialty)
+        .whereType<String>()
+        .where((s) => s.isNotEmpty)
+        .toList());
+    final interests = _valueDistribution(docs
+        .map((d) => d.areaOfInterest)
+        .whereType<String>()
+        .where((s) => s.isNotEmpty)
+        .toList());
+    final languages = _valueDistribution(docs
+        .expand((d) => d.languagesSpoken)
+        .where((l) => l.isNotEmpty)
+        .toList());
+    final cities = _valueDistribution(
+        docs.map((d) => d.cityOfWork).where((c) => c.isNotEmpty).toList());
+    final issuers = _valueDistribution(
+        docs.map((d) => d.issuer).where((i) => i.isNotEmpty).toList());
+
+    final specialtyFilled = docs
+        .where((d) => d.specialty != null && d.specialty!.isNotEmpty)
+        .length;
+    final interestFilled = docs
+        .where((d) =>
+            d.areaOfInterest != null && d.areaOfInterest!.isNotEmpty)
+        .length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // KPI row
+        Row(
+          children: [
+            Expanded(
+                child: _kpi('${docs.length}', 'Professionisti',
+                    Icons.badge_outlined, color)),
+            const SizedBox(width: 12),
+            Expanded(
+                child: _kpi('€${avgFee.toStringAsFixed(0)}/h',
+                    'Tariffa media', Icons.euro_outlined, Colors.indigo)),
+            const SizedBox(width: 12),
+            Expanded(
+                child: _kpi('${avgAge.toStringAsFixed(0)} aa', 'Età media',
+                    Icons.cake_outlined, Colors.blueGrey)),
+            const SizedBox(width: 12),
+            Expanded(
+                child: _kpi('${setupPct.toStringAsFixed(0)}%',
+                    'Setup completato',
+                    Icons.settings_suggest_outlined, Colors.teal)),
+            const SizedBox(width: 12),
+            Expanded(
+                child: _kpi('$withReg / ${docs.length}', regLabel,
+                    Icons.verified_outlined, Colors.amber.shade700)),
+          ],
+        ),
+        const SizedBox(height: 16),
+        // Row 1: specialties + interests
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: specialties.isNotEmpty
+                  ? _card(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _chartTitle(specialtyLabel),
+                          Text(
+                            '$specialtyFilled su ${docs.length} hanno compilato · ${specialties.length} valori distinti',
+                            style: TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontSize: 11,
+                                color: Colors.grey[500]),
+                          ),
+                          const SizedBox(height: 12),
+                          ...specialties.take(8).map((e) => _barRow(
+                              e.key, e.value, specialties.first.value,
+                              color)),
+                        ],
+                      ),
+                    )
+                  : _emptyDataCard(specialtyLabel,
+                      '$specialtyFilled su ${docs.length} hanno compilato'),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: interests.isNotEmpty
+                  ? _card(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _chartTitle(interestLabel),
+                          Text(
+                            '$interestFilled su ${docs.length} hanno compilato · ${interests.length} valori distinti',
+                            style: TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontSize: 11,
+                                color: Colors.grey[500]),
+                          ),
+                          const SizedBox(height: 12),
+                          ...interests.take(8).map((e) => _barRow(
+                              e.key,
+                              e.value,
+                              interests.first.value,
+                              color.withOpacity(0.7))),
+                        ],
+                      ),
+                    )
+                  : _emptyDataCard(interestLabel,
+                      '$interestFilled su ${docs.length} hanno compilato'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        // Row 2: cities + languages + issuers
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 2,
+              child: _card(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _chartTitle('Top città di lavoro'),
+                    const SizedBox(height: 12),
+                    if (cities.isEmpty)
+                      const Text('Nessun dato',
+                          style: TextStyle(color: Colors.grey))
+                    else
+                      ...cities.take(8).map((e) => _barRow(e.key, e.value,
+                          cities.first.value, CustomColors.verdeTropicale)),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: languages.isNotEmpty
+                  ? _card(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _chartTitle('Lingue parlate'),
+                          const SizedBox(height: 12),
+                          ...languages.take(8).map((e) => _barRow(e.key,
+                              e.value, languages.first.value,
+                              Colors.blueAccent)),
+                        ],
+                      ),
+                    )
+                  : _emptyDataCard('Lingue parlate', ''),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: issuers.isNotEmpty
+                  ? _card(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _chartTitle('Enti / Università'),
+                          const SizedBox(height: 12),
+                          ...issuers.take(8).map((e) => _barRow(e.key,
+                              e.value, issuers.first.value, Colors.brown)),
+                        ],
+                      ),
+                    )
+                  : _emptyDataCard('Enti / Università', ''),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  List<MapEntry<String, int>> _valueDistribution(List<String> values) {
+    final map = <String, int>{};
+    for (final v in values) {
+      final norm = v.trim();
+      if (norm.isNotEmpty) map[norm] = (map[norm] ?? 0) + 1;
+    }
+    return map.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+  }
+
+  Widget _emptyDataCard(String title, String subtitle) {
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _chartTitle(title),
+          if (subtitle.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(subtitle,
+                style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 11,
+                    color: Colors.grey[500])),
+          ],
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(Icons.info_outline, size: 14, color: Colors.grey[400]),
+              const SizedBox(width: 6),
+              Text(
+                'Campo non ancora compilato dai professionisti',
+                style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 12,
+                    color: Colors.grey[500]),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

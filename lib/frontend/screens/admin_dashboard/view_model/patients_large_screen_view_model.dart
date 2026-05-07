@@ -1184,6 +1184,7 @@ class _PatientsContentState extends State<_PatientsContent> {
       (key: 'citta',      label: 'Per città',      icon: Icons.location_city_outlined),
       (key: 'eta',        label: 'Per età',        icon: Icons.cake_outlined),
       (key: 'stato',      label: 'Per stato',      icon: Icons.toggle_on_outlined),
+      (key: 'cerchie',    label: 'Cerchie',         icon: Icons.bubble_chart_outlined),
     ];
     return Row(
       children: [
@@ -1251,6 +1252,7 @@ class _PatientsContentState extends State<_PatientsContent> {
       case 'citta':      return _clusterByCity();
       case 'eta':        return _clusterByAge();
       case 'stato':      return _clusterByStatus();
+      case 'cerchie':    return _cerchieView();
       default:           return const SizedBox.shrink();
     }
   }
@@ -1872,6 +1874,400 @@ class _PatientsContentState extends State<_PatientsContent> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  // ─── Cerchie di affinità ──────────────────────────────────────────────────────
+
+  static const _bubbleColors = [
+    Colors.purple,
+    Colors.teal,
+    Colors.indigo,
+    Colors.pink,
+    Colors.orange,
+    Colors.cyan,
+    Colors.deepPurple,
+    Colors.green,
+    Colors.blue,
+    Colors.red,
+    Colors.brown,
+    Colors.blueGrey,
+  ];
+
+  Color _cerchiaColor(String condition) =>
+      _bubbleColors[condition.hashCode.abs() % _bubbleColors.length];
+
+  Widget _cerchieView() {
+    final groups = <String, List<Patient>>{};
+
+    for (final p in widget.patients) {
+      final age = _ageOf(p);
+      final ageGroup = age < 0
+          ? 'N.D.'
+          : age < 18
+              ? 'Under 18'
+              : age <= 30
+                  ? '18–30'
+                  : age <= 50
+                      ? '31–50'
+                      : '50+';
+
+      if (p.conditions.isEmpty) {
+        groups
+            .putIfAbsent('Nessuna condizione·$ageGroup', () => [])
+            .add(p);
+      } else {
+        for (final c in p.conditions) {
+          final norm = c.trim();
+          if (norm.isNotEmpty) {
+            groups.putIfAbsent('$norm·$ageGroup', () => []).add(p);
+          }
+        }
+      }
+    }
+
+    final cerchie = (groups.entries.toList()
+          ..sort((a, b) => b.value.length.compareTo(a.value.length)))
+        .where((e) => e.value.length >= 2)
+        .take(24)
+        .toList();
+
+    if (cerchie.isEmpty) {
+      return _card(
+        child: const Padding(
+          padding: EdgeInsets.all(32),
+          child: Center(
+            child: Text(
+              'Dati insufficienti — servono almeno 2 pazienti con la stessa condizione e fascia d\'età.',
+              style: TextStyle(color: Colors.grey, fontFamily: 'Montserrat'),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    }
+
+    final maxCount = cerchie.first.value.length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Cerchie di affinità',
+                    style: TextStyle(
+                      fontFamily: 'Nunito',
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: CustomColors.verdeAbisso,
+                    ),
+                  ),
+                  Text(
+                    'Pazienti raggruppati per condizione e fascia d\'età — la dimensione della cerchia è proporzionale al numero di pazienti nel gruppo. Tocca per i dettagli.',
+                    style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 12,
+                        color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.purple.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text(
+                'Dato anonimizzato',
+                style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 10,
+                    color: Colors.purple),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        Wrap(
+          spacing: 14,
+          runSpacing: 14,
+          alignment: WrapAlignment.start,
+          children: cerchie.map((e) {
+            final parts = e.key.split('·');
+            final condition = parts[0];
+            final ageGroup = parts.length > 1 ? parts[1] : '';
+            final count = e.value.length;
+            final size = 90.0 + (count / maxCount) * 90.0;
+            final color = _cerchiaColor(condition);
+
+            return GestureDetector(
+              onTap: () =>
+                  _showCerchiaDetail(condition, ageGroup, e.value, color),
+              child: Tooltip(
+                message: '$condition · $ageGroup · $count pazienti',
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: size,
+                  height: size,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.10),
+                    shape: BoxShape.circle,
+                    border:
+                        Border.all(color: color.withOpacity(0.45), width: 2),
+                  ),
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '$count',
+                            style: TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: size > 140
+                                  ? 26
+                                  : size > 110
+                                      ? 20
+                                      : 16,
+                              fontWeight: FontWeight.bold,
+                              color: color,
+                            ),
+                          ),
+                          Text(
+                            condition,
+                            style: TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: size > 130 ? 10 : 8,
+                              color: color,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            ageGroup,
+                            style: TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 8,
+                              color: Colors.grey[500],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 24),
+        _card(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _chartTitle('Distribuzione delle cerchie (top 10)'),
+              const SizedBox(height: 12),
+              ...cerchie.take(10).map((e) {
+                final parts = e.key.split('·');
+                final condition = parts[0];
+                final ageGroup = parts.length > 1 ? parts[1] : '';
+                final color = _cerchiaColor(condition);
+                return _barRow(
+                    '$condition · $ageGroup', e.value.length, maxCount, color);
+              }),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showCerchiaDetail(
+    String condition,
+    String ageGroup,
+    List<Patient> members,
+    Color color,
+  ) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        final withDoc =
+            members.where((p) => p.assignedDoctorId != null).length;
+        final onboarded =
+            members.where((p) => p.hasCompletedOnboarding).length;
+        final active = members.where((p) => p.isActive).length;
+        final f = members
+            .where((p) => p.sex.trim().toUpperCase() == 'F')
+            .length;
+        final m = members
+            .where((p) => p.sex.trim().toUpperCase() == 'M')
+            .length;
+        final stats = _clusterStats(members);
+
+        return Dialog(
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20)),
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 80, vertical: 60),
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.12),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                            color: color.withOpacity(0.4), width: 2),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '${members.length}',
+                          style: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: color,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 20),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            condition,
+                            style: const TextStyle(
+                              fontFamily: 'Nunito',
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: CustomColors.verdeAbisso,
+                            ),
+                          ),
+                          Text(
+                            'Fascia d\'età: $ageGroup · ${members.length} pazienti',
+                            style: TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontSize: 13,
+                                color: Colors.grey[600]),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.grey),
+                      onPressed: () => Navigator.pop(dialogContext),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                GridView.count(
+                  crossAxisCount: 3,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  childAspectRatio: 2.8,
+                  mainAxisSpacing: 8,
+                  crossAxisSpacing: 8,
+                  children: [
+                    _cerchiaStat(
+                        '${members.length}', 'Pazienti nel gruppo', color),
+                    _cerchiaStat('$withDoc / ${members.length}',
+                        'Con dottore assegnato', const Color(0xFF4CAF50)),
+                    _cerchiaStat('$onboarded / ${members.length}',
+                        'Onboarding completato', Colors.teal),
+                    _cerchiaStat(
+                        stats['Età media'] ?? '—', 'Età media', Colors.indigo),
+                    _cerchiaStat(
+                        '$f F  /  $m M', 'Distribuzione sesso', Colors.pink),
+                    _cerchiaStat('$active / ${members.length}',
+                        'Account attivi', Colors.orange),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border:
+                        Border.all(color: Colors.amber.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.shield_outlined,
+                          color: Colors.amber.shade700, size: 18),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Tutti i dati di questa cerchia sono anonimi. Nessuna informazione personale è esposta.',
+                          style: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 12,
+                            color: Colors.amber.shade800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _cerchiaStat(String value, String label, Color color) {
+    return Container(
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              fontFamily: 'Montserrat',
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'Montserrat',
+              fontSize: 10,
+              color: Colors.grey[600],
+            ),
+          ),
+        ],
       ),
     );
   }
