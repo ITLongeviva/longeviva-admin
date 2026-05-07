@@ -69,6 +69,7 @@ class _PatientsContentState extends State<_PatientsContent> {
   late TextEditingController _searchController;
   String _sortBy = 'name';
   bool _sortAsc = true;
+  String _viewMode = 'lista';
 
   @override
   void initState() {
@@ -443,6 +444,10 @@ class _PatientsContentState extends State<_PatientsContent> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _clinicalInsightsSection(),
+          const SizedBox(height: 8),
+          _subMenu(),
+          const SizedBox(height: 16),
+          if (_viewMode == 'lista') ...[
           _filterSection(),
           const SizedBox(height: 20),
           _kpiRow(filtered),
@@ -459,6 +464,8 @@ class _PatientsContentState extends State<_PatientsContent> {
           ),
           const SizedBox(height: 20),
           _patientTable(filtered),
+          ] else
+            _clusterView(),
         ],
       ),
     );
@@ -1164,6 +1171,412 @@ class _PatientsContentState extends State<_PatientsContent> {
       backgroundColor: Colors.grey.shade100,
       side: BorderSide(
         color: selected ? CustomColors.verdeAbisso : Colors.grey.shade300,
+      ),
+    );
+  }
+
+  // ─── Sottomenu ────────────────────────────────────────────────────────────────
+
+  Widget _subMenu() {
+    final modes = [
+      (key: 'lista',      label: 'Lista',         icon: Icons.list_alt_outlined),
+      (key: 'condizione', label: 'Per condizione', icon: Icons.health_and_safety_outlined),
+      (key: 'citta',      label: 'Per città',      icon: Icons.location_city_outlined),
+      (key: 'eta',        label: 'Per età',        icon: Icons.cake_outlined),
+      (key: 'stato',      label: 'Per stato',      icon: Icons.toggle_on_outlined),
+    ];
+    return Row(
+      children: [
+        Text(
+          'Visualizza:',
+          style: TextStyle(
+            fontFamily: 'Montserrat',
+            fontSize: 13,
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Wrap(
+          spacing: 8,
+          children: modes.map((m) {
+            final sel = _viewMode == m.key;
+            return GestureDetector(
+              onTap: () => setState(() => _viewMode = m.key),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: sel ? CustomColors.verdeAbisso : Colors.transparent,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: sel
+                        ? CustomColors.verdeAbisso
+                        : Colors.grey.shade300,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(m.icon,
+                        size: 14,
+                        color: sel ? Colors.white : Colors.grey[600]),
+                    const SizedBox(width: 6),
+                    Text(
+                      m.label,
+                      style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 13,
+                        fontWeight:
+                            sel ? FontWeight.w600 : FontWeight.normal,
+                        color: sel ? Colors.white : Colors.grey[700],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  // ─── Cluster view dispatcher ──────────────────────────────────────────────────
+
+  Widget _clusterView() {
+    switch (_viewMode) {
+      case 'condizione': return _clusterByCondition();
+      case 'citta':      return _clusterByCity();
+      case 'eta':        return _clusterByAge();
+      case 'stato':      return _clusterByStatus();
+      default:           return const SizedBox.shrink();
+    }
+  }
+
+  // ─── Cluster by condition ─────────────────────────────────────────────────────
+
+  Widget _clusterByCondition() {
+    final conditionMap = <String, List<Patient>>{};
+    for (final p in widget.patients) {
+      if (p.conditions.isEmpty) {
+        conditionMap
+            .putIfAbsent('Nessuna condizione', () => [])
+            .add(p);
+      } else {
+        for (final c in p.conditions) {
+          final norm = c.trim();
+          if (norm.isNotEmpty) {
+            conditionMap.putIfAbsent(norm, () => []).add(p);
+          }
+        }
+      }
+    }
+    final sorted = conditionMap.entries.toList()
+      ..sort((a, b) => b.value.length.compareTo(a.value.length));
+    return _clusterGrid([
+      for (final e in sorted.take(12))
+        (
+          label: e.key,
+          color: Colors.purple,
+          icon: Icons.health_and_safety_outlined,
+          members: e.value,
+          total: widget.patients.length,
+        ),
+    ]);
+  }
+
+  // ─── Cluster by city ──────────────────────────────────────────────────────────
+
+  Widget _clusterByCity() {
+    final cityMap = <String, List<Patient>>{};
+    for (final p in widget.patients) {
+      final city = p.cityOfResidence.trim().isEmpty
+          ? 'Non specificata'
+          : p.cityOfResidence.trim();
+      cityMap.putIfAbsent(city, () => []).add(p);
+    }
+    final sorted = cityMap.entries.toList()
+      ..sort((a, b) => b.value.length.compareTo(a.value.length));
+    return _clusterGrid([
+      for (final e in sorted.take(12))
+        (
+          label: e.key,
+          color: CustomColors.verdeTropicale,
+          icon: Icons.location_city_outlined,
+          members: e.value,
+          total: widget.patients.length,
+        ),
+    ]);
+  }
+
+  // ─── Cluster by age ───────────────────────────────────────────────────────────
+
+  Widget _clusterByAge() {
+    final bands = [
+      (label: 'Under 18', color: Colors.teal,             icon: Icons.child_care_outlined,  minAge: 0,  maxAge: 17),
+      (label: '18 – 30',  color: const Color(0xFF4CAF50), icon: Icons.person_outline,        minAge: 18, maxAge: 30),
+      (label: '31 – 50',  color: const Color(0xFF2196F3), icon: Icons.person,                minAge: 31, maxAge: 50),
+      (label: '50+',      color: const Color(0xFF9C27B0), icon: Icons.person_3_outlined,     minAge: 51, maxAge: 999),
+    ];
+    return _clusterGrid([
+      for (final b in bands)
+        (
+          label: b.label,
+          color: b.color,
+          icon: b.icon,
+          members: widget.patients.where((p) {
+            final age = _ageOf(p);
+            return age >= b.minAge && age <= b.maxAge;
+          }).toList(),
+          total: widget.patients.length,
+        ),
+    ]);
+  }
+
+  // ─── Cluster by status ────────────────────────────────────────────────────────
+
+  Widget _clusterByStatus() {
+    final withDoc =
+        widget.patients.where((p) => p.assignedDoctorId != null).toList();
+    final withoutDoc =
+        widget.patients.where((p) => p.assignedDoctorId == null).toList();
+    final onboarded =
+        widget.patients.where((p) => p.hasCompletedOnboarding).toList();
+    final notOnboarded =
+        widget.patients.where((p) => !p.hasCompletedOnboarding).toList();
+
+    return _clusterGrid([
+      (label: 'Con dottore assegnato',    color: const Color(0xFF4CAF50), icon: Icons.medical_services_outlined, members: withDoc,      total: widget.patients.length),
+      (label: 'Senza dottore assegnato',  color: Colors.orange,           icon: Icons.person_search_outlined,    members: withoutDoc,   total: widget.patients.length),
+      (label: 'Onboarding completato',    color: CustomColors.verdeMare,  icon: Icons.task_alt,                  members: onboarded,    total: widget.patients.length),
+      (label: 'Onboarding incompleto',    color: Colors.grey,             icon: Icons.pending_outlined,          members: notOnboarded, total: widget.patients.length),
+    ]);
+  }
+
+  // ─── Cluster grid & card ──────────────────────────────────────────────────────
+
+  Map<String, String> _clusterStats(List<Patient> members) {
+    if (members.isEmpty) return {};
+    final now = DateTime.now();
+    final ages = members
+        .where((p) => p.birthdate != null)
+        .map((p) {
+          int age = now.year - p.birthdate!.year;
+          if (now.month < p.birthdate!.month ||
+              (now.month == p.birthdate!.month &&
+                  now.day < p.birthdate!.day)) {
+            age--;
+          }
+          return age;
+        })
+        .toList();
+    final avgAgeStr = ages.isEmpty
+        ? 'N/D'
+        : '${(ages.fold(0, (s, a) => s + a) / ages.length).toStringAsFixed(0)} aa';
+    final withDoc =
+        members.where((p) => p.assignedDoctorId != null).length;
+    final f = members
+        .where((p) => p.sex.trim().toUpperCase() == 'F')
+        .length;
+    final m = members
+        .where((p) => p.sex.trim().toUpperCase() == 'M')
+        .length;
+    return {
+      'Età media': avgAgeStr,
+      'Con dottore': '$withDoc/${members.length}',
+      'F / M': '$f / $m',
+    };
+  }
+
+  Widget _clusterGrid(
+    List<
+            ({
+              String label,
+              Color color,
+              IconData icon,
+              List<Patient> members,
+              int total
+            })>
+        clusters,
+  ) {
+    return Wrap(
+      spacing: 16,
+      runSpacing: 16,
+      children: clusters
+          .map((c) => SizedBox(width: 340, child: _clusterCard(c)))
+          .toList(),
+    );
+  }
+
+  Widget _clusterCard(
+    ({
+      String label,
+      Color color,
+      IconData icon,
+      List<Patient> members,
+      int total
+    }) cluster,
+  ) {
+    final count = cluster.members.length;
+    final pct =
+        cluster.total == 0 ? 0.0 : count / cluster.total;
+    final stats = _clusterStats(cluster.members);
+    final names = cluster.members
+        .map((p) => '${p.name} ${p.surname}')
+        .take(5)
+        .toList();
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: cluster.color.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(cluster.icon,
+                      color: cluster.color, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        cluster.label,
+                        style: const TextStyle(
+                          fontFamily: 'Nunito',
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: CustomColors.verdeAbisso,
+                        ),
+                      ),
+                      Text(
+                        '$count paziente${count == 1 ? '' : 'i'}',
+                        style: TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: cluster.color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${(pct * 100).round()}%',
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: cluster.color,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: pct,
+                minHeight: 6,
+                backgroundColor: Colors.grey.shade200,
+                valueColor:
+                    AlwaysStoppedAnimation<Color>(cluster.color),
+              ),
+            ),
+            if (stats.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 16,
+                runSpacing: 8,
+                children: stats.entries
+                    .map(
+                      (e) => Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            e.value,
+                            style: const TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: CustomColors.verdeAbisso,
+                            ),
+                          ),
+                          Text(
+                            e.key,
+                            style: TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 10,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                    .toList(),
+              ),
+            ],
+            if (names.isNotEmpty) ...[
+              const Divider(height: 20),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: names
+                    .map(
+                      (name) => Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: CustomColors.mentaFredda,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          name,
+                          style: const TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 11,
+                            color: CustomColors.verdeAbisso,
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+              if (cluster.members.length > 5) ...[
+                const SizedBox(height: 6),
+                Text(
+                  '+ altri ${cluster.members.length - 5}',
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 11,
+                    color: Colors.grey[500],
+                  ),
+                ),
+              ],
+            ],
+          ],
+        ),
       ),
     );
   }

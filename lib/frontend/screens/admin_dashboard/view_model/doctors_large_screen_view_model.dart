@@ -54,6 +54,7 @@ class _DoctorsContentState extends State<_DoctorsContent> {
   late TextEditingController _searchController;
   String _sortBy = 'name';
   bool _sortAsc = true;
+  String _viewMode = 'lista';
 
   @override
   void initState() {
@@ -355,33 +356,38 @@ class _DoctorsContentState extends State<_DoctorsContent> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _expiringQualificationsCard(_expiringQualifications),
+          _subMenu(),
           const SizedBox(height: 16),
-          _filterSection(),
-          const SizedBox(height: 20),
-          _kpiRow(filtered),
-          const SizedBox(height: 20),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: _byRoleChart(filtered)),
-              const SizedBox(width: 16),
-              Expanded(child: _bySexChart(filtered)),
-              const SizedBox(width: 16),
-              Expanded(child: _byAgeChart(filtered)),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(flex: 2, child: _byCityChart(filtered)),
-              const SizedBox(width: 16),
-              Expanded(child: _byFeeChart(filtered)),
-            ],
-          ),
-          const SizedBox(height: 20),
-          _doctorTable(filtered),
+          if (_viewMode == 'lista') ...[
+            _expiringQualificationsCard(_expiringQualifications),
+            const SizedBox(height: 16),
+            _filterSection(),
+            const SizedBox(height: 20),
+            _kpiRow(filtered),
+            const SizedBox(height: 20),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: _byRoleChart(filtered)),
+                const SizedBox(width: 16),
+                Expanded(child: _bySexChart(filtered)),
+                const SizedBox(width: 16),
+                Expanded(child: _byAgeChart(filtered)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(flex: 2, child: _byCityChart(filtered)),
+                const SizedBox(width: 16),
+                Expanded(child: _byFeeChart(filtered)),
+              ],
+            ),
+            const SizedBox(height: 20),
+            _doctorTable(filtered),
+          ] else
+            _clusterView(),
         ],
       ),
     );
@@ -1051,5 +1057,401 @@ class _DoctorsContentState extends State<_DoctorsContent> {
       default:
         return role;
     }
+  }
+
+  // ─── Sottomenu ────────────────────────────────────────────────────────────────
+
+  Widget _subMenu() {
+    final modes = [
+      (key: 'lista',   label: 'Lista',       icon: Icons.list_alt_outlined),
+      (key: 'ruolo',   label: 'Per ruolo',   icon: Icons.category_outlined),
+      (key: 'citta',   label: 'Per città',   icon: Icons.location_city_outlined),
+      (key: 'eta',     label: 'Per età',     icon: Icons.cake_outlined),
+      (key: 'tariffa', label: 'Per tariffa', icon: Icons.euro_outlined),
+    ];
+    return Row(
+      children: [
+        Text(
+          'Visualizza:',
+          style: TextStyle(
+            fontFamily: 'Montserrat',
+            fontSize: 13,
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Wrap(
+          spacing: 8,
+          children: modes.map((m) {
+            final sel = _viewMode == m.key;
+            return GestureDetector(
+              onTap: () => setState(() => _viewMode = m.key),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: sel ? CustomColors.verdeAbisso : Colors.transparent,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: sel
+                        ? CustomColors.verdeAbisso
+                        : Colors.grey.shade300,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(m.icon,
+                        size: 14,
+                        color: sel ? Colors.white : Colors.grey[600]),
+                    const SizedBox(width: 6),
+                    Text(
+                      m.label,
+                      style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 13,
+                        fontWeight:
+                            sel ? FontWeight.w600 : FontWeight.normal,
+                        color: sel ? Colors.white : Colors.grey[700],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  // ─── Cluster view dispatcher ──────────────────────────────────────────────────
+
+  Widget _clusterView() {
+    switch (_viewMode) {
+      case 'ruolo':   return _clusterByRole();
+      case 'citta':   return _clusterByCity();
+      case 'eta':     return _clusterByAge();
+      case 'tariffa': return _clusterByFee();
+      default:        return const SizedBox.shrink();
+    }
+  }
+
+  // ─── Cluster by role ──────────────────────────────────────────────────────────
+
+  Widget _clusterByRole() {
+    final defs = [
+      (key: Doctor.ROLE_NUTRITIONIST,     label: 'Salute Alimentare', color: const Color(0xFF4CAF50), icon: Icons.local_dining_outlined),
+      (key: Doctor.ROLE_PERSONAL_TRAINER, label: 'Salute Motoria',    color: const Color(0xFFFF9800), icon: Icons.fitness_center_outlined),
+      (key: Doctor.ROLE_PSYCHOLOGIST,     label: 'Salute Mentale',    color: const Color(0xFF9C27B0), icon: Icons.psychology_outlined),
+    ];
+    return _clusterGrid([
+      for (final d in defs)
+        (
+          label: d.label,
+          color: d.color,
+          icon: d.icon,
+          members: widget.doctors.where((doc) => doc.roles.contains(d.key)).toList(),
+          total: widget.doctors.length,
+        ),
+    ]);
+  }
+
+  // ─── Cluster by city ──────────────────────────────────────────────────────────
+
+  Widget _clusterByCity() {
+    final cityMap = <String, List<Doctor>>{};
+    for (final d in widget.doctors) {
+      final city = d.cityOfWork.trim().isEmpty ? 'Non specificata' : d.cityOfWork.trim();
+      cityMap.putIfAbsent(city, () => []).add(d);
+    }
+    final sorted = cityMap.entries.toList()
+      ..sort((a, b) => b.value.length.compareTo(a.value.length));
+    return _clusterGrid([
+      for (final e in sorted.take(12))
+        (
+          label: e.key,
+          color: CustomColors.verdeTropicale,
+          icon: Icons.location_city_outlined,
+          members: e.value,
+          total: widget.doctors.length,
+        ),
+    ]);
+  }
+
+  // ─── Cluster by age ───────────────────────────────────────────────────────────
+
+  Widget _clusterByAge() {
+    final now = DateTime.now();
+    int ageOf(Doctor d) {
+      int age = now.year - d.birthdate.year;
+      if (now.month < d.birthdate.month ||
+          (now.month == d.birthdate.month && now.day < d.birthdate.day)) {
+        age--;
+      }
+      return age;
+    }
+
+    final bands = [
+      (label: 'Under 30', color: const Color(0xFF4CAF50), icon: Icons.person_outline,    minAge: 0,  maxAge: 29),
+      (label: '30 – 40',  color: const Color(0xFF2196F3), icon: Icons.person,             minAge: 30, maxAge: 40),
+      (label: '41 – 50',  color: const Color(0xFFFF9800), icon: Icons.person_2_outlined,  minAge: 41, maxAge: 50),
+      (label: '50+',      color: const Color(0xFF9C27B0), icon: Icons.person_3_outlined,  minAge: 51, maxAge: 999),
+    ];
+    return _clusterGrid([
+      for (final b in bands)
+        (
+          label: b.label,
+          color: b.color,
+          icon: b.icon,
+          members: widget.doctors.where((d) {
+            final age = ageOf(d);
+            return age >= b.minAge && age <= b.maxAge;
+          }).toList(),
+          total: widget.doctors.length,
+        ),
+    ]);
+  }
+
+  // ─── Cluster by fee ───────────────────────────────────────────────────────────
+
+  Widget _clusterByFee() {
+    final bands = [
+      (label: '€0 – €30',   color: Colors.green,      icon: Icons.euro_outlined, minFee: 0.0,   maxFee: 30.0),
+      (label: '€31 – €60',  color: Colors.teal,       icon: Icons.euro_outlined, minFee: 31.0,  maxFee: 60.0),
+      (label: '€61 – €100', color: Colors.orange,     icon: Icons.euro_outlined, minFee: 61.0,  maxFee: 100.0),
+      (label: 'Oltre €100', color: Colors.deepOrange, icon: Icons.euro_outlined, minFee: 101.0, maxFee: 9999.0),
+    ];
+    return _clusterGrid([
+      for (final b in bands)
+        (
+          label: b.label,
+          color: b.color,
+          icon: b.icon,
+          members: widget.doctors
+              .where((d) => d.hourlyFees >= b.minFee && d.hourlyFees <= b.maxFee)
+              .toList(),
+          total: widget.doctors.length,
+        ),
+    ]);
+  }
+
+  // ─── Cluster grid & card ──────────────────────────────────────────────────────
+
+  Map<String, String> _clusterStats(List<Doctor> members) {
+    if (members.isEmpty) return {};
+    final now = DateTime.now();
+    final ages = members.map((d) {
+      int age = now.year - d.birthdate.year;
+      if (now.month < d.birthdate.month ||
+          (now.month == d.birthdate.month && now.day < d.birthdate.day)) {
+        age--;
+      }
+      return age;
+    }).toList();
+    final avgAge =
+        (ages.fold(0, (s, a) => s + a) / ages.length).toStringAsFixed(0);
+    final avgFee =
+        (members.fold(0.0, (s, d) => s + d.hourlyFees) / members.length)
+            .toStringAsFixed(0);
+    final setupDone =
+        members.where((d) => d.hasCompletedServiceSetup).length;
+    final cities = <String, int>{};
+    for (final d in members) {
+      final c = d.cityOfWork.trim();
+      if (c.isNotEmpty) cities[c] = (cities[c] ?? 0) + 1;
+    }
+    final topCity = cities.isEmpty
+        ? '—'
+        : (cities.entries.toList()
+              ..sort((a, b) => b.value.compareTo(a.value)))
+            .first
+            .key;
+    return {
+      'Età media': '$avgAge aa',
+      'Tariffa media': '€$avgFee/h',
+      'Setup ok': '$setupDone/${members.length}',
+      'Città top': topCity,
+    };
+  }
+
+  Widget _clusterGrid(
+    List<({String label, Color color, IconData icon, List<Doctor> members, int total})>
+        clusters,
+  ) {
+    return Wrap(
+      spacing: 16,
+      runSpacing: 16,
+      children: clusters
+          .map((c) => SizedBox(width: 340, child: _clusterCard(c)))
+          .toList(),
+    );
+  }
+
+  Widget _clusterCard(
+    ({String label, Color color, IconData icon, List<Doctor> members, int total}) cluster,
+  ) {
+    final count = cluster.members.length;
+    final pct =
+        cluster.total == 0 ? 0.0 : count / cluster.total;
+    final stats = _clusterStats(cluster.members);
+    final names = cluster.members
+        .map((d) => '${d.name} ${d.surname}')
+        .take(5)
+        .toList();
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: cluster.color.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(cluster.icon,
+                      color: cluster.color, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        cluster.label,
+                        style: const TextStyle(
+                          fontFamily: 'Nunito',
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: CustomColors.verdeAbisso,
+                        ),
+                      ),
+                      Text(
+                        '$count professionista${count == 1 ? '' : 'i'}',
+                        style: TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: cluster.color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${(pct * 100).round()}%',
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: cluster.color,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: pct,
+                minHeight: 6,
+                backgroundColor: Colors.grey.shade200,
+                valueColor:
+                    AlwaysStoppedAnimation<Color>(cluster.color),
+              ),
+            ),
+            if (stats.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 16,
+                runSpacing: 8,
+                children: stats.entries
+                    .map(
+                      (e) => Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            e.value,
+                            style: const TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: CustomColors.verdeAbisso,
+                            ),
+                          ),
+                          Text(
+                            e.key,
+                            style: TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 10,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                    .toList(),
+              ),
+            ],
+            if (names.isNotEmpty) ...[
+              const Divider(height: 20),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: names
+                    .map(
+                      (name) => Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: CustomColors.mentaFredda,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          name,
+                          style: const TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 11,
+                            color: CustomColors.verdeAbisso,
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+              if (cluster.members.length > 5) ...[
+                const SizedBox(height: 6),
+                Text(
+                  '+ altri ${cluster.members.length - 5}',
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 11,
+                    color: Colors.grey[500],
+                  ),
+                ),
+              ],
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }
