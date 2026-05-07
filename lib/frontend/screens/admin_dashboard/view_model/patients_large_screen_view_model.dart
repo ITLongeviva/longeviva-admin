@@ -1375,14 +1375,9 @@ class _PatientsContentState extends State<_PatientsContent> {
     final avgAgeStr = ages.isEmpty
         ? 'N/D'
         : '${(ages.fold(0, (s, a) => s + a) / ages.length).toStringAsFixed(0)} aa';
-    final withDoc =
-        members.where((p) => p.assignedDoctorId != null).length;
-    final f = members
-        .where((p) => p.sex.trim().toUpperCase() == 'F')
-        .length;
-    final m = members
-        .where((p) => p.sex.trim().toUpperCase() == 'M')
-        .length;
+    final withDoc = members.where((p) => p.assignedDoctorId != null).length;
+    final f = members.where((p) => p.sex.trim().toUpperCase() == 'F').length;
+    final m = members.where((p) => p.sex.trim().toUpperCase() == 'M').length;
     return {
       'Età media': avgAgeStr,
       'Con dottore': '$withDoc/${members.length}',
@@ -1391,192 +1386,492 @@ class _PatientsContentState extends State<_PatientsContent> {
   }
 
   Widget _clusterGrid(
-    List<
-            ({
-              String label,
-              Color color,
-              IconData icon,
-              List<Patient> members,
-              int total
-            })>
+    List<({String label, Color color, IconData icon, List<Patient> members, int total})>
         clusters,
   ) {
-    return Wrap(
-      spacing: 16,
-      runSpacing: 16,
-      children: clusters
-          .map((c) => SizedBox(width: 340, child: _clusterCard(c)))
-          .toList(),
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 380,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        mainAxisExtent: 200,
+      ),
+      itemCount: clusters.length,
+      itemBuilder: (_, i) => _clusterCard(clusters[i]),
     );
   }
 
   Widget _clusterCard(
-    ({
-      String label,
-      Color color,
-      IconData icon,
-      List<Patient> members,
-      int total
-    }) cluster,
+    ({String label, Color color, IconData icon, List<Patient> members, int total}) cluster,
   ) {
     final count = cluster.members.length;
-    final pct =
-        cluster.total == 0 ? 0.0 : count / cluster.total;
+    final pct = cluster.total == 0 ? 0.0 : count / cluster.total;
     final stats = _clusterStats(cluster.members);
-    final names = cluster.members
-        .map((p) => '${p.name} ${p.surname}')
-        .take(5)
-        .toList();
 
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => _showClusterDetail(cluster),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: cluster.color.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              color: cluster.color.withOpacity(0.08),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: cluster.color.withOpacity(0.18),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(cluster.icon, color: cluster.color, size: 20),
                   ),
-                  child: Icon(cluster.icon,
-                      color: cluster.color, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        cluster.label,
-                        style: const TextStyle(
-                          fontFamily: 'Nunito',
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: CustomColors.verdeAbisso,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          cluster.label,
+                          style: const TextStyle(
+                            fontFamily: 'Nunito',
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: CustomColors.verdeAbisso,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      Text(
-                        '$count paziente${count == 1 ? '' : 'i'}',
-                        style: TextStyle(
-                          fontFamily: 'Montserrat',
-                          fontSize: 12,
-                          color: Colors.grey[600],
+                        Text(
+                          '$count paziente${count == 1 ? '' : 'i'}',
+                          style: TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 11,
+                              color: Colors.grey[600]),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: cluster.color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '${(pct * 100).round()}%',
-                    style: TextStyle(
-                      fontFamily: 'Montserrat',
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: cluster.color,
+                      ],
                     ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: pct,
-                minHeight: 6,
-                backgroundColor: Colors.grey.shade200,
-                valueColor:
-                    AlwaysStoppedAnimation<Color>(cluster.color),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: cluster.color.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '${(pct * 100).round()}%',
+                      style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: cluster.color,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            if (stats.isNotEmpty) ...[
-              const SizedBox(height: 14),
-              Wrap(
-                spacing: 16,
-                runSpacing: 8,
-                children: stats.entries
-                    .map(
-                      (e) => Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
+            LinearProgressIndicator(
+              value: pct,
+              minHeight: 4,
+              backgroundColor: Colors.grey.shade200,
+              valueColor: AlwaysStoppedAnimation<Color>(cluster.color),
+            ),
+            Expanded(
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (stats.isNotEmpty)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: stats.entries
+                            .take(3)
+                            .map(
+                              (e) => Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    e.value,
+                                    style: const TextStyle(
+                                      fontFamily: 'Montserrat',
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                      color: CustomColors.verdeAbisso,
+                                    ),
+                                  ),
+                                  Text(
+                                    e.key,
+                                    style: TextStyle(
+                                      fontFamily: 'Montserrat',
+                                      fontSize: 10,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    const Spacer(),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Text(
+                          'Vedi dettagli',
+                          style: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 11,
+                            color: cluster.color,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(Icons.arrow_forward_ios_rounded,
+                            size: 11, color: cluster.color),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showClusterDetail(
+    ({String label, Color color, IconData icon, List<Patient> members, int total}) cluster,
+  ) {
+    String search = '';
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final filtered = search.isEmpty
+              ? cluster.members
+              : cluster.members.where((p) {
+                  final q = search.toLowerCase();
+                  return p.name.toLowerCase().contains(q) ||
+                      p.surname.toLowerCase().contains(q) ||
+                      p.cityOfResidence.toLowerCase().contains(q);
+                }).toList();
+          final stats = _clusterStats(cluster.members);
+          final pct = cluster.total == 0
+              ? 0.0
+              : cluster.members.length / cluster.total;
+
+          return Dialog(
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20)),
+            insetPadding:
+                const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: SizedBox(
+                width: 720,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      color: cluster.color.withOpacity(0.08),
+                      child: Row(
                         children: [
-                          Text(
-                            e.value,
-                            style: const TextStyle(
-                              fontFamily: 'Montserrat',
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: CustomColors.verdeAbisso,
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: cluster.color.withOpacity(0.18),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(cluster.icon,
+                                color: cluster.color, size: 26),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  cluster.label,
+                                  style: const TextStyle(
+                                    fontFamily: 'Nunito',
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: CustomColors.verdeAbisso,
+                                  ),
+                                ),
+                                Text(
+                                  '${cluster.members.length} pazienti · ${(pct * 100).round()}% del totale',
+                                  style: TextStyle(
+                                      fontFamily: 'Montserrat',
+                                      fontSize: 13,
+                                      color: Colors.grey[600]),
+                                ),
+                              ],
                             ),
                           ),
-                          Text(
-                            e.key,
-                            style: TextStyle(
-                              fontFamily: 'Montserrat',
-                              fontSize: 10,
-                              color: Colors.grey[600],
-                            ),
+                          IconButton(
+                            icon:
+                                const Icon(Icons.close, color: Colors.grey),
+                            onPressed: () => Navigator.pop(dialogContext),
                           ),
                         ],
                       ),
-                    )
-                    .toList(),
-              ),
-            ],
-            if (names.isNotEmpty) ...[
-              const Divider(height: 20),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: names
-                    .map(
-                      (name) => Container(
+                    ),
+                    // Stats row
+                    if (stats.isNotEmpty)
+                      Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: CustomColors.mentaFredda,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          name,
-                          style: const TextStyle(
-                            fontFamily: 'Montserrat',
-                            fontSize: 11,
-                            color: CustomColors.verdeAbisso,
-                          ),
+                            horizontal: 24, vertical: 14),
+                        color: Colors.grey.shade50,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: stats.entries
+                              .map(
+                                (e) => Column(
+                                  children: [
+                                    Text(
+                                      e.value,
+                                      style: const TextStyle(
+                                        fontFamily: 'Montserrat',
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: CustomColors.verdeAbisso,
+                                      ),
+                                    ),
+                                    Text(
+                                      e.key,
+                                      style: TextStyle(
+                                          fontFamily: 'Montserrat',
+                                          fontSize: 11,
+                                          color: Colors.grey[600]),
+                                    ),
+                                  ],
+                                ),
+                              )
+                              .toList(),
                         ),
                       ),
-                    )
-                    .toList(),
-              ),
-              if (cluster.members.length > 5) ...[
-                const SizedBox(height: 6),
-                Text(
-                  '+ altri ${cluster.members.length - 5}',
-                  style: TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontSize: 11,
-                    color: Colors.grey[500],
-                  ),
+                    // Search
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+                      child: TextField(
+                        decoration: InputDecoration(
+                          hintText: 'Cerca per nome o città…',
+                          prefixIcon: const Icon(Icons.search,
+                              color: CustomColors.verdeAbisso),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                          contentPadding:
+                              const EdgeInsets.symmetric(vertical: 10),
+                          isDense: true,
+                        ),
+                        onChanged: (v) =>
+                            setDialogState(() => search = v),
+                      ),
+                    ),
+                    // Member list
+                    Flexible(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxHeight:
+                              MediaQuery.of(ctx).size.height * 0.5,
+                        ),
+                        child: filtered.isEmpty
+                            ? const Padding(
+                                padding: EdgeInsets.all(32),
+                                child: Center(
+                                  child: Text('Nessun risultato',
+                                      style: TextStyle(color: Colors.grey)),
+                                ),
+                              )
+                            : ListView.separated(
+                                shrinkWrap: true,
+                                padding: const EdgeInsets.fromLTRB(
+                                    24, 8, 24, 24),
+                                itemCount: filtered.length,
+                                separatorBuilder: (_, __) => Divider(
+                                    height: 1,
+                                    color: Colors.grey.shade100),
+                                itemBuilder: (_, i) {
+                                  final p = filtered[i];
+                                  final age = _ageOf(p);
+                                  final ageLabel =
+                                      age >= 0 ? '$age aa' : '—';
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 10),
+                                    child: Row(
+                                      children: [
+                                        CircleAvatar(
+                                          radius: 18,
+                                          backgroundColor: cluster.color
+                                              .withOpacity(0.15),
+                                          child: Text(
+                                            p.name.isNotEmpty
+                                                ? p.name[0].toUpperCase()
+                                                : '?',
+                                            style: TextStyle(
+                                              fontFamily: 'Montserrat',
+                                              fontWeight: FontWeight.bold,
+                                              color: cluster.color,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          flex: 3,
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                '${p.surname} ${p.name}'.trim(),
+                                                style: const TextStyle(
+                                                  fontFamily: 'Nunito',
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                              Text(
+                                                p.email,
+                                                style: TextStyle(
+                                                  fontFamily: 'Montserrat',
+                                                  fontSize: 11,
+                                                  color: Colors.grey[500],
+                                                ),
+                                                overflow:
+                                                    TextOverflow.ellipsis,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          width: 24,
+                                          child: Text(
+                                            _sexNorm(p),
+                                            style: const TextStyle(
+                                                fontFamily: 'Montserrat',
+                                                fontSize: 12),
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          width: 40,
+                                          child: Text(
+                                            ageLabel,
+                                            style: const TextStyle(
+                                                fontFamily: 'Montserrat',
+                                                fontSize: 12),
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          width: 90,
+                                          child: Text(
+                                            p.cityOfResidence.isEmpty
+                                                ? '—'
+                                                : p.cityOfResidence,
+                                            style: const TextStyle(
+                                                fontFamily: 'Montserrat',
+                                                fontSize: 12),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        if (p.conditions.isNotEmpty)
+                                          Expanded(
+                                            flex: 2,
+                                            child: Wrap(
+                                              spacing: 4,
+                                              runSpacing: 4,
+                                              children: p.conditions
+                                                  .take(2)
+                                                  .map(
+                                                    (c) => Container(
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
+                                                          horizontal: 6,
+                                                          vertical: 2),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.purple
+                                                            .withOpacity(0.1),
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(6),
+                                                      ),
+                                                      child: Text(
+                                                        c,
+                                                        style: const TextStyle(
+                                                          fontFamily:
+                                                              'Montserrat',
+                                                          fontSize: 10,
+                                                          color: Colors.purple,
+                                                        ),
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                      ),
+                                                    ),
+                                                  )
+                                                  .toList(),
+                                            ),
+                                          )
+                                        else
+                                          const Expanded(flex: 2, child: SizedBox()),
+                                        Tooltip(
+                                          message: p.assignedDoctorId != null
+                                              ? 'Dottore assegnato'
+                                              : 'Nessun dottore',
+                                          child: Icon(
+                                            p.assignedDoctorId != null
+                                                ? Icons.medical_services
+                                                : Icons.person_search_outlined,
+                                            size: 16,
+                                            color: p.assignedDoctorId != null
+                                                ? Colors.green
+                                                : Colors.grey,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Tooltip(
+                                          message: p.hasCompletedOnboarding
+                                              ? 'Onboarding completato'
+                                              : 'Onboarding incompleto',
+                                          child: Icon(
+                                            p.hasCompletedOnboarding
+                                                ? Icons.task_alt
+                                                : Icons.pending_outlined,
+                                            size: 16,
+                                            color: p.hasCompletedOnboarding
+                                                ? Colors.green
+                                                : Colors.orange,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ],
-          ],
-        ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
