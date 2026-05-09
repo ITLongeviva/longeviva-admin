@@ -12,6 +12,7 @@ import 'backend/bloc/ritual_bloc.dart';
 import 'backend/bloc/platform_analytics_bloc.dart';
 import 'backend/bloc/doctors_bloc.dart';
 import 'backend/bloc/patients_bloc.dart';
+import 'backend/bloc/audit_log_bloc.dart';
 import 'backend/bloc/signup_request_bloc.dart';
 import 'backend/controllers/admin_controller.dart';
 import 'backend/controllers/signup_request_controller.dart';
@@ -130,6 +131,11 @@ class LongevivaAdminApp extends StatelessWidget {
         // Patients BLoC
         BlocProvider<PatientsBloc>(
           create: (context) => PatientsBloc(),
+        ),
+
+        // Audit Log BLoC
+        BlocProvider<AuditLogBloc>(
+          create: (context) => AuditLogBloc(),
         ),
       ],
       child: BlocBuilder<LanguageBloc, LanguageState>(

@@ -3,7 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../../shared/utils/colors.dart';
 import '../../../../backend/bloc/admin_bloc.dart';
+import '../../../../backend/bloc/audit_log_bloc.dart';
 import '../../../../backend/bloc/signup_request_bloc.dart';
+import '../../../../backend/models/admin_action_model.dart';
 import '../../../../backend/models/signup_request_model.dart';
 
 class AdminDashboardHomeLargeScreenViewModel extends StatelessWidget {
@@ -471,6 +473,18 @@ class _HomeContent extends StatelessWidget {
               ),
             ),
           ),
+
+          const SizedBox(height: 24),
+
+          // ── Audit Log ──────────────────────────────────────────────────
+          BlocBuilder<AuditLogBloc, AuditLogState>(
+            builder: (context, auditState) {
+              if (auditState is AuditLogLoaded && auditState.actions.isNotEmpty) {
+                return _auditLogSection(auditState.actions);
+              }
+              return const SizedBox.shrink();
+            },
+          ),
         ],
       ),
     );
@@ -621,6 +635,151 @@ class _HomeContent extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _auditLogSection(List<AdminAction> actions) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.history, color: CustomColors.verdeAbisso, size: 20),
+                    SizedBox(width: 8),
+                    Text(
+                      'Attività recente',
+                      style: TextStyle(
+                        fontFamily: 'Nunito',
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: CustomColors.verdeAbisso,
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  'Ultime ${actions.length} azioni',
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 12,
+                    color: Colors.grey[500],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ...actions.take(20).map(_auditLogEntry),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _auditLogEntry(AdminAction action) {
+    final isApprove = action.action == 'approve' || action.action == 'batch_approve';
+    final color = isApprove ? const Color(0xFF4CAF50) : CustomColors.rossoSimone;
+    final icon = isApprove ? Icons.check_circle : Icons.cancel;
+
+    String actionLabel;
+    if (action.action == 'approve') {
+      actionLabel = 'Approvato';
+    } else if (action.action == 'reject') {
+      actionLabel = 'Rifiutato';
+    } else if (action.action == 'batch_approve') {
+      actionLabel = 'Batch approvazione (${action.batchCount ?? '?'})';
+    } else if (action.action == 'batch_reject') {
+      actionLabel = 'Batch rifiuto (${action.batchCount ?? '?'})';
+    } else {
+      actionLabel = action.action;
+    }
+
+    final diff = DateTime.now().difference(action.timestamp);
+    final timeAgo = diff.inMinutes < 60
+        ? '${diff.inMinutes}m fa'
+        : diff.inHours < 24
+            ? '${diff.inHours}h fa'
+            : '${diff.inDays}g fa';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 17),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        '${action.adminName.isNotEmpty ? action.adminName : action.adminEmail} · $actionLabel',
+                        style: const TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      timeAgo,
+                      style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 11,
+                        color: Colors.grey[500],
+                      ),
+                    ),
+                  ],
+                ),
+                if (action.requestName != null && action.requestName!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      action.requestName!,
+                      style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ),
+                if (action.notes != null && action.notes!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      action.notes!,
+                      style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 11,
+                        color: Colors.grey[500],
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

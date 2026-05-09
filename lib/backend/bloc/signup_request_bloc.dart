@@ -1,8 +1,10 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import '../../shared/utils/error_handler.dart';
 import '../controllers/signup_request_controller.dart';
 import '../models/doctor/sign_up_data.dart';
 import '../models/signup_request_model.dart';
+import '../repositories/audit_log_repository.dart';
 
 // ===== EVENTS =====
 abstract class SignupRequestEvent {}
@@ -71,6 +73,12 @@ class BatchApproveSignupRequests extends SignupRequestEvent {
     required this.requestIds,
     required this.defaultPassword,
   });
+}
+
+class BatchRejectSignupRequests extends SignupRequestEvent {
+  final List<String> requestIds;
+  final String reason;
+  BatchRejectSignupRequests({required this.requestIds, required this.reason});
 }
 
 // NEW: Update professional information for a request
@@ -143,6 +151,18 @@ class SignupRequestsBatchApproved extends SignupRequestState {
   int get totalFailed => failedApprovals.length;
   int get totalProcessed => totalSuccessful + totalFailed;
   bool get hasFailures => failedApprovals.isNotEmpty;
+}
+
+class SignupRequestsBatchRejected extends SignupRequestState {
+  final List<String> successfulRejections;
+  final List<String> failedRejections;
+  SignupRequestsBatchRejected({
+    required this.successfulRejections,
+    required this.failedRejections,
+  });
+  int get totalSuccessful => successfulRejections.length;
+  int get totalFailed => failedRejections.length;
+  bool get hasFailures => failedRejections.isNotEmpty;
 }
 
 class SignupRequestRejected extends SignupRequestState {
@@ -236,6 +256,7 @@ class SignupRequestBloc extends Bloc<SignupRequestEvent, SignupRequestState> {
     on<BatchApproveSignupRequests>(_handleBatchApproveSignupRequests);
     on<UpdateSignupRequestProfessionalInfo>(_handleUpdateSignupRequestProfessionalInfo);
     on<ValidateSignupData>(_handleValidateSignupData);
+    on<BatchRejectSignupRequests>(_handleBatchRejectSignupRequests);
   }
 
   // ===== EXISTING HANDLERS (Enhanced) =====
@@ -292,6 +313,15 @@ class SignupRequestBloc extends Bloc<SignupRequestEvent, SignupRequestState> {
 
       if (success) {
         emit(SignupRequestApproved(event.id));
+        try {
+          final user = firebase_auth.FirebaseAuth.instance.currentUser;
+          await AuditLogRepository().logAction(
+            adminEmail: user?.email ?? 'unknown',
+            adminName: user?.displayName ?? user?.email ?? 'Admin',
+            action: 'approve',
+            requestId: event.id,
+          );
+        } catch (_) {}
 
         // Refresh the list
         final requests = await _controller.getAllSignupRequests();
@@ -334,6 +364,16 @@ class SignupRequestBloc extends Bloc<SignupRequestEvent, SignupRequestState> {
 
       if (success) {
         emit(SignupRequestRejected(event.id));
+        try {
+          final user = firebase_auth.FirebaseAuth.instance.currentUser;
+          await AuditLogRepository().logAction(
+            adminEmail: user?.email ?? 'unknown',
+            adminName: user?.displayName ?? user?.email ?? 'Admin',
+            action: 'reject',
+            requestId: event.id,
+            notes: event.reason.isNotEmpty ? event.reason : null,
+          );
+        } catch (_) {}
 
         // Refresh the list
         final requests = await _controller.getAllSignupRequests();
@@ -582,6 +622,16 @@ class SignupRequestBloc extends Bloc<SignupRequestEvent, SignupRequestState> {
         successfulApprovals: successfulApprovals,
         failedApprovals: failedApprovals,
       ));
+      try {
+        final user = firebase_auth.FirebaseAuth.instance.currentUser;
+        await AuditLogRepository().logAction(
+          adminEmail: user?.email ?? 'unknown',
+          adminName: user?.displayName ?? user?.email ?? 'Admin',
+          action: 'batch_approve',
+          batchCount: successfulApprovals.length,
+          notes: 'Batch: ${successfulApprovals.length} approvate',
+        );
+      } catch (_) {}
 
       // Refresh the list
       final requests = await _controller.getAllSignupRequests();
@@ -664,6 +714,41 @@ class SignupRequestBloc extends Bloc<SignupRequestEvent, SignupRequestState> {
         'Failed to validate signup data',
         translationKey: 'errors.signup.validation_failed',
       ));
+    }
+  }
+
+  Future<void> _handleBatchRejectSignupRequests(
+      BatchRejectSignupRequests event,
+      Emitter<SignupRequestState> emit,
+  ) async {
+    emit(SignupRequestLoading());
+    try {
+      final successfulRejections = await _controller.batchRejectSignupRequests(
+        event.requestIds,
+        event.reason,
+      );
+      final failedRejections = event.requestIds
+          .where((id) => !successfulRejections.contains(id))
+          .toList();
+      emit(SignupRequestsBatchRejected(
+        successfulRejections: successfulRejections,
+        failedRejections: failedRejections,
+      ));
+      try {
+        final user = firebase_auth.FirebaseAuth.instance.currentUser;
+        await AuditLogRepository().logAction(
+          adminEmail: user?.email ?? 'unknown',
+          adminName: user?.displayName ?? user?.email ?? 'Admin',
+          action: 'batch_reject',
+          batchCount: successfulRejections.length,
+          notes: event.reason.isNotEmpty ? event.reason : null,
+        );
+      } catch (_) {}
+      final requests = await _controller.getAllSignupRequests();
+      emit(SignupRequestsLoaded(requests));
+    } catch (e) {
+      ErrorHandler.logError('Error in batch rejection', e);
+      emit(SignupRequestError('Failed to reject signup requests in batch'));
     }
   }
 }
