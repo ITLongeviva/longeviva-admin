@@ -445,6 +445,8 @@ class _PatientsContentState extends State<_PatientsContent> {
         children: [
           _clinicalInsightsSection(),
           const SizedBox(height: 8),
+          _churnRiskSection(),
+          const SizedBox(height: 8),
           _subMenu(),
           const SizedBox(height: 16),
           if (_viewMode == 'lista') ...[
@@ -1171,6 +1173,184 @@ class _PatientsContentState extends State<_PatientsContent> {
       backgroundColor: Colors.grey.shade100,
       side: BorderSide(
         color: selected ? CustomColors.verdeAbisso : Colors.grey.shade300,
+      ),
+    );
+  }
+
+  // ─── Churn risk ───────────────────────────────────────────────────────────────
+
+  List<Patient> get _churnRiskPatients {
+    final now = DateTime.now();
+    final thirtyDaysAgo = now.subtract(const Duration(days: 30));
+    final fourteenDaysAgo = now.subtract(const Duration(days: 14));
+    final result = widget.patients.where((p) {
+      if (p.assignedDoctorId != null) return false;
+      if (p.lastActivityAt != null &&
+          p.lastActivityAt!.isBefore(thirtyDaysAgo)) return true;
+      if (p.lastActivityAt == null &&
+          p.createdAt != null &&
+          p.createdAt!.isBefore(fourteenDaysAgo)) return true;
+      return false;
+    }).toList();
+    result.sort((a, b) {
+      final aLast =
+          a.lastActivityAt ?? a.createdAt ?? DateTime(2000);
+      final bLast =
+          b.lastActivityAt ?? b.createdAt ?? DateTime(2000);
+      return aLast.compareTo(bLast);
+    });
+    return result;
+  }
+
+  Widget _churnRiskSection() {
+    final atRisk = _churnRiskPatients;
+    if (atRisk.isEmpty) return const SizedBox.shrink();
+
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.warning_amber_rounded,
+                  color: Colors.red.shade400, size: 20),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Pazienti a rischio churn',
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: CustomColors.verdeAbisso,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '${atRisk.length}',
+                  style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Pazienti senza professionista assegnato e inattivi da oltre 30 giorni (o iscritti da 14+ giorni senza attività registrata).',
+            style: TextStyle(
+                fontFamily: 'Montserrat',
+                fontSize: 12,
+                color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 16),
+          ...atRisk.take(8).map((p) {
+            final now = DateTime.now();
+            final lastRef = p.lastActivityAt ?? p.createdAt;
+            final daysInactive = lastRef != null
+                ? now.difference(lastRef).inDays
+                : -1;
+            final riskColor = daysInactive > 60
+                ? CustomColors.rossoSimone
+                : daysInactive > 30
+                    ? Colors.orange
+                    : Colors.amber;
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 16,
+                    backgroundColor: riskColor.withOpacity(0.15),
+                    child: Text(
+                      p.name.isNotEmpty ? p.name[0].toUpperCase() : '?',
+                      style: TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: riskColor),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${p.surname} ${p.name}'.trim(),
+                          style: const TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (p.cityOfResidence.isNotEmpty)
+                          Text(
+                            p.cityOfResidence,
+                            style: TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontSize: 11,
+                                color: Colors.grey[500]),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: p.conditions.isNotEmpty
+                        ? Text(
+                            p.conditions.take(2).join(', '),
+                            style: TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontSize: 11,
+                                color: Colors.grey[600]),
+                            overflow: TextOverflow.ellipsis,
+                          )
+                        : const SizedBox(),
+                  ),
+                  if (daysInactive >= 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: riskColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '$daysInactive gg inattivo',
+                        style: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: riskColor),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          }),
+          if (atRisk.length > 8) ...[
+            const SizedBox(height: 8),
+            Text(
+              '+ altri ${atRisk.length - 8} pazienti a rischio',
+              style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 11,
+                  color: Colors.grey[500]),
+            ),
+          ],
+        ],
       ),
     );
   }

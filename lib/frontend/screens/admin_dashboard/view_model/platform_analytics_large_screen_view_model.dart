@@ -232,6 +232,59 @@ class _Content extends StatelessWidget {
     return '€${amount.toStringAsFixed(0)}';
   }
 
+  // ── Matching engine helpers ────────────────────────────────────────────────
+
+  Map<String, int> get _patientCountPerDoctor {
+    final map = <String, int>{};
+    for (final p in _patients) {
+      if (p.assignedDoctorId != null) {
+        map[p.assignedDoctorId!] = (map[p.assignedDoctorId!] ?? 0) + 1;
+      }
+    }
+    return map;
+  }
+
+  List<Doctor> get _doctorsWithNoPatients {
+    final pCount = _patientCountPerDoctor;
+    return _doctors.where((d) => (pCount[d.id] ?? 0) == 0).toList();
+  }
+
+  List<Patient> get _unassignedPatients =>
+      _patients.where((p) => p.assignedDoctorId == null).toList();
+
+  List<({String city, int patients, int doctors, List<String> roles})>
+      get _cityMatchOpportunities {
+    final uPatientsByCity = <String, int>{};
+    for (final p in _unassignedPatients) {
+      final c = p.cityOfResidence.trim().toLowerCase();
+      if (c.isNotEmpty) uPatientsByCity[c] = (uPatientsByCity[c] ?? 0) + 1;
+    }
+    final uDoctorsByCity = <String, List<Doctor>>{};
+    for (final d in _doctorsWithNoPatients) {
+      final c = d.cityOfWork.trim().toLowerCase();
+      if (c.isNotEmpty) uDoctorsByCity.putIfAbsent(c, () => []).add(d);
+    }
+    final result =
+        <({String city, int patients, int doctors, List<String> roles})>[];
+    for (final entry in uPatientsByCity.entries) {
+      final docs = uDoctorsByCity[entry.key] ?? [];
+      if (docs.isNotEmpty || entry.value >= 2) {
+        final raw = entry.key;
+        final displayCity =
+            raw.isEmpty ? raw : raw[0].toUpperCase() + raw.substring(1);
+        final roles = docs.expand((d) => d.roles).toSet().toList();
+        result.add((
+          city: displayCity,
+          patients: entry.value,
+          doctors: docs.length,
+          roles: roles,
+        ));
+      }
+    }
+    result.sort((a, b) => b.patients.compareTo(a.patients));
+    return result.take(10).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -282,6 +335,10 @@ class _Content extends StatelessWidget {
 
             // ── Crescita & Mercato ───────────────────────────────────────────
             _growthAndMarketSection(),
+            const SizedBox(height: 32),
+
+            // ── Matching Engine ──────────────────────────────────────────────
+            _matchingEngineSection(),
             const SizedBox(height: 32),
 
             // ── Sezione Richieste ────────────────────────────────────────────
@@ -1279,6 +1336,420 @@ class _Content extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  // ─── Matching engine ─────────────────────────────────────────────────────────
+
+  Widget _matchingEngineSection() {
+    final unassignedPts = _unassignedPatients;
+    final unassignedDocs = _doctorsWithNoPatients;
+    final opportunities = _cityMatchOpportunities;
+    final matchCount = opportunities.where((o) => o.doctors > 0).length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionHeader(
+            'Matching Pazienti — Professionisti',
+            Icons.connect_without_contact_outlined),
+        const SizedBox(height: 8),
+        Text(
+          'Pazienti senza professionista e professionisti senza pazienti. Agire su questi riduce il churn e aumenta l\'utilizzo della piattaforma.',
+          style: TextStyle(
+              fontFamily: 'Montserrat', fontSize: 13, color: Colors.grey[600]),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+                child: _kpiCard('Pazienti non assegnati', '${unassignedPts.length}',
+                    Icons.person_search_outlined, Colors.orange)),
+            Expanded(
+                child: _kpiCard('Professionisti liberi', '${unassignedDocs.length}',
+                    Icons.medical_services_outlined, Colors.indigo)),
+            Expanded(
+                child: _kpiCard('% pazienti assegnati',
+                    '${(_assignmentRate * 100).round()}%',
+                    Icons.check_circle_outline, const Color(0xFF4CAF50))),
+            Expanded(
+                child: _kpiCard('Città con match immediato', '$matchCount',
+                    Icons.auto_awesome_outlined, CustomColors.verdeMare)),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _card(
+                title: 'Pazienti in attesa di assegnazione',
+                icon: Icons.person_search_outlined,
+                iconColor: Colors.orange,
+                child: unassignedPts.isEmpty
+                    ? _emptyRow(
+                        'Tutti i pazienti hanno un professionista assegnato')
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${unassignedPts.length} pazienti totali',
+                            style: TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontSize: 11,
+                                color: Colors.grey[500]),
+                          ),
+                          const SizedBox(height: 12),
+                          ...unassignedPts.take(8).map((p) {
+                            final sinceDate = p.createdAt != null
+                                ? DateTime.now()
+                                    .difference(p.createdAt!)
+                                    .inDays
+                                : -1;
+                            final c = sinceDate > 30
+                                ? CustomColors.rossoSimone
+                                : Colors.orange;
+                            return Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 7),
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 14,
+                                    backgroundColor: Colors.orange.withOpacity(0.15),
+                                    child: Text(
+                                      p.name.isNotEmpty
+                                          ? p.name[0].toUpperCase()
+                                          : '?',
+                                      style: const TextStyle(
+                                          fontFamily: 'Montserrat',
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.orange),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '${p.surname} ${p.name}'.trim(),
+                                          style: const TextStyle(
+                                              fontFamily: 'Montserrat',
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        if (p.cityOfResidence.isNotEmpty)
+                                          Text(
+                                            p.cityOfResidence,
+                                            style: TextStyle(
+                                                fontFamily: 'Montserrat',
+                                                fontSize: 10,
+                                                color: Colors.grey[500]),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (sinceDate >= 0)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: c.withOpacity(0.1),
+                                        borderRadius:
+                                            BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        '$sinceDate gg',
+                                        style: TextStyle(
+                                            fontFamily: 'Montserrat',
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: c),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            );
+                          }),
+                          if (unassignedPts.length > 8) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              '+ altri ${unassignedPts.length - 8}',
+                              style: TextStyle(
+                                  fontFamily: 'Montserrat',
+                                  fontSize: 11,
+                                  color: Colors.grey[500]),
+                            ),
+                          ],
+                        ],
+                      ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _card(
+                title: 'Professionisti senza pazienti',
+                icon: Icons.medical_services_outlined,
+                iconColor: Colors.indigo,
+                child: unassignedDocs.isEmpty
+                    ? _emptyRow(
+                        'Tutti i professionisti hanno almeno un paziente')
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${unassignedDocs.length} professionisti disponibili',
+                            style: TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontSize: 11,
+                                color: Colors.grey[500]),
+                          ),
+                          const SizedBox(height: 12),
+                          ...unassignedDocs.take(8).map((d) => Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 7),
+                                child: Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 14,
+                                      backgroundColor:
+                                          Colors.indigo.withOpacity(0.15),
+                                      child: Text(
+                                        d.name.isNotEmpty
+                                            ? d.name[0].toUpperCase()
+                                            : '?',
+                                        style: const TextStyle(
+                                            fontFamily: 'Montserrat',
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.indigo),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            '${d.surname} ${d.name}'.trim(),
+                                            style: const TextStyle(
+                                                fontFamily: 'Montserrat',
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          Text(
+                                            d.roles
+                                                .map(_shortRoleLabel)
+                                                .join(', '),
+                                            style: TextStyle(
+                                                fontFamily: 'Montserrat',
+                                                fontSize: 10,
+                                                color: Colors.grey[500]),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    if (d.cityOfWork.isNotEmpty)
+                                      Text(
+                                        d.cityOfWork,
+                                        style: TextStyle(
+                                            fontFamily: 'Montserrat',
+                                            fontSize: 11,
+                                            color: Colors.grey[600]),
+                                      ),
+                                  ],
+                                ),
+                              )),
+                          if (unassignedDocs.length > 8) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              '+ altri ${unassignedDocs.length - 8}',
+                              style: TextStyle(
+                                  fontFamily: 'Montserrat',
+                                  fontSize: 11,
+                                  color: Colors.grey[500]),
+                            ),
+                          ],
+                        ],
+                      ),
+              ),
+            ),
+          ],
+        ),
+        if (opportunities.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _card(
+            title: 'Opportunità di matching per città',
+            icon: Icons.auto_awesome_outlined,
+            iconColor: CustomColors.verdeMare,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Città con pazienti in attesa. Le righe "Match!" hanno professionisti locali disponibili.',
+                  style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 12,
+                      color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                        flex: 4,
+                        child: Text('Città', style: _thStyle)),
+                    Expanded(
+                        flex: 2,
+                        child: Text('Paz. in attesa',
+                            style: _thStyle, textAlign: TextAlign.center)),
+                    Expanded(
+                        flex: 2,
+                        child: Text('Prof. liberi',
+                            style: _thStyle, textAlign: TextAlign.center)),
+                    Expanded(
+                        flex: 3,
+                        child: Text('Ruoli', style: _thStyle)),
+                    Expanded(
+                        flex: 2,
+                        child: Text('Stato',
+                            style: _thStyle, textAlign: TextAlign.right)),
+                  ],
+                ),
+                const Divider(height: 12),
+                ...opportunities.map((o) {
+                  final isMatch = o.doctors > 0;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 7),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          flex: 4,
+                          child: Text(o.city,
+                              style: const TextStyle(
+                                  fontFamily: 'Montserrat',
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500)),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text('${o.patients}',
+                              style: const TextStyle(
+                                  fontFamily: 'Montserrat', fontSize: 13),
+                              textAlign: TextAlign.center),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            '${o.doctors}',
+                            style: TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontSize: 13,
+                                color: isMatch ? Colors.green : Colors.grey),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        Expanded(
+                          flex: 3,
+                          child: isMatch
+                              ? Wrap(
+                                  spacing: 4,
+                                  children: o.roles.take(3).map((r) {
+                                    final rc = _roleColor(r);
+                                    return Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 5, vertical: 1),
+                                      decoration: BoxDecoration(
+                                        color: rc.withOpacity(0.12),
+                                        borderRadius:
+                                            BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        _shortRoleLabel(r),
+                                        style: TextStyle(
+                                            fontFamily: 'Montserrat',
+                                            fontSize: 9,
+                                            color: rc,
+                                            fontWeight: FontWeight.w600),
+                                      ),
+                                    );
+                                  }).toList(),
+                                )
+                              : const SizedBox(),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Align(
+                            alignment: Alignment.centerRight,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: isMatch
+                                    ? Colors.green.withOpacity(0.1)
+                                    : Colors.orange.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                isMatch ? 'Match!' : 'In attesa',
+                                style: TextStyle(
+                                  fontFamily: 'Montserrat',
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: isMatch
+                                      ? Colors.green
+                                      : Colors.orange,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  TextStyle get _thStyle => TextStyle(
+      fontFamily: 'Montserrat',
+      fontSize: 11,
+      fontWeight: FontWeight.bold,
+      color: Colors.grey[600]);
+
+  String _shortRoleLabel(String role) {
+    switch (role) {
+      case Doctor.ROLE_NUTRITIONIST:
+        return 'Alimentare';
+      case Doctor.ROLE_PERSONAL_TRAINER:
+        return 'Motoria';
+      case Doctor.ROLE_PSYCHOLOGIST:
+        return 'Mentale';
+      default:
+        return role;
+    }
+  }
+
+  Color _roleColor(String role) {
+    switch (role) {
+      case Doctor.ROLE_NUTRITIONIST:
+        return Colors.green;
+      case Doctor.ROLE_PERSONAL_TRAINER:
+        return Colors.orange;
+      case Doctor.ROLE_PSYCHOLOGIST:
+        return Colors.purple;
+      default:
+        return Colors.grey;
+    }
   }
 
   String _roleLabel(String role) {

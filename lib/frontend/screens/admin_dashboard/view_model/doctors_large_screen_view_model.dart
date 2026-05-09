@@ -362,6 +362,8 @@ class _DoctorsContentState extends State<_DoctorsContent> {
           if (_viewMode == 'lista') ...[
             _expiringQualificationsCard(_expiringQualifications),
             const SizedBox(height: 16),
+            _profileCompletenessSection(),
+            const SizedBox(height: 16),
             _filterSection(),
             const SizedBox(height: 20),
             _kpiRow(filtered),
@@ -1058,6 +1060,279 @@ class _DoctorsContentState extends State<_DoctorsContent> {
       default:
         return role;
     }
+  }
+
+  // ─── Profile completeness ─────────────────────────────────────────────────────
+
+  double _profileCompleteness(Doctor d) {
+    int score = 0;
+    if (d.specialty != null && d.specialty!.isNotEmpty) score++;
+    if (d.areaOfInterest != null && d.areaOfInterest!.isNotEmpty) score++;
+    if (d.languagesSpoken.isNotEmpty) score++;
+    if (d.issuer.isNotEmpty) score++;
+    if (d.qualificationValidity != null) score++;
+    return score / 5;
+  }
+
+  Widget _profileCompletenessSection() {
+    final doctors = widget.doctors;
+    if (doctors.isEmpty) return const SizedBox.shrink();
+
+    final scores = doctors.map(_profileCompleteness).toList();
+    final avgScore =
+        scores.fold(0.0, (s, v) => s + v) / scores.length;
+
+    final incomplete = doctors
+        .where((d) => _profileCompleteness(d) < 0.6)
+        .toList()
+      ..sort((a, b) =>
+          _profileCompleteness(a).compareTo(_profileCompleteness(b)));
+
+    final fields = [
+      (
+        key: 'Specializzazione',
+        count: doctors
+            .where((d) =>
+                d.specialty != null && d.specialty!.isNotEmpty)
+            .length,
+      ),
+      (
+        key: 'Area di interesse',
+        count: doctors
+            .where((d) =>
+                d.areaOfInterest != null &&
+                d.areaOfInterest!.isNotEmpty)
+            .length,
+      ),
+      (
+        key: 'Lingue parlate',
+        count: doctors
+            .where((d) => d.languagesSpoken.isNotEmpty)
+            .length,
+      ),
+      (
+        key: 'Issuer / Ente',
+        count: doctors.where((d) => d.issuer.isNotEmpty).length,
+      ),
+      (
+        key: 'Validità qualifica',
+        count: doctors
+            .where((d) => d.qualificationValidity != null)
+            .length,
+      ),
+    ];
+
+    final avgColor = avgScore >= 0.8
+        ? Colors.green
+        : avgScore >= 0.5
+            ? Colors.orange
+            : CustomColors.rossoSimone;
+
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.fact_check_outlined,
+                  color: CustomColors.verdeAbisso, size: 20),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Completezza profili',
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: CustomColors.verdeAbisso,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: avgColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  'Media: ${(avgScore * 100).round()}%',
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: avgColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Field fill rates
+              Expanded(
+                flex: 3,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Compilazione per campo',
+                      style: TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[700]),
+                    ),
+                    const SizedBox(height: 10),
+                    ...fields.map((f) {
+                      final pct = doctors.isEmpty
+                          ? 0.0
+                          : f.count / doctors.length;
+                      final barColor = pct >= 0.7
+                          ? Colors.green
+                          : pct >= 0.4
+                              ? Colors.orange
+                              : CustomColors.rossoSimone;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 140,
+                              child: Text(
+                                f.key,
+                                style: const TextStyle(
+                                    fontFamily: 'Montserrat',
+                                    fontSize: 12),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: LinearProgressIndicator(
+                                  value: pct,
+                                  minHeight: 10,
+                                  backgroundColor: Colors.grey.shade200,
+                                  valueColor:
+                                      AlwaysStoppedAnimation<Color>(
+                                          barColor),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            SizedBox(
+                              width: 52,
+                              child: Text(
+                                '${f.count}/${doctors.length}',
+                                style: TextStyle(
+                                    fontFamily: 'Montserrat',
+                                    fontSize: 11,
+                                    color: Colors.grey[600]),
+                                textAlign: TextAlign.right,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+              if (incomplete.isNotEmpty) ...[
+                const SizedBox(width: 24),
+                // Incomplete profiles list
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Profili incompleti (< 60%)',
+                        style: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[700]),
+                      ),
+                      const SizedBox(height: 10),
+                      ...incomplete.take(6).map((d) {
+                        final pct = _profileCompleteness(d);
+                        final c = pct < 0.2
+                            ? CustomColors.rossoSimone
+                            : pct < 0.4
+                                ? Colors.orange
+                                : Colors.amber;
+                        return Padding(
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 5),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 14,
+                                backgroundColor: c.withOpacity(0.12),
+                                child: Text(
+                                  d.name.isNotEmpty
+                                      ? d.name[0].toUpperCase()
+                                      : '?',
+                                  style: TextStyle(
+                                      fontFamily: 'Montserrat',
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: c),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  '${d.surname} ${d.name}'.trim(),
+                                  style: const TextStyle(
+                                      fontFamily: 'Montserrat',
+                                      fontSize: 12),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: c.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  '${(pct * 100).round()}%',
+                                  style: TextStyle(
+                                      fontFamily: 'Montserrat',
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: c),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                      if (incomplete.length > 6) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          '+ altri ${incomplete.length - 6}',
+                          style: TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 11,
+                              color: Colors.grey[500]),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   // ─── Sottomenu ────────────────────────────────────────────────────────────────
