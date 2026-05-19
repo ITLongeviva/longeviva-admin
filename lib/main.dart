@@ -8,6 +8,11 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'backend/bloc/admin_auth_bloc.dart';
 import 'backend/bloc/admin_bloc.dart';
+import 'backend/bloc/ritual_bloc.dart';
+import 'backend/bloc/platform_analytics_bloc.dart';
+import 'backend/bloc/doctors_bloc.dart';
+import 'backend/bloc/patients_bloc.dart';
+import 'backend/bloc/audit_log_bloc.dart';
 import 'backend/bloc/signup_request_bloc.dart';
 import 'backend/controllers/admin_controller.dart';
 import 'backend/controllers/signup_request_controller.dart';
@@ -106,6 +111,31 @@ class LongevivaAdminApp extends StatelessWidget {
           create: (context) => AdminOperationsBloc(
             adminController: AdminController(),
           ),
+        ),
+
+        // Ritual BLoC
+        BlocProvider<RitualBloc>(
+          create: (context) => RitualBloc(),
+        ),
+
+        // Platform Analytics BLoC
+        BlocProvider<PlatformAnalyticsBloc>(
+          create: (context) => PlatformAnalyticsBloc(),
+        ),
+
+        // Doctors BLoC
+        BlocProvider<DoctorsBloc>(
+          create: (context) => DoctorsBloc(),
+        ),
+
+        // Patients BLoC
+        BlocProvider<PatientsBloc>(
+          create: (context) => PatientsBloc(),
+        ),
+
+        // Audit Log BLoC
+        BlocProvider<AuditLogBloc>(
+          create: (context) => AuditLogBloc(),
         ),
       ],
       child: BlocBuilder<LanguageBloc, LanguageState>(

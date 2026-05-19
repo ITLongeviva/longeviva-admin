@@ -25,6 +25,7 @@ class _SignupRequestsLargeScreenViewModelState extends State<SignupRequestsLarge
   String _searchQuery = '';
   String _statusFilter = 'all'; // 'all', 'pending', 'approved', 'rejected'
   String _roleFilter = 'all'; // NEW: Role filter
+  final Set<String> _selectedIds = {};
 
   @override
   void dispose() {
@@ -109,6 +110,20 @@ class _SignupRequestsLargeScreenViewModelState extends State<SignupRequestsLarge
                   context.showSuccessAlert('Signup request approved successfully');
                 } else if (state is SignupRequestRejected) {
                   context.showSuccessAlert('Signup request rejected successfully');
+                } else if (state is SignupRequestsBatchApproved) {
+                  setState(() => _selectedIds.clear());
+                  if (state.hasFailures) {
+                    context.showErrorAlert('${state.totalSuccessful} approvate, ${state.totalFailed} fallite');
+                  } else {
+                    context.showSuccessAlert('${state.totalSuccessful} richieste approvate con successo');
+                  }
+                } else if (state is SignupRequestsBatchRejected) {
+                  setState(() => _selectedIds.clear());
+                  if (state.hasFailures) {
+                    context.showErrorAlert('${state.totalSuccessful} rifiutate, ${state.totalFailed} fallite');
+                  } else {
+                    context.showSuccessAlert('${state.totalSuccessful} richieste rifiutate');
+                  }
                 } else if (state is SignupRequestError) {
                   context.showErrorAlert(state.message);
                 }
@@ -155,12 +170,21 @@ class _SignupRequestsLargeScreenViewModelState extends State<SignupRequestsLarge
                     return _buildEmptyState();
                   }
 
-                  return ListView.builder(
-                    itemCount: filteredRequests.length,
-                    itemBuilder: (context, index) {
-                      final request = filteredRequests[index];
-                      return _buildRequestCard(context, request);
-                    },
+                  final pendingFiltered = filteredRequests.where((r) => r.status == 'pending').toList();
+                  return Column(
+                    children: [
+                      if (_selectedIds.isNotEmpty)
+                        _buildBulkActionBar(context, pendingFiltered),
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: filteredRequests.length,
+                          itemBuilder: (context, index) {
+                            final request = filteredRequests[index];
+                            return _buildRequestCard(context, request);
+                          },
+                        ),
+                      ),
+                    ],
                   );
                 }
 
@@ -334,7 +358,7 @@ class _SignupRequestsLargeScreenViewModelState extends State<SignupRequestsLarge
                 children: [
                   Icon(Icons.restaurant_menu, size: 20, color: Colors.green),
                   SizedBox(width: 8),
-                  Text('Nutritionist', style: TextStyle(fontFamily: 'Montserrat')),
+                  Text('Prof. salute alimentare', style: TextStyle(fontFamily: 'Montserrat')),
                 ],
               ),
             ),
@@ -344,7 +368,7 @@ class _SignupRequestsLargeScreenViewModelState extends State<SignupRequestsLarge
                 children: [
                   Icon(Icons.fitness_center, size: 20, color: Colors.orange),
                   SizedBox(width: 8),
-                  Text('Personal Trainer', style: TextStyle(fontFamily: 'Montserrat')),
+                  Text('Prof. salute motoria', style: TextStyle(fontFamily: 'Montserrat')),
                 ],
               ),
             ),
@@ -354,7 +378,7 @@ class _SignupRequestsLargeScreenViewModelState extends State<SignupRequestsLarge
                 children: [
                   Icon(Icons.psychology, size: 20, color: Colors.purple),
                   SizedBox(width: 8),
-                  Text('Psychologist', style: TextStyle(fontFamily: 'Montserrat')),
+                  Text('Prof. salute mentale', style: TextStyle(fontFamily: 'Montserrat')),
                 ],
               ),
             ),
@@ -433,29 +457,50 @@ class _SignupRequestsLargeScreenViewModelState extends State<SignupRequestsLarge
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Status indicator
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(statusIcon, color: statusColor, size: 16),
-                        const SizedBox(width: 4),
-                        Text(
-                          status.toUpperCase(),
-                          style: TextStyle(
-                            color: statusColor,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                            fontFamily: 'Montserrat',
-                          ),
+                  Row(
+                    children: [
+                      if (status == 'pending') ...[
+                        Checkbox(
+                          value: _selectedIds.contains(request.id),
+                          onChanged: (val) {
+                            setState(() {
+                              if (val == true) {
+                                _selectedIds.add(request.id);
+                              } else {
+                                _selectedIds.remove(request.id);
+                              }
+                            });
+                          },
+                          activeColor: CustomColors.verdeAbisso,
+                          visualDensity: VisualDensity.compact,
                         ),
+                        const SizedBox(width: 4),
                       ],
-                    ),
+                      // Status indicator
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: statusColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(statusIcon, color: statusColor, size: 16),
+                            const SizedBox(width: 4),
+                            Text(
+                              status.toUpperCase(),
+                              style: TextStyle(
+                                color: statusColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                                fontFamily: 'Montserrat',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
 
                   // Request timestamp
@@ -806,11 +851,14 @@ class _SignupRequestsLargeScreenViewModelState extends State<SignupRequestsLarge
     switch (role.toUpperCase()) {
       case 'NUTRITIONIST':
       case 'NUTRIZIONISTA':
+      case 'PROFESSIONISTA SALUTE ALIMENTARE':
         return Colors.green;
       case 'PERSONAL TRAINER':
+      case 'PROFESSIONISTA SALUTE MOTORIA':
         return Colors.orange;
       case 'PSYCHOLOGIST':
       case 'PSICOLOGO':
+      case 'PROFESSIONISTA SALUTE MENTALE':
         return Colors.purple;
       case 'DOCTOR':
       case 'DOTTORE':
@@ -827,11 +875,14 @@ class _SignupRequestsLargeScreenViewModelState extends State<SignupRequestsLarge
     switch (role.toUpperCase()) {
       case 'NUTRITIONIST':
       case 'NUTRIZIONISTA':
+      case 'PROFESSIONISTA SALUTE ALIMENTARE':
         return Icons.restaurant_menu;
       case 'PERSONAL TRAINER':
+      case 'PROFESSIONISTA SALUTE MOTORIA':
         return Icons.fitness_center;
       case 'PSYCHOLOGIST':
       case 'PSICOLOGO':
+      case 'PROFESSIONISTA SALUTE MENTALE':
         return Icons.psychology;
       case 'DOCTOR':
       case 'DOTTORE':
@@ -934,6 +985,224 @@ class _SignupRequestsLargeScreenViewModelState extends State<SignupRequestsLarge
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildBulkActionBar(BuildContext context, List<SignupRequest> pendingRequests) {
+    final allSelected = pendingRequests.isNotEmpty &&
+        pendingRequests.every((r) => _selectedIds.contains(r.id));
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: CustomColors.verdeAbisso.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: CustomColors.verdeAbisso.withOpacity(0.25)),
+      ),
+      child: Row(
+        children: [
+          Checkbox(
+            tristate: true,
+            value: allSelected ? true : (_selectedIds.isEmpty ? false : null),
+            onChanged: (val) {
+              setState(() {
+                if (val == true) {
+                  _selectedIds.addAll(pendingRequests.map((r) => r.id));
+                } else {
+                  _selectedIds.removeAll(pendingRequests.map((r) => r.id));
+                }
+              });
+            },
+            activeColor: CustomColors.verdeAbisso,
+            visualDensity: VisualDensity.compact,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            '${_selectedIds.length} selezionat${_selectedIds.length == 1 ? 'a' : 'e'}',
+            style: const TextStyle(
+              fontFamily: 'Montserrat',
+              fontWeight: FontWeight.w600,
+              color: CustomColors.verdeAbisso,
+            ),
+          ),
+          const Spacer(),
+          TextButton.icon(
+            onPressed: () => setState(() => _selectedIds.clear()),
+            icon: const Icon(Icons.clear, size: 16),
+            label: const Text('Deseleziona', style: TextStyle(fontFamily: 'Montserrat', fontSize: 13)),
+            style: TextButton.styleFrom(foregroundColor: Colors.grey[600]),
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton.icon(
+            onPressed: () => _showBulkRejectDialog(context),
+            icon: const Icon(Icons.cancel, color: CustomColors.rossoSimone, size: 16),
+            label: const Text(
+              'Rifiuta',
+              style: TextStyle(color: CustomColors.rossoSimone, fontFamily: 'Montserrat', fontSize: 13),
+            ),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: CustomColors.rossoSimone),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton.icon(
+            onPressed: () => _showBulkApproveDialog(context),
+            icon: const Icon(Icons.check_circle, color: Colors.white, size: 16),
+            label: const Text(
+              'Approva',
+              style: TextStyle(color: Colors.white, fontFamily: 'Montserrat', fontSize: 13),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: CustomColors.verdeMare,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBulkApproveDialog(BuildContext context) {
+    final ids = List<String>.from(_selectedIds);
+    final passwordController = TextEditingController();
+    passwordController.text = PasswordValidationHelper.generateValidatedPassword(length: 12);
+    final bloc = context.read<SignupRequestBloc>();
+
+    context.showAnimatedDialog(
+      dialogBuilder: (dialogContext) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(
+            'Approva ${ids.length} richiest${ids.length == 1 ? 'a' : 'e'}',
+            style: const TextStyle(
+              fontFamily: 'Montserrat',
+              fontWeight: FontWeight.bold,
+              color: CustomColors.verdeAbisso,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Stai per approvare ${ids.length} richiest${ids.length == 1 ? 'a' : 'e'} di iscrizione.',
+                style: const TextStyle(fontFamily: 'Montserrat'),
+              ),
+              const SizedBox(height: 16),
+              PasswordValidationWidget(
+                passwordController: passwordController,
+                onRegeneratePassword: () {
+                  setDialogState(() {
+                    passwordController.text = PasswordValidationHelper.generateValidatedPassword(length: 12);
+                  });
+                },
+                showPasswordRequirements: false,
+                helperText: 'Password temporanea comune — ogni utente dovrà cambiarla al primo accesso',
+              ),
+            ],
+          ),
+          actions: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Annulla', style: TextStyle(fontFamily: 'Montserrat', color: Colors.grey)),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    if (!PasswordValidationHelper.validateAndShowError(ctx, passwordController.text.trim())) return;
+                    Navigator.of(dialogContext).pop();
+                    bloc.add(BatchApproveSignupRequests(
+                      requestIds: ids,
+                      defaultPassword: passwordController.text,
+                    ));
+                  },
+                  icon: const Icon(Icons.check_circle, color: Colors.white),
+                  label: Text(
+                    'Approva ${ids.length}',
+                    style: const TextStyle(color: Colors.white, fontFamily: 'Montserrat'),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: CustomColors.verdeMare,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showBulkRejectDialog(BuildContext context) {
+    final ids = List<String>.from(_selectedIds);
+    final reasonController = TextEditingController();
+    final bloc = context.read<SignupRequestBloc>();
+
+    context.showAnimatedDialog(
+      dialogBuilder: (dialogContext) => AlertDialog(
+        title: Text(
+          'Rifiuta ${ids.length} richiest${ids.length == 1 ? 'a' : 'e'}',
+          style: const TextStyle(
+            fontFamily: 'Montserrat',
+            fontWeight: FontWeight.bold,
+            color: CustomColors.verdeAbisso,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Stai per rifiutare ${ids.length} richiest${ids.length == 1 ? 'a' : 'e'} di iscrizione.',
+              style: const TextStyle(fontFamily: 'Montserrat'),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                labelText: 'Motivo del rifiuto (opzionale)',
+                border: OutlineInputBorder(),
+              ),
+              style: const TextStyle(fontFamily: 'Montserrat'),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Annulla', style: TextStyle(fontFamily: 'Montserrat', color: Colors.grey)),
+              ),
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  bloc.add(BatchRejectSignupRequests(
+                    requestIds: ids,
+                    reason: reasonController.text,
+                  ));
+                },
+                icon: const Icon(Icons.cancel, color: CustomColors.rossoSimone),
+                label: Text(
+                  'Rifiuta ${ids.length}',
+                  style: const TextStyle(color: CustomColors.rossoSimone, fontFamily: 'Montserrat'),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: CustomColors.rossoSimone),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

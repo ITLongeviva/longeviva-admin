@@ -462,6 +462,11 @@ class SignupRequestController {
     }
   }
 
+  Future<List<String>> batchRejectSignupRequests(
+      List<String> requestIds, String reason) async {
+    return await _repository.batchRejectSignupRequests(requestIds, reason);
+  }
+
   // UPDATED: Update professional information including hourlyFees
   Future<bool> updateSignupRequestProfessionalInfo(String requestId, Map<String, dynamic> professionalInfo) async {
     try {

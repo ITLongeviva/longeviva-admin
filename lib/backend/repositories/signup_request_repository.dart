@@ -361,6 +361,20 @@ class SignupRequestRepository {
     }
   }
 
+  Future<List<String>> batchRejectSignupRequests(
+      List<String> requestIds, String reason) async {
+    final successful = <String>[];
+    for (final id in requestIds) {
+      try {
+        final ok = await rejectSignupRequestWithReason(id, reason);
+        if (ok) successful.add(id);
+      } catch (e) {
+        ErrorHandler.logError('Error rejecting request $id in batch', e);
+      }
+    }
+    return successful;
+  }
+
   /// Check if emails exist
   Future<Map<String, Map<String, bool>>> checkDetailedEmailsExist(
       String email) async {

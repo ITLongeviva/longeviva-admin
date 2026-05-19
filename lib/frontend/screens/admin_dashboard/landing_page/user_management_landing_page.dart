@@ -4,19 +4,35 @@ import '../../../../backend/bloc/admin_bloc.dart';
 import '../view_model/user_management_large_screen_view_model.dart';
 import '../view_model/user_management_small_screen_view_model.dart';
 
-class UsersManagementPageLandingPage extends StatelessWidget {
+class UsersManagementPageLandingPage extends StatefulWidget {
   const UsersManagementPageLandingPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // Load users when the page is opened
-    context.read<AdminOperationsBloc>().add(FetchAllUsers());
+  State<UsersManagementPageLandingPage> createState() =>
+      _UsersManagementPageLandingPageState();
+}
 
+class _UsersManagementPageLandingPageState
+    extends State<UsersManagementPageLandingPage>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    final bloc = context.read<AdminOperationsBloc>();
+    if (bloc.state is AdminOperationsInitial) {
+      bloc.add(FetchAllUsers());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Define responsive breakpoint
         final isSmallScreen = constraints.maxWidth <= 1000;
-
         if (isSmallScreen) {
           return const UserManagementSmallScreenViewModel();
         } else {
