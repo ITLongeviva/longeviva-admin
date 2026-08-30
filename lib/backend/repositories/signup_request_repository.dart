@@ -108,10 +108,14 @@ class SignupRequestRepository {
         // Location and organization fields
         'languagesSpoken': data.languagesSpoken,
 
-        // NEW: Professional registration fields
+        // Professional registration fields (legacy)
         'numero_iscrizione_albo': data.numero_iscrizione_albo,
         'numero_iscrizione_ente': data.numero_iscrizione_ente,
         'issuer': data.issuer,
+
+        // Professional certification fields (current)
+        'registrationEntityType': data.registrationEntityType,
+        'registrationValue': data.registrationValue,
 
         // Optional professional fields
         'specialty': data.specialty,

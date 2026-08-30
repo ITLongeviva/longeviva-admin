@@ -617,7 +617,10 @@
       "request_not_pending": "Cannot process a request that is not pending",
       "approval_failed": "Failed to approve signup request",
       "rejection_failed": "Failed to reject signup request",
-      "send_request_failed": "Please fill all required fields correctly"
+      "send_request_failed": "Please fill all required fields correctly",
+      "certification_required": "Professional certification data is required (certification type and issuing institution)",
+      "certification_type_required": "Certification type is required",
+      "certification_value_required": "Issuing institution is required"
     },
     "equipe": {
       "cannot_send_to_self": "Cannot send request to yourself",

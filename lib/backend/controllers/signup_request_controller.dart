@@ -760,27 +760,16 @@ The Longeviva Team
 
   // NEW: Role-specific validation method
   void _validateRoleSpecificRequirements(SignupData data) {
+    // Certification data is required for every professional role.
+    // Current format: registrationEntityType + registrationValue.
+    // Legacy format (older signups): numero_iscrizione_* + issuer.
+    if (data.requiresProfessionalRegistration &&
+        !data.hasValidProfessionalRegistration) {
+      _throwCertificationError(data);
+    }
+
     // Validate nutritionist and psychologist requirements
     if (data.isNutritionist || data.isPsychologist) {
-      if (data.numero_iscrizione_albo == null || data.numero_iscrizione_albo!.isEmpty) {
-        final roleNames = <String>[];
-        if (data.isNutritionist) roleNames.add('Nutritionist');
-        if (data.isPsychologist) roleNames.add('Psychologist');
-
-        throw AppException(
-          'Professional registration number (albo) is required for ${roleNames.join(" and ")} role(s)',
-          translationKey: 'errors.signup.albo_registration_required',
-          translationArgs: {'roles': roleNames.join(' and ')},
-        );
-      }
-
-      if (data.issuer.isEmpty) {
-        throw AppException(
-          'Professional qualification issuer is required for albo-registered professionals',
-          translationKey: 'errors.signup.issuer_required',
-        );
-      }
-
       // Validate surname for roles that require personal info
       if (data.surname.isEmpty) {
         throw AppException(
@@ -800,23 +789,6 @@ The Longeviva Team
         throw AppException(
           'Sex must be M, F, Male, or Female',
           translationKey: 'errors.signup.invalid_sex',
-        );
-      }
-    }
-
-    // Validate personal trainer requirements
-    if (data.isPersonalTrainer) {
-      if (data.numero_iscrizione_ente == null || data.numero_iscrizione_ente!.isEmpty) {
-        throw AppException(
-          'Professional registration number (ente) is required for Personal Trainer role',
-          translationKey: 'errors.signup.ente_registration_required',
-        );
-      }
-
-      if (data.issuer.isEmpty) {
-        throw AppException(
-          'Certifying organization is required for Personal Trainer role',
-          translationKey: 'errors.signup.issuer_required',
         );
       }
     }
@@ -976,8 +948,10 @@ The Longeviva Team
       final hasAlboRole = data.isNutritionist || data.isPsychologist;
       final hasEnteRole = data.isPersonalTrainer;
 
-      if (hasAlboRole && hasEnteRole) {
-        // Both albo and ente roles - ensure both registrations are provided
+      // Legacy signups carried one registration number per role family, so
+      // both were required. The current format uses a single certification
+      // (registrationEntityType + registrationValue) that covers every role.
+      if (hasAlboRole && hasEnteRole && !data.hasRegistrationEntityData) {
         if ((data.numero_iscrizione_albo == null || data.numero_iscrizione_albo!.isEmpty) ||
             (data.numero_iscrizione_ente == null || data.numero_iscrizione_ente!.isEmpty)) {
           throw AppException(
@@ -987,6 +961,32 @@ The Longeviva Team
         }
       }
     }
+  }
+
+  // Raise the most specific certification error for the missing data
+  void _throwCertificationError(SignupData data) {
+    final hasType = (data.registrationEntityType ?? '').trim().isNotEmpty;
+    final hasValue = (data.registrationValue ?? '').trim().isNotEmpty;
+
+    if (hasValue && !hasType) {
+      throw AppException(
+        'Certification type is required',
+        translationKey: 'errors.signup.certification_type_required',
+      );
+    }
+
+    if (hasType && !hasValue) {
+      throw AppException(
+        'Issuing institution is required',
+        translationKey: 'errors.signup.certification_value_required',
+      );
+    }
+
+    throw AppException(
+      'Professional certification data is required '
+      '(certification type and issuing institution)',
+      translationKey: 'errors.signup.certification_required',
+    );
   }
 
   // NEW: Validate professional registration numbers

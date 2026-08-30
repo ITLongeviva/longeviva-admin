@@ -554,6 +554,8 @@ class SignupRequest {
       numeroIscrizioneAlbo: signupData.numero_iscrizione_albo,
       numeroIscrizioneEnte: signupData.numero_iscrizione_ente,
       issuer: signupData.issuer,
+      registrationEntityType: signupData.registrationEntityType,
+      registrationValue: signupData.registrationValue,
       areaOfInterest: signupData.areaOfInterest,
       qualificationValidity: signupData.qualificationValidity,
       // NEW: Include hourly fees from signup data

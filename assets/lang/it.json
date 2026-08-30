@@ -616,7 +616,10 @@
       "request_not_pending": "Impossibile elaborare una richiesta che non è in attesa",
       "approval_failed": "Impossibile approvare la richiesta di registrazione",
       "rejection_failed": "Impossibile rifiutare la richiesta di registrazione",
-      "send_request_failed": "Per favore, riempire i campi richiesti"
+      "send_request_failed": "Per favore, riempire i campi richiesti",
+      "certification_required": "I dati della certificazione professionale sono richiesti (tipo di certificazione ed ente di rilascio)",
+      "certification_type_required": "Il tipo di certificazione è richiesto",
+      "certification_value_required": "L'ente di rilascio è richiesto"
     },
     "equipe": {
       "cannot_send_to_self": "Non puoi inviare una richiesta a te stesso",
