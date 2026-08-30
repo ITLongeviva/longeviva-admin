@@ -261,10 +261,13 @@ class _SignupRequestsSmallScreenViewModelState
                   Icon(Icons.filter_list,
                       size: 20, color: CustomColors.verdeAbisso),
                   const SizedBox(width: 8),
-                  Text(
-                    'All Statuses',
-                    style: TextStyle(
-                        fontFamily: 'Montserrat', color: Colors.grey[700]),
+                  Flexible(
+                    child: Text(
+                      'All Statuses',
+                      style: TextStyle(
+                          fontFamily: 'Montserrat', color: Colors.grey[700]),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),
@@ -275,7 +278,9 @@ class _SignupRequestsSmallScreenViewModelState
                 children: [
                   Icon(Icons.pending, size: 20, color: Colors.orange),
                   SizedBox(width: 8),
-                  Text('Pending', style: TextStyle(fontFamily: 'Montserrat')),
+                  Flexible(
+                    child: Text('Pending', style: TextStyle(fontFamily: 'Montserrat'), overflow: TextOverflow.ellipsis),
+                  ),
                 ],
               ),
             ),
@@ -285,7 +290,9 @@ class _SignupRequestsSmallScreenViewModelState
                 children: [
                   Icon(Icons.check_circle, size: 20, color: Colors.green),
                   SizedBox(width: 8),
-                  Text('Approved', style: TextStyle(fontFamily: 'Montserrat')),
+                  Flexible(
+                    child: Text('Approved', style: TextStyle(fontFamily: 'Montserrat'), overflow: TextOverflow.ellipsis),
+                  ),
                 ],
               ),
             ),
@@ -296,7 +303,9 @@ class _SignupRequestsSmallScreenViewModelState
                   Icon(Icons.cancel,
                       size: 20, color: CustomColors.rossoSimone),
                   SizedBox(width: 8),
-                  Text('Rejected', style: TextStyle(fontFamily: 'Montserrat')),
+                  Flexible(
+                    child: Text('Rejected', style: TextStyle(fontFamily: 'Montserrat'), overflow: TextOverflow.ellipsis),
+                  ),
                 ],
               ),
             ),
@@ -332,11 +341,14 @@ class _SignupRequestsSmallScreenViewModelState
                 children: [
                   Icon(Icons.group, size: 20, color: CustomColors.verdeAbisso),
                   const SizedBox(width: 8),
-                  Text(
-                    'All Roles',
-                    style: TextStyle(
-                      color: Colors.grey[700],
-                      fontFamily: 'Montserrat',
+                  Flexible(
+                    child: Text(
+                      'All Roles',
+                      style: TextStyle(
+                        color: Colors.grey[700],
+                        fontFamily: 'Montserrat',
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -348,8 +360,11 @@ class _SignupRequestsSmallScreenViewModelState
                 children: [
                   Icon(Icons.restaurant_menu, size: 20, color: Colors.green),
                   SizedBox(width: 8),
-                  Text('Prof. salute alimentare',
-                      style: TextStyle(fontFamily: 'Montserrat')),
+                  Flexible(
+                    child: Text('Prof. salute alimentare',
+                        style: TextStyle(fontFamily: 'Montserrat'),
+                        overflow: TextOverflow.ellipsis),
+                  ),
                 ],
               ),
             ),
@@ -359,8 +374,11 @@ class _SignupRequestsSmallScreenViewModelState
                 children: [
                   Icon(Icons.fitness_center, size: 20, color: Colors.orange),
                   SizedBox(width: 8),
-                  Text('Prof. salute motoria',
-                      style: TextStyle(fontFamily: 'Montserrat')),
+                  Flexible(
+                    child: Text('Prof. salute motoria',
+                        style: TextStyle(fontFamily: 'Montserrat'),
+                        overflow: TextOverflow.ellipsis),
+                  ),
                 ],
               ),
             ),
@@ -370,8 +388,11 @@ class _SignupRequestsSmallScreenViewModelState
                 children: [
                   Icon(Icons.psychology, size: 20, color: Colors.purple),
                   SizedBox(width: 8),
-                  Text('Prof. salute mentale',
-                      style: TextStyle(fontFamily: 'Montserrat')),
+                  Flexible(
+                    child: Text('Prof. salute mentale',
+                        style: TextStyle(fontFamily: 'Montserrat'),
+                        overflow: TextOverflow.ellipsis),
+                  ),
                 ],
               ),
             ),
@@ -382,7 +403,9 @@ class _SignupRequestsSmallScreenViewModelState
                   Icon(Icons.medical_services,
                       size: 20, color: CustomColors.verdeMare),
                   SizedBox(width: 8),
-                  Text('Doctor', style: TextStyle(fontFamily: 'Montserrat')),
+                  Flexible(
+                    child: Text('Doctor', style: TextStyle(fontFamily: 'Montserrat'), overflow: TextOverflow.ellipsis),
+                  ),
                 ],
               ),
             ),
@@ -393,7 +416,9 @@ class _SignupRequestsSmallScreenViewModelState
                   Icon(Icons.local_hospital,
                       size: 20, color: CustomColors.verdeAbisso),
                   SizedBox(width: 8),
-                  Text('Clinic', style: TextStyle(fontFamily: 'Montserrat')),
+                  Flexible(
+                    child: Text('Clinic', style: TextStyle(fontFamily: 'Montserrat'), overflow: TextOverflow.ellipsis),
+                  ),
                 ],
               ),
             ),
