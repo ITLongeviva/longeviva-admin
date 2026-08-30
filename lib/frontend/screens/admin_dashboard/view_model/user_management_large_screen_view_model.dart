@@ -547,7 +547,15 @@ class _UserManagementLargeScreenViewModelState extends State<UserManagementLarge
                           _buildDetailItem('Registration (Albo)', user['numero_iscrizione_albo']),
                         if (user['numero_iscrizione_ente'] != null)
                           _buildDetailItem('Registration (Ente)', user['numero_iscrizione_ente']),
-                        // NEW: Show issuer
+                        // Certification data (current format)
+                        if (user['registrationEntityType'] != null &&
+                            user['registrationEntityType'].toString().isNotEmpty)
+                          _buildDetailItem('Certification Type',
+                              _registrationEntityTypeLabel(user['registrationEntityType'])),
+                        if (user['registrationValue'] != null &&
+                            user['registrationValue'].toString().isNotEmpty)
+                          _buildDetailItem('Issuing Institution', user['registrationValue']),
+                        // LEGACY: Show issuer
                         if (user['issuer'] != null && user['issuer'].toString().isNotEmpty)
                           _buildDetailItem('Qualification Issuer', user['issuer']),
                         // NEW: Show hourly fees
@@ -686,4 +694,20 @@ class _UserManagementLargeScreenViewModelState extends State<UserManagementLarge
       ),
     );
   }
+
+  // Human-readable label for the certification type stored in Firestore
+  static String _registrationEntityTypeLabel(dynamic value) {
+    switch (value.toString().trim().toLowerCase()) {
+      case 'universita':
+      case 'università':
+        return 'Laurea';
+      case 'ente':
+        return 'Tesserino';
+      case 'attestato':
+        return 'Attestato';
+      default:
+        return value.toString();
+    }
+  }
+
 }

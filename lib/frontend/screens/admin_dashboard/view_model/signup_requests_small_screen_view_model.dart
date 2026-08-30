@@ -590,8 +590,10 @@ class _SignupRequestsSmallScreenViewModelState
                     text: '${request.formattedHourlyFees}/hour'),
 
               // Organization/Issuer
-              if (request.issuer.isNotEmpty)
-                _buildInfoRow(icon: Icons.business, text: request.issuer),
+              if (request.qualificationSourceLabel != null)
+                _buildInfoRow(
+                    icon: Icons.business,
+                    text: request.qualificationSourceLabel!),
 
               // Professional Validation Status
               if (request.requiresProfessionalRegistration)

@@ -730,14 +730,14 @@ class _SignupRequestsLargeScreenViewModelState extends State<SignupRequestsLarge
                         const SizedBox(height: 4),
 
                         // Organization/Issuer info
-                        if (request.issuer.isNotEmpty)
+                        if (request.qualificationSourceLabel != null)
                           Row(
                             children: [
                               const Icon(Icons.business, size: 16, color: CustomColors.verdeAbisso),
                               const SizedBox(width: 4),
                               Expanded(
                                 child: Text(
-                                  request.issuer,
+                                  request.qualificationSourceLabel!,
                                   style: TextStyle(
                                     color: Colors.grey[700],
                                     fontFamily: 'Montserrat',

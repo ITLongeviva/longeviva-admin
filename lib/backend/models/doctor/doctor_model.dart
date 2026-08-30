@@ -50,6 +50,10 @@ class Doctor { //Practioner
   final String? numero_iscrizione_ente;
   // ------------------------------
   final String issuer; // FHIR issuer --> ente per la qualifica del professionista
+  // Certificazione (formato corrente del form di registrazione)
+  // 'universita' | 'ente' | 'attestato'
+  final String? registrationEntityType;
+  final String? registrationValue; // Ente/istituto che rilascia il titolo
   final DateTime? qualificationValidity; // FHIR qualification.validity
   final String? specialty; // PractitionerRole.specialty[0]. La specializzazione è legata al ruolo svolto in un dato contesto. Questo campo va approfondito con entità PractionerRole
   final String? areaOfInterest; // Estensione di PractitionerRole.specialty
@@ -85,6 +89,8 @@ class Doctor { //Practioner
     this.numero_iscrizione_albo,
     this.numero_iscrizione_ente,
     this.issuer = '',
+    this.registrationEntityType,
+    this.registrationValue,
     this.qualificationValidity,
     this.specialty,
     this.areaOfInterest,
@@ -143,6 +149,8 @@ class Doctor { //Practioner
       numero_iscrizione_albo: json['numero_iscrizione_albo'],
       numero_iscrizione_ente: json['numero_iscrizione_ente'],
       issuer: json['issuer'] ?? '',
+      registrationEntityType: json['registrationEntityType'],
+      registrationValue: json['registrationValue'],
       qualificationValidity: json['qualificationValidity'] != null ?
       (json['qualificationValidity'] is Timestamp ?
       (json['qualificationValidity'] as Timestamp).toDate() :
@@ -200,6 +208,8 @@ class Doctor { //Practioner
       'numero_iscrizione_albo': numero_iscrizione_albo,
       'numero_iscrizione_ente': numero_iscrizione_ente,
       'issuer': issuer,
+      'registrationEntityType': registrationEntityType,
+      'registrationValue': registrationValue,
       'qualificationValidity': qualificationValidity != null ? Timestamp.fromDate(qualificationValidity!) : null,
       'specialty': specialty,
       'areaOfInterest': areaOfInterest,
@@ -227,13 +237,32 @@ class Doctor { //Practioner
   }
 
   // Helper method to get professional registration number based on roles
+  // Current certification fields first, legacy numero_iscrizione_* as fallback
   String? get professionalRegistrationNumber {
+    if (registrationValue != null && registrationValue!.trim().isNotEmpty) {
+      return registrationValue;
+    }
     if (isNutritionist() || isPsychologist()) {
       return numero_iscrizione_albo;
     } else if (isPersonalTrainer()) {
       return numero_iscrizione_ente;
     }
     return null;
+  }
+
+  // Human-readable label for registrationEntityType
+  String? get registrationEntityTypeLabel {
+    switch (registrationEntityType?.trim().toLowerCase()) {
+      case 'universita':
+      case 'università':
+        return 'Laurea';
+      case 'ente':
+        return 'Tesserino';
+      case 'attestato':
+        return 'Attestato';
+      default:
+        return registrationEntityType;
+    }
   }
 
   // Create a copy with updated fields
@@ -264,6 +293,8 @@ class Doctor { //Practioner
     String? numero_iscrizione_albo,
     String? numero_iscrizione_ente,
     String? issuer,
+    String? registrationEntityType,
+    String? registrationValue,
     DateTime? qualificationValidity,
     String? specialty,
     String? areaOfInterest,
@@ -302,6 +333,9 @@ class Doctor { //Practioner
       numero_iscrizione_albo: numero_iscrizione_albo ?? this.numero_iscrizione_albo,
       numero_iscrizione_ente: numero_iscrizione_ente ?? this.numero_iscrizione_ente,
       issuer: issuer ?? this.issuer,
+      registrationEntityType:
+          registrationEntityType ?? this.registrationEntityType,
+      registrationValue: registrationValue ?? this.registrationValue,
       qualificationValidity: qualificationValidity ?? this.qualificationValidity,
       specialty: specialty ?? this.specialty,
       areaOfInterest: areaOfInterest ?? this.areaOfInterest,

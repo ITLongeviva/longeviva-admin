@@ -26,9 +26,14 @@ class SignupRequest {
   final List<String> languagesSpoken;
 
   // NEW: Professional registration fields
-  final String? numeroIscrizioneAlbo; // For nutritionists, psychologists
-  final String? numeroIscrizioneEnte; // For personal trainers
-  final String issuer; // Professional qualification issuer
+  final String? numeroIscrizioneAlbo; // LEGACY: For nutritionists, psychologists
+  final String? numeroIscrizioneEnte; // LEGACY: For personal trainers
+  final String issuer; // LEGACY: Professional qualification issuer
+
+  // CURRENT: Certification data collected by the signup form
+  // 'universita' | 'ente' | 'attestato'
+  final String? registrationEntityType;
+  final String? registrationValue; // Free text: issuing institution
   final String? areaOfInterest; // Area of professional interest
   final DateTime? qualificationValidity; // Qualification expiry date
 
@@ -73,6 +78,8 @@ class SignupRequest {
     this.numeroIscrizioneAlbo,
     this.numeroIscrizioneEnte,
     this.issuer = '',
+    this.registrationEntityType,
+    this.registrationValue,
     this.areaOfInterest,
     this.qualificationValidity,
 
@@ -177,6 +184,8 @@ class SignupRequest {
       numeroIscrizioneAlbo: json['numero_iscrizione_albo'] as String?,
       numeroIscrizioneEnte: json['numero_iscrizione_ente'] as String?,
       issuer: json['issuer'] ?? '',
+      registrationEntityType: _nonEmptyString(json['registrationEntityType']),
+      registrationValue: _nonEmptyString(json['registrationValue']),
       areaOfInterest: json['areaOfInterest'] as String?,
       qualificationValidity: json['qualificationValidity'] != null
           ? (json['qualificationValidity'] is Timestamp
@@ -245,6 +254,8 @@ class SignupRequest {
       'numero_iscrizione_albo': numeroIscrizioneAlbo,
       'numero_iscrizione_ente': numeroIscrizioneEnte,
       'issuer': issuer,
+      'registrationEntityType': registrationEntityType,
+      'registrationValue': registrationValue,
       'areaOfInterest': areaOfInterest,
       'qualificationValidity': qualificationValidity?.toIso8601String(),
 
@@ -292,6 +303,8 @@ class SignupRequest {
     String? numeroIscrizioneAlbo,
     String? numeroIscrizioneEnte,
     String? issuer,
+    String? registrationEntityType,
+    String? registrationValue,
     String? areaOfInterest,
     DateTime? qualificationValidity,
 
@@ -336,6 +349,9 @@ class SignupRequest {
       numeroIscrizioneAlbo: numeroIscrizioneAlbo ?? this.numeroIscrizioneAlbo,
       numeroIscrizioneEnte: numeroIscrizioneEnte ?? this.numeroIscrizioneEnte,
       issuer: issuer ?? this.issuer,
+      registrationEntityType:
+          registrationEntityType ?? this.registrationEntityType,
+      registrationValue: registrationValue ?? this.registrationValue,
       areaOfInterest: areaOfInterest ?? this.areaOfInterest,
       qualificationValidity:
           qualificationValidity ?? this.qualificationValidity,
@@ -366,14 +382,65 @@ class SignupRequest {
   bool get isPersonalTrainer => hasRole('PERSONAL TRAINER');
   bool get isPsychologist => hasRole('PSYCHOLOGIST');
 
-  // NEW: Get appropriate registration number based on roles
+  // Helper: treat empty/blank Firestore values as absent
+  static String? _nonEmptyString(dynamic value) {
+    if (value == null) return null;
+    final text = value.toString().trim();
+    return text.isEmpty ? null : text;
+  }
+
+  // Current certification data present on the request?
+  bool get hasRegistrationEntityData =>
+      (registrationEntityType != null &&
+          registrationEntityType!.trim().isNotEmpty) &&
+      (registrationValue != null && registrationValue!.trim().isNotEmpty);
+
+  // Human-readable label for registrationEntityType
+  String? get registrationEntityTypeLabel {
+    switch (registrationEntityType?.trim().toLowerCase()) {
+      case 'universita':
+      case 'università':
+        return 'Laurea';
+      case 'ente':
+        return 'Tesserino';
+      case 'attestato':
+        return 'Attestato';
+      default:
+        return registrationEntityType;
+    }
+  }
+
+  // UPDATED: Registration reference, current fields first, legacy as fallback
   String? get professionalRegistrationNumber {
+    if (hasRegistrationEntityData) {
+      return registrationValue;
+    }
     if ((isNutritionist || isPsychologist) && numeroIscrizioneAlbo != null) {
       return numeroIscrizioneAlbo;
     } else if (isPersonalTrainer && numeroIscrizioneEnte != null) {
       return numeroIscrizioneEnte;
     }
     return null;
+  }
+
+  // Compact label for the qualification source shown on request cards:
+  // legacy issuer when present, otherwise the certification type label
+  String? get qualificationSourceLabel {
+    if (issuer.trim().isNotEmpty) return issuer;
+    return registrationEntityTypeLabel;
+  }
+
+  // Legacy certification data present on the request?
+  bool get hasLegacyRegistrationData {
+    final albo = _nonEmptyString(numeroIscrizioneAlbo);
+    final ente = _nonEmptyString(numeroIscrizioneEnte);
+    if (isNutritionist || isPsychologist) {
+      return albo != null && issuer.trim().isNotEmpty;
+    }
+    if (isPersonalTrainer) {
+      return ente != null && issuer.trim().isNotEmpty;
+    }
+    return false;
   }
 
   // NEW: Check if this request requires professional registration
@@ -418,21 +485,11 @@ class SignupRequest {
   bool get hasValidProfessionalRegistration {
     if (!requiresProfessionalRegistration) return true;
 
-    if ((isNutritionist || isPsychologist) &&
-        (numeroIscrizioneAlbo == null || numeroIscrizioneAlbo!.isEmpty)) {
-      return false;
-    }
+    // Current format: registrationEntityType + registrationValue
+    if (hasRegistrationEntityData) return true;
 
-    if (isPersonalTrainer &&
-        (numeroIscrizioneEnte == null || numeroIscrizioneEnte!.isEmpty)) {
-      return false;
-    }
-
-    if (requiresProfessionalRegistration && issuer.isEmpty) {
-      return false;
-    }
-
-    return true;
+    // Legacy documents: numero_iscrizione_* + issuer
+    return hasLegacyRegistrationData;
   }
 
   // UPDATED: Get validation errors for this signup request including hourlyFees
@@ -450,24 +507,20 @@ class SignupRequest {
     if (hourlyFees < 0) errors.add('Hourly fees cannot be negative');
     if (hourlyFees > 1000) errors.add('Hourly fees cannot exceed €1000');
 
-    // Role-specific validation
-    if ((isNutritionist || isPsychologist) &&
-        (numeroIscrizioneAlbo == null || numeroIscrizioneAlbo!.isEmpty)) {
-      final roleNames = <String>[];
-      if (isNutritionist) roleNames.add('Nutritionist');
-      if (isPsychologist) roleNames.add('Psychologist');
-      errors.add(
-          'Professional registration number (albo) is required for ${roleNames.join(" and ")} role(s)');
-    }
-
-    if (isPersonalTrainer &&
-        (numeroIscrizioneEnte == null || numeroIscrizioneEnte!.isEmpty)) {
-      errors.add(
-          'Professional registration number (ente) is required for Personal Trainer role');
-    }
-
-    if (requiresProfessionalRegistration && issuer.isEmpty) {
-      errors.add('Professional qualification issuer is required');
+    // Role-specific validation (current fields first, legacy as fallback)
+    if (requiresProfessionalRegistration && !hasValidProfessionalRegistration) {
+      if (_nonEmptyString(registrationEntityType) != null ||
+          _nonEmptyString(registrationValue) != null) {
+        if (_nonEmptyString(registrationEntityType) == null) {
+          errors.add('Certification type is required');
+        }
+        if (_nonEmptyString(registrationValue) == null) {
+          errors.add('Issuing institution is required');
+        }
+      } else {
+        errors.add(
+            'Professional certification data is required (certification type and issuing institution)');
+      }
     }
 
     return errors;

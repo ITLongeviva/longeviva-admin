@@ -254,10 +254,14 @@ class SignupRequestRepository {
         'roles': requestData['roles'] ??
             (requestData['role'] != null ? [requestData['role']] : []),
 
-        // Professional registration fields
+        // Professional registration fields (legacy)
         'numero_iscrizione_albo': requestData['numero_iscrizione_albo'],
         'numero_iscrizione_ente': requestData['numero_iscrizione_ente'],
         'issuer': requestData['issuer'] ?? '',
+
+        // Professional certification fields (current)
+        'registrationEntityType': requestData['registrationEntityType'],
+        'registrationValue': requestData['registrationValue'],
 
         // Optional professional fields
         'specialty': requestData['specialty'],
@@ -476,22 +480,33 @@ class SignupRequestRepository {
     try {
       final roles = requestData['roles'] as List<dynamic>? ?? [];
 
-      // Check if nutritionist or psychologist roles require albo registration
-      if (roles.contains('NUTRITIONIST') || roles.contains('PSYCHOLOGIST')) {
-        final numeroAlbo = requestData['numero_iscrizione_albo'] as String?;
-        if (numeroAlbo == null || numeroAlbo.isEmpty) {
-          ErrorHandler.logWarning(
-              'Missing numero_iscrizione_albo for nutritionist/psychologist role');
-          return false;
-        }
-      }
+      final requiresRegistration = roles.contains('NUTRITIONIST') ||
+          roles.contains('PSYCHOLOGIST') ||
+          roles.contains('PERSONAL TRAINER');
 
-      // Check if personal trainer role requires ente registration
-      if (roles.contains('PERSONAL TRAINER')) {
-        final numeroEnte = requestData['numero_iscrizione_ente'] as String?;
-        if (numeroEnte == null || numeroEnte.isEmpty) {
+      if (requiresRegistration) {
+        // Current format: registrationEntityType + registrationValue
+        final entityType =
+            (requestData['registrationEntityType'] as String?)?.trim() ?? '';
+        final entityValue =
+            (requestData['registrationValue'] as String?)?.trim() ?? '';
+        final hasCurrentRegistration =
+            entityType.isNotEmpty && entityValue.isNotEmpty;
+
+        // Legacy documents: numero_iscrizione_* + issuer
+        final numeroAlbo =
+            (requestData['numero_iscrizione_albo'] as String?)?.trim() ?? '';
+        final numeroEnte =
+            (requestData['numero_iscrizione_ente'] as String?)?.trim() ?? '';
+        final issuer = (requestData['issuer'] as String?)?.trim() ?? '';
+        final hasLegacyRegistration = issuer.isNotEmpty &&
+            ((roles.contains('NUTRITIONIST') || roles.contains('PSYCHOLOGIST'))
+                ? numeroAlbo.isNotEmpty
+                : numeroEnte.isNotEmpty);
+
+        if (!hasCurrentRegistration && !hasLegacyRegistration) {
           ErrorHandler.logWarning(
-              'Missing numero_iscrizione_ente for personal trainer role');
+              'Missing professional certification data for roles: $roles');
           return false;
         }
       }

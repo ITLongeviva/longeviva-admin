@@ -154,6 +154,14 @@ class _SignupRequestDetailsState extends State<SignupRequestDetails> {
                         // NEW: Show professional registration information
                         if (widget.request.requiresProfessionalRegistration) ...[
                           const SizedBox(height: 8),
+                          // CURRENT: certification type + issuing institution
+                          if (widget.request.registrationEntityTypeLabel != null)
+                            _buildDetailRow('Certification Type',
+                                widget.request.registrationEntityTypeLabel!),
+                          if (widget.request.registrationValue != null)
+                            _buildDetailRow('Issuing Institution',
+                                widget.request.registrationValue!),
+                          // LEGACY documents
                           if (widget.request.numeroIscrizioneAlbo != null)
                             _buildDetailRow('Registration (Albo)', widget.request.numeroIscrizioneAlbo!),
                           if (widget.request.numeroIscrizioneEnte != null)
